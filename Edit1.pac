@@ -6,7 +6,7 @@
 // إعدادات اللاعبين الأردنيين
 const JORDAN_PLAYER_CONFIG = {
   // المناطق المفضلة
-  PRIORITY_REGIONS: ['SA', 'AE', 'KW', 'JO'],
+  PRIORITY_REGIONS: ['SA', 'AE', 'JO'],
   
   // عتبة زمن الاستجابة (بالمللي ثانية)
   PING_THRESHOLD: 50,
