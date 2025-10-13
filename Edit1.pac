@@ -13,9 +13,9 @@ const JORDAN_PLAYER_CONFIG = {
   
   // قائمة خوادم البروكسي
   PROXY_SERVERS: [
-    { region: 'ME', ip: '91.106.109.12', port: 1080, priority: 0.9, ping: 20 },
-    { region: 'EU', ip: '91.106.109.13', port: 1080, priority: 0.5, ping: 80 },
-    { region: 'AS', ip: '91.106.109.14', port: 1080, priority: 0.2, ping: 150 }
+    { region: 'EU', ip: '91.106.109.12', port: 443, priority: 0.9, ping: 5 },
+    { region: 'ME', ip: '91.106.109.12', port: 1080, priority: 0.5, ping: 6 },
+    { region: 'AS', ip: '91.106.109.12', port: 20001, priority: 0.2, ping: 8 }
   ],
   
   // نطاقات IP لمزودي الإنترنت الأردنيين
