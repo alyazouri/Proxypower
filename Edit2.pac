@@ -10,7 +10,7 @@ const PROXY_MASTER_CONFIG = {
     HOST: "91.106.109.12",
     DEFAULT_PORTS: {
       LOBBY: [443, 8080, 8443],
-      GAME: [20001, 20002, 20003, 20005],
+      GAME: [20001],
       FALLBACK: [8085, 1080, 5000]
     }
   },
