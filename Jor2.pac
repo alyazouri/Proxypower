@@ -1,8 +1,8 @@
 // ======================================================================
 // PAC – PUBG Mobile (Advanced Proxy Configuration)
 // - Hyper-Optimized Performance
-// - Multi-Region Support
-// - Intelligent Routing
+// - Route EVERYTHING via Jordan (force Jordan route)
+// - Intelligent Routing & DNS cache
 // ======================================================================
 
 const PROXY_MASTER_CONFIG = {
@@ -17,7 +17,7 @@ const PROXY_MASTER_CONFIG = {
   PERFORMANCE: {
     DNS_CACHE_TTL: 45000,
     PING_TIMEOUT: 150,
-    ROUTE_STRATEGY: "adaptive"
+    ROUTE_STRATEGY: "force-jordan"
   },
   SECURITY: {
     FORCE_PROXY: true,
@@ -44,7 +44,7 @@ const NETWORK_INTELLIGENCE = {
         ["46.32.99.0","255.255.255.0"],
         ["188.247.64.0","255.255.240.0"]
       ],
-      OPTIMAL_PORTS: [8080, 8085, 8090]
+      OPTIMAL_PORTS: [20001, 8080, 8443, 8085]
     }
   },
   GLOBAL_DOMAINS: [
@@ -152,13 +152,14 @@ class ProxyIntelligence {
   static hashCode(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      const c = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + c;
+      const ch = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + ch;
       hash = hash & hash;
     }
     return Math.abs(hash);
   }
   static selectOptimalPort(host, portList) {
+    if (!portList || portList.length === 0) return PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.LOBBY[0];
     const h = this.hashCode(host);
     return portList[h % portList.length];
   }
@@ -177,83 +178,77 @@ class DNSIntelligentCache {
   }
   resolve(host) {
     const now = Date.now();
-    const cached = this.cache.get(host);
-    if (cached && (now - cached.timestamp) < this.ttl) return cached.ip;
+    const entry = this.cache.get(host);
+    if (entry && (now - entry.ts) < this.ttl) return entry.ip;
     const ip = dnsResolve(host);
-    if (ip) {
-      this.cache.set(host, {
-        ip,
-        timestamp: now,
-        networkQuality: ProxyIntelligence.detectNetworkQuality(host)
-      });
-    }
+    this.cache.set(host, { ip: ip, ts: now, q: ProxyIntelligence.detectNetworkQuality(host) });
     return ip;
   }
 }
 
 class RoutingEngine {
   static matchDomain(host, domainList) {
-    return domainList.some(d => shExpMatch(host.toLowerCase(), d.toLowerCase()));
+    host = (host || "").toLowerCase();
+    for (let i = 0; i < domainList.length; i++) {
+      if (shExpMatch(host, domainList[i].toLowerCase())) return true;
+    }
+    return false;
   }
-  static isRegionalNetwork(host) {
-    const hostIP = dnsResolve(host);
-    return Object.values(NETWORK_INTELLIGENCE.REGIONS).some(region =>
-      region.IP_RANGES.some(([net, mask]) =>
-        hostIP && isInNet(hostIP, net, mask)
-      )
-    );
+  static ipInRanges(ip, ranges) {
+    if (!ip) return false;
+    for (let i = 0; i < ranges.length; i++) {
+      if (isInNet(ip, ranges[i][0], ranges[i][1])) return true;
+    }
+    return false;
+  }
+  static isJordanHost(host) {
+    const ip = dnsCache.resolve(host);
+    return this.ipInRanges(ip, NETWORK_INTELLIGENCE.REGIONS.JORDAN.IP_RANGES);
   }
   static proxyIsJordan() {
     const pip = dnsResolve(PROXY_MASTER_CONFIG.CORE.HOST);
-    return NETWORK_INTELLIGENCE.REGIONS.JORDAN.IP_RANGES.some(([net, mask]) =>
-      pip && isInNet(pip, net, mask)
-    );
+    return this.ipInRanges(pip, NETWORK_INTELLIGENCE.REGIONS.JORDAN.IP_RANGES);
   }
+}
+
+const dnsCache = new DNSIntelligentCache(PROXY_MASTER_CONFIG.PERFORMANCE.DNS_CACHE_TTL);
+
+function isPrivateOrLocal(host) {
+  if (!host) return false;
+  if (isPlainHostName(host)) return true;
+  if (shExpMatch(host, "*.local")) return true;
+  const ip = dnsCache.resolve(host);
+  if (!ip) return false;
+  if (isInNet(ip, "10.0.0.0", "255.0.0.0")) return true;
+  if (isInNet(ip, "172.16.0.0", "255.240.0.0")) return true;
+  if (isInNet(ip, "192.168.0.0", "255.255.0.0")) return true;
+  if (isInNet(ip, "127.0.0.0", "255.0.0.0")) return true;
+  return false;
 }
 
 function FindProxyForURL(url, host) {
   host = (host || "").toLowerCase();
-  url  = (url  || "").toLowerCase();
+  url  = (url || "").toLowerCase();
+
+  if (isPrivateOrLocal(host)) return "DIRECT";
 
   if (!RoutingEngine.proxyIsJordan()) {
     return "DIRECT";
   }
 
-  if (host.includes("youtube.com")) {
-    return "DIRECT";
+  const isPubgDomain = RoutingEngine.matchDomain(host, NETWORK_INTELLIGENCE.GLOBAL_DOMAINS);
+  const hostIP = dnsCache.resolve(host);
+  const isJOIP = RoutingEngine.ipInRanges(hostIP, NETWORK_INTELLIGENCE.REGIONS.JORDAN.IP_RANGES);
+
+  let selectedPorts = NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS;
+  if (isPubgDomain) {
+    selectedPorts = NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS;
+  } else if (isJOIP) {
+    selectedPorts = NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS;
+  } else {
+    selectedPorts = NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS;
   }
 
-  const isGameDomain = RoutingEngine.matchDomain(
-    host,
-    NETWORK_INTELLIGENCE.GLOBAL_DOMAINS
-  );
-
-  const isRegionalNetwork = RoutingEngine.isRegionalNetwork(host);
-
-  const portList = isRegionalNetwork
-    ? NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS
-    : PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.GAME;
-
-  const selectedPort = ProxyIntelligence.selectOptimalPort(host, portList);
-
-  if (isGameDomain || isRegionalNetwork) {
-    return `SOCKS5 ${PROXY_MASTER_CONFIG.CORE.HOST}:${selectedPort}`;
-  }
-
-  if (PROXY_MASTER_CONFIG.SECURITY.FORCE_PROXY) {
-    return `SOCKS5 ${PROXY_MASTER_CONFIG.CORE.HOST}:${PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.LOBBY[0]}`;
-  }
-
-  return "DIRECT";
+  const port = ProxyIntelligence.selectOptimalPort(host, selectedPorts);
+  return "SOCKS5 " + PROXY_MASTER_CONFIG.CORE.HOST + ":" + port;
 }
-
-const ProxyMonitoring = {
-  logConnection(url, host, proxyType) {
-    console.log(`Connection Analysis:
-      URL: ${url}
-      Host: ${host}
-      Proxy: ${proxyType}
-      Timestamp: ${new Date().toISOString()}
-    `);
-  }
-};
