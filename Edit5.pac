@@ -40,7 +40,7 @@ const JORDANIAN_GAMING_CONFIG = {
     {
       id: 'JO_ULTRA_EDGE_01',
       region: 'ME',
-      ip: '91.106.109.11',
+      ip: '185.142.224.12',
       port: 443,
       location: 'Amman Data Center',
       ping_guarantee: 0.3,
