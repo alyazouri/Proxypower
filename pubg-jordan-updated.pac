@@ -46,17 +46,10 @@ function FindProxyForURL(url, host) {
     // تغطي الـ ISPs الرئيسية في الأردن (Orange، Zain، Batelco، JDS، Umniah، Al-Hadatheh)
     // إضافة نطاقات جديدة (post-2020) وقديمة (pre-2020) لتوسيع التغطية
     var pubg_ip_ranges = [
-        // نطاقات أردنية أساسية (من السابق)
-        {ip: "193.242.192.0", mask: "255.255.240.0"}, // AS8697 - Orange Jordan Telecom (رئيسي)
-        {ip: "62.163.0.0", mask: "255.255.240.0"},    // AS8376 - Jordan Data Systems (JDS)
-        {ip: "176.29.0.0", mask: "255.255.0.0"},      // AS48832 - Zain Jordan (موبايل كبير)
-        {ip: "94.127.0.0", mask: "255.255.128.0"},    // AS9038 - Batelco Jordan
-        {ip: "82.212.0.0", mask: "255.255.192.0"},    // AS47887 - Al-Hadatheh Co. (Amman)
-        {ip: "188.115.0.0", mask: "255.255.128.0"},   // AS44717 - Umniah (موبايل)
+        {ip: "86.108.0.0", mask: "255.255.128.0"},    // 2005 - Jordan Data Comm (mid-2000s)
 
-        // نطاقات أردنية جديدة (post-2020، من IPv4.fetus.jp وBGPView)
+        {ip: "176.29.0.0", mask: "255.255.0.0"},      // AS48832 - Zain Jordan
         {ip: "37.252.222.0", mask: "255.255.255.0"},  // 2021 - Umniah/Zain related
-        {ip: "91.132.100.0", mask: "255.255.255.0"},  // 2023 - Batelco/Orange modern alloc
         {ip: "91.223.202.0", mask: "255.255.255.0"},  // 2023 - Recent RIPE NCC
         {ip: "146.19.239.0", mask: "255.255.255.0"},  // 2021 - New mobile ISP
         {ip: "146.19.246.0", mask: "255.255.255.0"},  // 2021 - New hosting
@@ -70,8 +63,6 @@ function FindProxyForURL(url, host) {
         {ip: "195.18.9.0", mask: "255.255.255.0"},    // 2025 - Latest alloc
         {ip: "84.252.106.0", mask: "255.255.255.0"},  // 2020 - Post-2020 extension
         {ip: "91.212.0.0", mask: "255.255.255.0"},    // 2020 - New Batelco
-
-        // نطاقات أردنية قديمة (pre-2020، من NirSoft وIPv4.fetus.jp)
         {ip: "5.45.128.0", mask: "255.255.240.0"},    // 2012 - Umniah (old mobile)
         {ip: "46.185.128.0", mask: "255.255.128.0"},  // 2010 - Jordan Data Comm (historical)
         {ip: "193.188.64.0", mask: "255.255.224.0"},  // 1995 - National Info Tech Center (very old)
@@ -80,7 +71,6 @@ function FindProxyForURL(url, host) {
         {ip: "212.118.0.0", mask: "255.255.224.0"},   // 1998 - Batelco (historical)
         {ip: "213.139.32.0", mask: "255.255.224.0"},  // 2000 - Jordan Telecom (pre-2000)
         {ip: "80.90.160.0", mask: "255.255.240.0"},   // 2001 - Linkdotnet (old)
-        {ip: "86.108.0.0", mask: "255.255.128.0"},    // 2005 - Jordan Data Comm (mid-2000s)
         {ip: "92.253.0.0", mask: "255.255.128.0"}     // 2009 - Jordan Data Comm (pre-2010)
     ];
 
