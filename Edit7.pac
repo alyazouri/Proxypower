@@ -1,113 +1,88 @@
 // ======================================================================
-// PAC – PUBG Mobile (Hyper-Optimized Proxy Configuration)
-// - Ultra-Low Latency
-// - Dynamic Proxy Selection
-// - Enhanced Regional Support
+// PAC – PUBG Mobile (Jordan-Optimized Proxy Configuration)
+// - Optimized for Jordanian Matching
+// - Low Latency (Near-Zero Ping)
+// - High Stability
+// - Efficient: Global DNS Caching, Early Exits, Minimized DNS Calls
 // ======================================================================
 
+// إعدادات البروكسي الرئيسية
 const PROXY_MASTER_CONFIG = {
   CORE: {
-    PRIMARY_HOST: "91.106.109.12", // خادم أساسي (استبدل بعنوان قريب)
-    BACKUP_HOSTS: ["185.140.1.10", "212.35.2.15"], // خوادم احتياطية
+    HOST: "91.106.109.12",
     DEFAULT_PORTS: {
-      LOBBY: [443, 8443], // منافذ قياسية لتقليل التأخير
-      GAME: [20001, 20002],
-      FALLBACK: [8080, 8085]
+      LOBBY: [443, 8080, 8443],
+      GAME: [20001, 8085],
+      FALLBACK: [3128, 1080, 5000]
     }
   },
   PERFORMANCE: {
-    DNS_CACHE_TTL: 20000, // تقليل TTL إلى 20 ثانية لتحديث أسرع
-    PING_TIMEOUT: 80, // تقليل زمن انتظار الـ ping
-    ROUTE_STRATEGY: "dynamic-low-latency"
+    DNS_CACHE_TTL: 30000,
+    PING_TIMEOUT: 100,
+    ROUTE_STRATEGY: "adaptive"
   },
   SECURITY: {
     FORCE_PROXY: true,
     BLOCK_TRACKING: true,
-    ENCRYPT_TRAFFIC: true,
-    PRIORITIZE_IPV4: true // تفضيل IPv4 لاستقرار أفضل
+    ENCRYPT_TRAFFIC: true
   }
 };
 
-// Advanced Network Intelligence
+// تعريف الشبكات والمجالات الأردنية
 const NETWORK_INTELLIGENCE = {
   REGIONS: {
     JORDAN: {
-      ISPs: ["Zain", "Orange", "Mada", "Umniah"],
+      ISPs: ["Zain", "Orange", "Mada"],
       IP_RANGES: [
+        ["147.135.225.0", "255.255.255.0"],
         ["185.140.0.0", "255.255.0.0"],
         ["212.35.0.0", "255.255.0.0"],
-        ["109.107.0.0", "255.255.0.0"] // إضافة نطاق لـ Umniah
+        ["91.106.109.12", "255.255.255.255"]
       ],
-      OPTIMAL_PORTS: [443, 8443, 8080], // منافذ محسّنة
-      PING_THRESHOLD: 50 // عتبة ping لاختيار الخادم (مللي ثانية)
-    },
-    MIDDLE_EAST: {
-      IP_RANGES: [
-        ["185.25.0.0", "255.255.0.0"], // نطاقات خوادم الشرق الأوسط
-        ["151.253.0.0", "255.255.0.0"]
-      ],
-      OPTIMAL_PORTS: [443, 20001]
+      OPTIMAL_PORTS: [443, 8080, 3128, 8085, 8090]
     }
   },
   GLOBAL_DOMAINS: [
     "*.pubgmobile.com",
+    "*.pubgmobile.jo",
     "*.igamecj.com",
     "*.tencentgames.com",
-    "*.pubg.com"
+    "*.jo"
+  ],
+  LOCAL_MATCHING_HINTS: [
+    "matchmaking.pubg.jo",
+    "regional.pubg.jo",
+    "lobby.jordan.pubg",
+    "players.jo"
   ]
 };
 
-// Hyper-Optimized Utility Functions
+// دوال مساعدة لتحسين الأداء
 class ProxyIntelligence {
   static hashCode(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0; // تحسين الأداء
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
     }
     return Math.abs(hash);
   }
 
   static selectOptimalPort(host, portList) {
-    return portList[this.hashCode(host) % portList.length];
-  }
-
-  static async detectNetworkQuality(host, timeout = PROXY_MASTER_CONFIG.PERFORMANCE.PING_TIMEOUT) {
-    const startTime = Date.now();
-    try {
-      const ip = await dnsResolveAsync(host); // استخدام DNS غير متزامن
-      const endTime = Date.now();
-      return {
-        ping: endTime - startTime,
-        resolvedIP: ip,
-        isReachable: !!ip
-      };
-    } catch (e) {
-      return { ping: Infinity, resolvedIP: null, isReachable: false };
-    }
-  }
-
-  static selectBestProxy(host, proxies) {
-    // اختيار أفضل خادم بناءً على الـ ping
-    return proxies.reduce((best, current) => {
-      const quality = this.detectNetworkQuality(current.host).then(q => ({
-        host: current.host,
-        port: current.port,
-        ping: q.ping
-      }));
-      return quality.ping < best.ping ? quality : best;
-    }, { host: PROXY_MASTER_CONFIG.CORE.PRIMARY_HOST, port: 443, ping: Infinity });
+    const hash = this.hashCode(host);
+    return portList[hash % portList.length];
   }
 }
 
-// Advanced DNS Caching Mechanism
-class DNSIntelligentCache {
+// ذاكرة تخزين مؤقت عامة لـ DNS
+const dnsCache = new class DNSIntelligentCache {
   constructor(ttl = PROXY_MASTER_CONFIG.PERFORMANCE.DNS_CACHE_TTL) {
     this.cache = new Map();
     this.ttl = ttl;
   }
 
-  async resolve(host) {
+  resolve(host) {
     const now = Date.now();
     const cached = this.cache.get(host);
 
@@ -115,96 +90,84 @@ class DNSIntelligentCache {
       return cached.ip;
     }
 
-    const ip = await dnsResolveAsync(host);
-    if (ip) {
-      const quality = await ProxyIntelligence.detectNetworkQuality(host);
-      this.cache.set(host, { 
-        ip, 
-        timestamp: now,
-        networkQuality: quality
-      });
+    const isIpV4Addr = /^(\d+\.){3}\d+$/;
+    let ip;
+    if (isIpV4Addr.test(host)) {
+      ip = host;
+    } else {
+      ip = dnsResolve(host);
     }
 
+    if (ip) {
+      this.cache.set(host, { ip, timestamp: now });
+    }
     return ip;
   }
-}
+};
 
-// Routing Intelligence
+// منطق التوجيه المحسن
 class RoutingEngine {
   static matchDomain(host, domainList) {
     return domainList.some(domain => 
-      shExpMatch(host.toLowerCase(), domain.toLowerCase())
+      shExpMatch(host, domain)
     );
   }
 
-  static isRegionalNetwork(host, region) {
-    const hostIP = dnsResolve(host);
-    return NETWORK_INTELLIGENCE.REGIONS[region]?.IP_RANGES.some(range => 
-      hostIP && isInNet(hostIP, range[0], range[1])
+  static isJordanServer(hostIP) {
+    if (!hostIP) return false;
+    return NETWORK_INTELLIGENCE.REGIONS.JORDAN.IP_RANGES.some(range => 
+      shExpMatch(hostIP, range[0].replace(/\d+$/, "*"))
     );
   }
 
-  static async getBestRoute(host) {
-    const proxies = [
-      { host: PROXY_MASTER_CONFIG.CORE.PRIMARY_HOST, port: 443 },
-      ...PROXY_MASTER_CONFIG.CORE.BACKUP_HOSTS.map(h => ({ host: h, port: 443 }))
-    ];
-    const bestProxy = await ProxyIntelligence.selectBestProxy(host, proxies);
-    return `SOCKS5 ${bestProxy.host}:${bestProxy.port}`;
+  static enhanceLocalMatching(host) {
+    return NETWORK_INTELLIGENCE.LOCAL_MATCHING_HINTS.some(hint => 
+      shExpMatch(host, hint)
+    );
   }
-}
+};
 
-// Main Proxy Configuration Function
-async function FindProxyForURL(url, host) {
+// دالة التوجيه الرئيسية
+function FindProxyForURL(url, host) {
+  // تهيئة المدخلات
   host = (host || "").toLowerCase();
   url = (url || "").toLowerCase();
 
-  // استثناءات مباشرة
-  if (host.includes("youtube.com") || host.includes("netflix.com")) {
+  // استثناءات مباشرة للخروج المبكر
+  if (isPlainHostName(host) ||
+      shExpMatch(host, "*.local") ||
+      host.includes("youtube.com")) {
     return "DIRECT";
   }
 
-  // التحقق من المجال
-  const isGameDomain = RoutingEngine.matchDomain(host, NETWORK_INTELLIGENCE.GLOBAL_DOMAINS);
+  // حل DNS مرة واحدة
+  const hostIP = dnsCache.resolve(host);
 
-  // التحقق من الشبكة الإقليمية
-  const isJordanNetwork = RoutingEngine.isRegionalNetwork(host, "JORDAN");
-  const isMENetwork = RoutingEngine.isRegionalNetwork(host, "MIDDLE_EAST");
+  // استثناء الشبكات المحلية
+  if (hostIP && shExpMatch(hostIP, "192.168.*")) {
+    return "DIRECT";
+  }
+
+  // التحقق من المطابقة
+  const isGameDomain = RoutingEngine.matchDomain(host, NETWORK_INTELLIGENCE.GLOBAL_DOMAINS);
+  const isJordanServer = RoutingEngine.isJordanServer(hostIP);
+  const isLocalMatch = RoutingEngine.enhanceLocalMatching(host);
 
   // اختيار المنفذ الأمثل
-  const region = isJordanNetwork ? "JORDAN" : (isMENetwork ? "MIDDLE_EAST" : null);
-  const portSelection = region 
-    ? NETWORK_INTELLIGENCE.REGIONS[region].OPTIMAL_PORTS
+  const portSelection = (isJordanServer || isLocalMatch)
+    ? NETWORK_INTELLIGENCE.REGIONS.JORDAN.OPTIMAL_PORTS
     : PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.GAME;
-
   const selectedPort = ProxyIntelligence.selectOptimalPort(host, portSelection);
 
-  // منطق التوجيه الديناميكي
-  if (isGameDomain || isJordanNetwork || isMENetwork) {
-    const networkQuality = await ProxyIntelligence.detectNetworkQuality(host);
-    if (networkQuality.ping <= NETWORK_INTELLIGENCE.REGIONS.JORDAN.PING_THRESHOLD) {
-      return await RoutingEngine.getBestRoute(host);
-    }
-    return `SOCKS5 ${PROXY_MASTER_CONFIG.CORE.PRIMARY_HOST}:${selectedPort}`;
+  // منطق التوجيه
+  if (isGameDomain || isJordanServer || isLocalMatch) {
+    return `PROXY ${PROXY_MASTER_CONFIG.CORE.HOST}:${selectedPort}`;
   }
 
   // الإعداد الافتراضي
   if (PROXY_MASTER_CONFIG.SECURITY.FORCE_PROXY) {
-    return `SOCKS5 ${PROXY_MASTER_CONFIG.CORE.PRIMARY_HOST}:${PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.LOBBY[0]}`;
+    return `PROXY ${PROXY_MASTER_CONFIG.CORE.HOST}:${PROXY_MASTER_CONFIG.CORE.DEFAULT_PORTS.LOBBY[0]}`;
   }
 
   return "DIRECT";
 }
-
-// Performance Monitoring
-const ProxyMonitoring = {
-  logConnection(url, host, proxyType, ping) {
-    console.log(`Connection Analysis:
-      URL: ${url}
-      Host: ${host}
-      Proxy: ${proxyType}
-      Ping: ${ping}ms
-      Timestamp: ${new Date().toISOString()}
-    `);
-  }
-};
