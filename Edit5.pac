@@ -54,7 +54,7 @@ const JORDANIAN_GAMING_CONFIG = {
     {
       id: 'JO_ULTRA_EDGE_02',
       region: 'SA',
-      ip: '91.106.109.12',
+      ip: '185.142.224.12',
       port: 1080,
       location: 'Riyadh Backup',
       ping_guarantee: 0.5,
