@@ -9,9 +9,9 @@
 // (تحرير القيم بحسب بروكسياتك الأردنية)
 var FORCE_PROXY              = true;     // إجبار المرور عبر البروكسي
 var BLOCK_IR                 = true;     // منع إيران
-var FORBID_DIRECT_GLOBAL     = false;     // لا DIRECT (ما عدا الاستثناءات)
-var PING_HEURISTIC           = false;     // قياس بسيط لزمن dnsResolve (مؤشر فقط)
-var DNS_CACHE_TTL_MS         = 45000;    // TTL للكاش المحلي البسيط
+var FORBID_DIRECT_GLOBAL     = true;     // لا DIRECT (ما عدا الاستثناءات)
+var PING_HEURISTIC           = true;     // قياس بسيط لزمن dnsResolve (مؤشر فقط)
+var DNS_CACHE_TTL_MS         = 450000;    // TTL للكاش المحلي البسيط
 var JITTER_WINDOW            = 3;        // نافذة تذبذب صغيرة على اختيار البورت
 
 // ======================= PROXY POOL (Jordan) =======================
