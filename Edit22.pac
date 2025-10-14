@@ -7,7 +7,7 @@
 
 // ======================= CORE CONFIG =======================
 // (تحرير القيم بحسب بروكسياتك الأردنية)
-var FORCE_PROXY              = true;     // إجبار المرور عبر البروكسي
+var FORCE_PROXY              = false;     // إجبار المرور عبر البروكسي
 var BLOCK_IR                 = true;     // منع إيران
 var FORBID_DIRECT_GLOBAL     = true;     // لا DIRECT (ما عدا الاستثناءات)
 var PING_HEURISTIC           = true;     // قياس بسيط لزمن dnsResolve (مؤشر فقط)
