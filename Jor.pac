@@ -10,10 +10,12 @@ var __RTT_CACHE__ = __RTT_CACHE__ || {};
 var __SESSION_MAP__ = __SESSION_MAP__ || {};
 var __FAIL_COUNT__ = __FAIL_COUNT__ || {};
 var __BLACKLIST__ = __BLACKLIST__ || {};
+var __PROXY_IP_CACHE__ = __PROXY_IP_CACHE__ || {};
 
 var PROXIES = [
   { id:"P1", proxy:"PROXY 213.139.50.66:8088", base:5 },
-  { id:"P2", proxy:"PROXY 213.139.50.66:8111", base:5 }
+  { id:"P2", proxy:"PROXY 213.139.50.66:8111", base:5 },
+  { id:"P3", proxy:"PROXY 91.106.109.12:20001", base:6 }
 ];
 
 var JO_RANGES = [
@@ -162,6 +164,41 @@ function weightedPickAdaptive(h, list, extra){
   return list[0].proxy;
 }
 
+function resolveProxyHost(proxyString){
+  try{
+    // proxyString like "PROXY 1.2.3.4:8080" or "PROXY host:port"
+    var parts = proxyString.split(" ");
+    var hostport = parts.length>1 ? parts[1] : parts[0];
+    var hp = hostport.split(":");
+    return hp[0];
+  }catch(e){ return null; }
+}
+
+function proxyIpIsJordan(proxyString){
+  try{
+    var host = resolveProxyHost(proxyString);
+    if(!host) return false;
+    var cached = __PROXY_IP_CACHE__[host];
+    var t = now();
+    if(cached && (t - cached.ts) < DNS_CACHE_TTL_MS) return isInJoRanges(cached.ip);
+    var ip = null;
+    try{ ip = dnsResolve(host); }catch(e){ ip = null; }
+    if(!ip) return false;
+    __PROXY_IP_CACHE__[host] = { ip: ip, ts: t };
+    return isInJoRanges(ip);
+  }catch(e){ return false; }
+}
+
+function filterProxiesToJordan(list){
+  var out = [];
+  for(var i=0;i<list.length;i++){
+    try{
+      if(proxyIpIsJordan(list[i].proxy)) out.push(list[i]);
+    }catch(e){}
+  }
+  return out;
+}
+
 function FindProxyForURL(url, host){
   try{
     var h=(host||"").toLowerCase();
@@ -173,8 +210,10 @@ function FindProxyForURL(url, host){
     var ipMatch = resolved && isInJoRanges(resolved);
     var strong = clientIsJo || ipMatch;
     var weak = ipMatch;
-    if(strong) return weightedPickAdaptive(h, PROXIES, 4);
-    if(weak) return weightedPickAdaptive(h, PROXIES, 2);
+    var liveProxies = filterProxiesToJordan(PROXIES);
+    if(!liveProxies || liveProxies.length === 0) return "PROXY 0.0.0.0:0";
+    if(strong) return weightedPickAdaptive(h, liveProxies, 4);
+    if(weak) return weightedPickAdaptive(h, liveProxies, 2);
     return "PROXY 0.0.0.0:0";
   }catch(e){
     return "PROXY 0.0.0.0:0";
