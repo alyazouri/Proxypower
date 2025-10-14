@@ -6,9 +6,9 @@
 const JORDAN_PLAYER_CONFIG = {
   // استراتيجية توسيع اللاعبين الأردنيين
   MATCHMAKING_STRATEGY: {
-    PRIORITY_REGIONS: ['SA', 'AE', 'KW', 'JO'],
+    PRIORITY_REGIONS: ['SA', 'JO'],
     LANGUAGE_PREFERENCE: ['AR', 'EN'],
-    AGE_RANGE: [15, 35],
+    AGE_RANGE: [18, 35],
     SKILL_LEVELS: ['MEDIUM', 'HIGH']
   },
   
@@ -108,8 +108,8 @@ class SmartRoutingEngine {
     // خوارزمية اختيار الخادم
     const servers = [
       { region: 'ME', ping: 20, priority: 0.9 },
-      { region: 'EU', ping: 80, priority: 0.5 },
-      { region: 'AS', ping: 150, priority: 0.2 }
+      { region: 'EU', ping: 30, priority: 0.5 },
+      { region: 'AS', ping: 80, priority: 0.2 }
     ];
 
     return servers
