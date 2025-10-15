@@ -1,17 +1,6 @@
 function FindProxyForURL(url, host) {
-  /* CONFIG */
+
   var FORBID_DIRECT_GLOBAL = false;
-  var DEBUG = false; // true => يعيد proxy strings مع ملصق DEBUG (للاختبار)
-  var PROBES = 3;
-  var EWMA_ALPHA = 0.28;
-  var VAR_ALPHA = 0.18;
-  var DNS_CACHE_TTL = 45 * 1000;
-  var DNS_CACHE_TTL_MIN = 8 * 1000;
-  var STICKY_PORT_TTL = 30 * 60 * 1000;
-  var PROXY_SESSION_TTL = 30 * 60 * 1000;
-  var SWITCH_FACTOR = 1.6; // حاجة أكبر للتبديل (منع الفلاف)
-  var PROXY_FAIL_BACKOFF_BASE = 60 * 1000;
-  var PROXY_FAIL_BACKOFF_MAX = 20 * 60 * 1000;
 
   var PROXIES = [
     { ip: "91.106.109.12", ports: [20001, 443, 8080], weight: 5 },
@@ -22,12 +11,14 @@ function FindProxyForURL(url, host) {
   var JO_IP_SUBNETS = [
     ["2.17.24.0","255.255.252.0"],
     ["37.202.64.0","255.255.192.0"],
-    ["86.108.0.0","255.255.128.0"],
+    ["37.220.112.0","255.255.240.0"],
     ["46.185.128.0","255.255.128.0"],
+    ["46.248.192.0","255.255.224.0"],
     ["46.32.96.0","255.255.224.0"],
+    ["62.72.160.0","255.255.224.0"],
     ["79.173.192.0","255.255.192.0"],
     ["84.18.32.0","255.255.224.0"],
-    ["62.72.160.0","255.255.224.0"],
+    ["86.108.0.0","255.255.128.0"],
     ["91.106.96.0","255.255.224.0"],
     ["91.106.100.0","255.255.252.0"],
     ["91.106.104.0","255.255.248.0"],
@@ -71,6 +62,8 @@ function FindProxyForURL(url, host) {
   var LOBBY_DOMAINS = [
     "*.pubgmobile.com",
     "*.pubg.com",
+    "*.tencentgames.com",
+    "*.igamecj.com",
     "login.*",
     "lobby.*",
     "friend.*",
@@ -82,92 +75,127 @@ function FindProxyForURL(url, host) {
     "*.gcloud.qq.com",
     "*.qcloud.com",
     "*.garena.com",
-    "*.realtime.*",
+    "*.umeng.com",
     "realtime.*",
-    "game.*",
-    "udp.*"
+    "battle.*",
+    "game.*"
   ];
 
-  if (typeof __JO_ADV === "undefined") {
-    __JO_ADV = {
-      dnsCache: {},
-      proxyStats: {},
-      stickyPorts: {},
-      sessions: {}
+  var DNS_TTL_BASE_MS   = 45000;
+  var DNS_TTL_MIN_MS    =  8000;
+  var DNS_TTL_MAX_MS    = 300000;
+  var PROBE_MIN         = 2;
+  var PROBE_MAX         = 4;
+  var PROBE_RATE_LIMIT  = 3000;
+  var EWMA_ALPHA        = 0.28;
+  var VAR_ALPHA         = 0.18;
+  var STICKY_PORT_TTL   = 1800000;
+  var SESSION_TTL       = 1800000;
+  var SWITCH_FACTOR     = 1.6;
+
+  if (typeof __JO_SMART === "undefined") {
+    __JO_SMART = {
+      dns: {},
+      stats: {},
+      sticky: {},
+      session: {}
     };
   }
 
   for (var i = 0; i < PROXIES.length; i++) {
     var p = PROXIES[i];
-    if (!__JO_ADV.proxyStats[p.ip]) {
-      __JO_ADV.proxyStats[p.ip] = {
+    if (!__JO_SMART.stats[p.ip]) {
+      __JO_SMART.stats[p.ip] = {
         ewma: null,
         variance: null,
-        lastProbe: 0,
-        failures: 0,
-        backoffUntil: 0
+        lastProbe: 0
       };
     }
   }
 
-  function nowMs() { return (new Date()).getTime(); }
-
-  function cacheResolve(name) {
-    var entry = __JO_ADV.dnsCache[name];
-    var t = nowMs();
-    if (entry && (t - entry.t) < (entry.ttl || DNS_CACHE_TTL)) return entry.ip;
-    var ip = dnsResolve(name);
-    if (ip) {
-      __JO_ADV.dnsCache[name] = { ip: ip, t: t, ttl: DNS_CACHE_TTL };
-      return ip;
-    } else {
-      __JO_ADV.dnsCache[name] = { ip: null, t: t, ttl: DNS_CACHE_TTL_MIN };
-      return null;
-    }
-  }
-
-  function inJordan(ip) {
-    if (!ip) return false;
-    for (var j = 0; j < JO_IP_SUBNETS.length; j++) {
-      if (isInNet(ip, JO_IP_SUBNETS[j][0], JO_IP_SUBNETS[j][1])) return true;
-    }
-    return false;
+  function nowMs() {
+    return (new Date()).getTime();
   }
 
   function isYouTube(h) {
-    var x = h.toLowerCase();
-    return (shExpMatch(x, "*.youtube.com") ||
-            shExpMatch(x, "*.googlevideo.com") ||
-            shExpMatch(x, "*.ytimg.com") ||
-            x === "youtu.be" || shExpMatch(x, "youtu.be*"));
-  }
-
-  function matchList(h, list) {
-    for (var k = 0; k < list.length; k++) if (shExpMatch(h, list[k])) return true;
+    var x = (h || "").toLowerCase();
+    if (shExpMatch(x, "*.youtube.com")) return true;
+    if (shExpMatch(x, "*.googlevideo.com")) return true;
+    if (shExpMatch(x, "*.ytimg.com")) return true;
+    if (x === "youtu.be" || shExpMatch(x, "youtu.be*")) return true;
     return false;
   }
 
-  function multiProbe(hostOrIp, count) {
-    var samples = [];
+  function matchList(h, arr) {
+    for (var i = 0; i < arr.length; i++) if (shExpMatch(h, arr[i])) return true;
+    return false;
+  }
+
+  function isJordanIP(ip) {
+    if (!ip) return false;
+    for (var i = 0; i < JO_IP_SUBNETS.length; i++) {
+      if (isInNet(ip, JO_IP_SUBNETS[i][0], JO_IP_SUBNETS[i][1])) return true;
+    }
+    return false;
+  }
+
+  function dnsCached(name) {
+    var e = __JO_SMART.dns[name];
+    var t = nowMs();
+    if (e && (t - e.t) < (e.ttl || DNS_TTL_BASE_MS)) return e.ip;
+    var ip = dnsResolve(name);
+    var ttl = DNS_TTL_BASE_MS;
+    __JO_SMART.dns[name] = { ip: ip || null, t: t, ttl: ttl };
+    return ip || null;
+  }
+
+  function globalQuality() {
+    var acc = 0, n = 0;
+    for (var i = 0; i < PROXIES.length; i++) {
+      var s = __JO_SMART.stats[PROXIES[i].ip];
+      if (s && s.ewma !== null && s.variance !== null) { acc += (s.ewma + Math.sqrt(s.variance)); n++; }
+    }
+    if (!n) return 1.0;
+    return Math.max(0.2, Math.min(5.0, acc / (n * 50.0)));
+  }
+
+  function dynamicProbeCount() {
+    var q = globalQuality();
+    if (q < 0.6) return PROBE_MIN;
+    if (q < 1.5) return 3;
+    return PROBE_MAX;
+  }
+
+  function adaptiveDNSttl() {
+    var q = globalQuality();
+    var scale = 1 / q;
+    var ttl = Math.floor(DNS_TTL_BASE_MS * scale);
+    if (ttl < DNS_TTL_MIN_MS) ttl = DNS_TTL_MIN_MS;
+    if (ttl > DNS_TTL_MAX_MS) ttl = DNS_TTL_MAX_MS;
+    return ttl;
+  }
+
+  function multiProbe(target, count) {
     var ip = null;
-    for (var m = 0; m < count; m++) {
-      var s0 = nowMs();
-      var r = dnsResolve(hostOrIp);
-      var s1 = nowMs();
+    var samples = [];
+    for (var i = 0; i < count; i++) {
+      var t0 = nowMs();
+      var r  = dnsResolve(target);
+      var t1 = nowMs();
       if (!ip && r) ip = r;
-      samples.push(s1 - s0);
+      samples.push(t1 - t0);
     }
     var sum = 0;
-    for (var n = 0; n < samples.length; n++) sum += samples[n];
+    for (var k = 0; k < samples.length; k++) sum += samples[k];
     var mean = sum / samples.length;
-    var vsum = 0;
-    for (var n = 0; n < samples.length; n++) vsum += Math.pow(samples[n] - mean, 2);
-    var variance = vsum / samples.length;
-    return { ip: ip, mean: mean, variance: variance, samples: samples };
+    var vs = 0;
+    for (var k = 0; k < samples.length; k++) vs += Math.pow(samples[k] - mean, 2);
+    var variance = vs / samples.length;
+    return { ip: ip, mean: mean, variance: variance };
   }
 
   function updateStats(ip, mean, variance) {
-    var s = __JO_ADV.proxyStats[ip];
+    var s = __JO_SMART.stats[ip];
     if (!s) return;
     if (s.ewma === null) s.ewma = mean;
     else s.ewma = (1 - EWMA_ALPHA) * s.ewma + EWMA_ALPHA * mean;
@@ -176,123 +204,112 @@ function FindProxyForURL(url, host) {
     s.lastProbe = nowMs();
   }
 
-  function backoffProxy(ip) {
-    var s = __JO_ADV.proxyStats[ip];
-    if (!s) return;
-    s.failures = (s.failures || 0) + 1;
-    var back = Math.min(PROXY_FAIL_BACKOFF_MAX, PROXY_FAIL_BACKOFF_BASE * Math.pow(2, s.failures - 1));
-    s.backoffUntil = nowMs() + back;
-  }
-
-  function proxyAvailable(ip) {
-    var s = __JO_ADV.proxyStats[ip];
-    if (!s) return true;
-    return (s.backoffUntil || 0) < nowMs();
-  }
-
-  function hashToIndex(key, n) {
-    var h = 0;
-    for (var z = 0; z < key.length; z++) h = ((h << 5) - h) + key.charCodeAt(z);
-    return Math.abs(h) % n;
-  }
-
-  function pickStickyPort(hostname, proxy) {
-    var key = hostname + "@" + proxy.ip;
-    var rec = __JO_ADV.stickyPorts[key];
-    var now = nowMs();
-    if (rec && (now - rec.t) < STICKY_PORT_TTL) return rec.port;
-    var ports = proxy.ports && proxy.ports.length ? proxy.ports.slice() : [443];
-    // prefer game UDP port 20001 if present
-    ports.sort(function(a,b){ if(a===20001) return -1; if(b===20001) return 1; return a-b; });
-    var idx = hashToIndex(hostname, ports.length);
-    var port = ports[idx];
-    __JO_ADV.stickyPorts[key] = { port: port, t: now, tried: [port] };
-    return port;
-  }
-
-  function evaluateProxy(proxy, hostForProbe) {
-    if (!proxyAvailable(proxy.ip)) return { ok: false, score: -1e9 };
-    var target = proxy.ip || hostForProbe;
-    var res = multiProbe(target, PROBES);
-    if (!res.ip) { backoffProxy(proxy.ip); return { ok: false, score: -1e9 }; }
-    updateStats(proxy.ip, res.mean, res.variance);
-    var st = __JO_ADV.proxyStats[proxy.ip];
-    var mean = st.ewma || res.mean;
-    var variance = st.variance || res.variance;
-    var variancePenalty = 1 + Math.sqrt(variance) / (1 + mean);
-    var score = proxy.weight / (1 + mean) / variancePenalty;
+  function scoreProxy(proxy) {
+    var s = __JO_SMART.stats[proxy.ip];
+    var mean = s && s.ewma !== null ? s.ewma : 50;
+    var variance = s && s.variance !== null ? s.variance : 400;
+    var vf = 1 + Math.sqrt(variance) / (1 + mean);
+    var score = proxy.weight / (1 + mean) / vf;
     if (proxy.ports && proxy.ports.indexOf(20001) !== -1) score *= 1.12;
-    return { ok: true, score: score, mean: mean, var: variance, probe: res };
+    return score;
+  }
+
+  function maybeProbe(proxy, hostForProbe) {
+    var s = __JO_SMART.stats[proxy.ip];
+    var now = nowMs();
+    if (s && (now - s.lastProbe) < PROBE_RATE_LIMIT) return;
+    var cnt = dynamicProbeCount();
+    var target = proxy.ip || hostForProbe;
+    var res = multiProbe(target, cnt);
+    if (res.ip !== null) updateStats(proxy.ip, res.mean, res.variance);
   }
 
   function chooseCandidate(hostname) {
-    var best = null;
-    var bestScore = -1e9;
+    for (var i = 0; i < PROXIES.length; i++) maybeProbe(PROXIES[i], hostname);
+    var best = PROXIES[0], bestScore = -1e9;
     for (var i = 0; i < PROXIES.length; i++) {
-      var ev = evaluateProxy(PROXIES[i], hostname);
-      if (ev.ok && ev.score > bestScore) { bestScore = ev.score; best = { proxy: PROXIES[i], eval: ev }; }
+      var sc = scoreProxy(PROXIES[i]);
+      if (sc > bestScore) { bestScore = sc; best = PROXIES[i]; }
     }
     return best;
   }
 
-  function decideSession(hostname, candidate) {
-    var sess = __JO_ADV.sessions[hostname];
-    if (!sess || !sess.proxyIp) {
-      __JO_ADV.sessions[hostname] = { proxyIp: candidate.proxy.ip, t: nowMs() };
-      return candidate.proxy;
-    }
-    if (sess.proxyIp === candidate.proxy.ip) { sess.t = nowMs(); return candidate.proxy; }
-    var curr = __JO_ADV.proxyStats[sess.proxyIp];
-    var currScore = curr && curr.ewma ? (1 / (1 + curr.ewma)) : 1e-4;
-    var candScore = candidate.eval.score || 0;
-    if (candScore > currScore * SWITCH_FACTOR) {
-      __JO_ADV.sessions[hostname] = { proxyIp: candidate.proxy.ip, t: nowMs() };
-      return candidate.proxy;
-    }
-    if (!proxyAvailable(sess.proxyIp)) {
-      __JO_ADV.sessions[hostname] = { proxyIp: candidate.proxy.ip, t: nowMs() };
-      return candidate.proxy;
-    }
-    for (var j = 0; j < PROXIES.length; j++) if (PROXIES[j].ip === sess.proxyIp) return PROXIES[j];
-    __JO_ADV.sessions[hostname] = { proxyIp: candidate.proxy.ip, t: nowMs() };
-    return candidate.proxy;
+  function hashIndex(key, n) {
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = ((h << 5) - h) + key.charCodeAt(i);
+    return Math.abs(h) % n;
   }
 
-  /* MAIN */
-  var h = (host||"").toLowerCase();
+  function stickyPort(hostname, proxy) {
+    var key = hostname + "@" + proxy.ip;
+    var e = __JO_SMART.sticky[key];
+    var t = nowMs();
+    if (e && (t - e.t) < STICKY_PORT_TTL) return e.port;
+    var ports = proxy.ports && proxy.ports.length ? proxy.ports.slice() : [443];
+    ports.sort(function(a,b){ if(a===20001) return -1; if(b===20001) return 1; return a - b; });
+    var idx = hashIndex(hostname, ports.length);
+    var port = ports[idx];
+    __JO_SMART.sticky[key] = { port: port, t: t };
+    return port;
+  }
+
+  function pinSession(hostname, proxy) {
+    var s = __JO_SMART.session[hostname];
+    var t = nowMs();
+    if (!s || !s.ip || (t - s.t) > SESSION_TTL) {
+      __JO_SMART.session[hostname] = { ip: proxy.ip, t: t };
+      return proxy;
+    }
+    if (s.ip === proxy.ip) {
+      s.t = t;
+      return proxy;
+    }
+    var current = null;
+    for (var i = 0; i < PROXIES.length; i++) if (PROXIES[i].ip === s.ip) current = PROXIES[i];
+    if (!current) {
+      __JO_SMART.session[hostname] = { ip: proxy.ip, t: t };
+      return proxy;
+    }
+    var currScore = scoreProxy(current);
+    var candScore = scoreProxy(proxy);
+    if (candScore > currScore * SWITCH_FACTOR) {
+      __JO_SMART.session[hostname] = { ip: proxy.ip, t: t };
+      return proxy;
+    }
+    for (var i = 0; i < PROXIES.length; i++) if (PROXIES[i].ip === s.ip) return PROXIES[i];
+    __JO_SMART.session[hostname] = { ip: proxy.ip, t: t };
+    return proxy;
+  }
+
+  var h = (host || "").toLowerCase();
 
   if (isYouTube(h)) return "DIRECT";
 
-  var resolved = cacheResolve(h);
-  var isJordan = resolved && inJordan(resolved);
+  var hostIP = dnsCached(h);
+  if (__JO_SMART.dns[h]) __JO_SMART.dns[h].ttl = adaptiveDNSttl();
+
+  var isJO = hostIP && isJordanIP(hostIP);
 
   var isLobby = matchList(h, LOBBY_DOMAINS);
   var isMatch = matchList(h, MATCH_DOMAINS) || h.indexOf("pubg") !== -1 || h.indexOf("tencent") !== -1;
 
-  if (isJordan && !FORBID_DIRECT_GLOBAL && !isMatch && !isLobby) return "DIRECT";
+  if (isJO && !FORBID_DIRECT_GLOBAL && !isLobby && !isMatch) return "DIRECT";
 
   var cand = chooseCandidate(h);
-  if (!cand) {
-    if (!FORBID_DIRECT_GLOBAL && isJordan) return "DIRECT";
-    var f = PROXIES[0];
-    var pport = pickStickyPort(h, f);
-    return DEBUG ? "PROXY " + f.ip + ":" + pport + " /*FALLBACK*/" : "PROXY " + f.ip + ":" + pport;
-  }
-
-  var chosen = decideSession(h, cand);
+  var chosen = pinSession(h, cand);
 
   if (isMatch) {
-    var sport = pickStickyPort(h, chosen);
-    return DEBUG ? "SOCKS5 " + chosen.ip + ":" + sport + " /*GAME*/" : "SOCKS5 " + chosen.ip + ":" + sport;
+    var gp = stickyPort(h, chosen);
+    return "SOCKS5 " + chosen.ip + ":" + gp;
   }
 
   if (isLobby) {
-    var lport = pickStickyPort(h, chosen);
-    return DEBUG ? "PROXY " + chosen.ip + ":" + lport + " /*LOBBY*/" : "PROXY " + chosen.ip + ":" + lport;
+    var lp = stickyPort(h, chosen);
+    return "PROXY " + chosen.ip + ":" + lp;
   }
 
-  var hport = pickStickyPort(h, chosen);
-  if (FORBID_DIRECT_GLOBAL) return "PROXY " + chosen.ip + ":" + hport;
-  if (isJordan) return "DIRECT";
-  return "PROXY " + chosen.ip + ":" + hport;
+  var hp = stickyPort(h, chosen);
+  if (FORBID_DIRECT_GLOBAL) return "PROXY " + chosen.ip + ":" + hp;
+  if (isJO) return "DIRECT";
+  return "PROXY " + chosen.ip + ":" + hp;
 }
