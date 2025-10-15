@@ -74,7 +74,6 @@ function isPrivateOrLocal(host){
   if(isInNet(ip,"185.140.0.0","255.255.0.0")) return true;
   if(isInNet(ip,"172.16.0.0","255.240.0.0")) return true;
   if(isInNet(ip,"185.142.226.12","255.255.255.255")) return true;
-  if(isInNet(ip,"127.0.0.0","255.0.0.0")) return true;
   return false;
 }
 
