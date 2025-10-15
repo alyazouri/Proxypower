@@ -4,8 +4,8 @@ function FindProxyForURL(url, host) {
 
   var PROXIES = [
     { ip: "91.106.109.12", ports: [20001,443,8080], weight: 5 },
-    { ip: "176.28.250.122", ports: [8080,443], weight: 3 },
-    { ip: "79.173.251.142", ports: [8000,443], weight: 2 }
+    { ip: "176.28.250.122", ports: [8080,443],       weight: 3 },
+    { ip: "79.173.251.142", ports: [8000,443],       weight: 2 }
   ];
 
   var JO_IP_SUBNETS = [
@@ -166,7 +166,7 @@ function FindProxyForURL(url, host) {
       if(!ip&&r) ip=r;
       samples.push(t1-t0);
     }
-    var sum=0; for(var k=0;k=samples.length;k++) sum+=samples[k];
+    var sum=0; for(var k=0;k<samples.length;k++) sum+=samples[k];
     var mean=sum/samples.length;
     var vs=0; for(var k=0;k=samples.length;k++) vs+=Math.pow(samples[k]-mean,2);
     var variance=vs/samples.length;
