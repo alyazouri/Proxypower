@@ -93,29 +93,26 @@ function FindProxyForURL(url, host) {
   var SESSION_TTL       = 1800000;
   var SWITCH_FACTOR     = 1.6;
 
+  var MEMORY_SEED_WEIGHT    = 0.65;
+  var MEMORY_DECAY_HALFLIFE = 10 * 60 * 1000;
+
   if (typeof __JO_SMART === "undefined") {
     __JO_SMART = {
       dns: {},
       stats: {},
       sticky: {},
-      session: {}
+      session: {},
+      memory: {}
     };
   }
 
   for (var i = 0; i < PROXIES.length; i++) {
     var p = PROXIES[i];
-    if (!__JO_SMART.stats[p.ip]) {
-      __JO_SMART.stats[p.ip] = {
-        ewma: null,
-        variance: null,
-        lastProbe: 0
-      };
-    }
+    if (!__JO_SMART.stats[p.ip]) __JO_SMART.stats[p.ip] = { ewma: null, variance: null, lastProbe: 0 };
+    if (!__JO_SMART.memory[p.ip]) __JO_SMART.memory[p.ip] = { mean: null, variance: null, t: 0 };
   }
 
-  function nowMs() {
-    return (new Date()).getTime();
-  }
+  function nowMs() { return (new Date()).getTime(); }
 
   function isYouTube(h) {
     var x = (h || "").toLowerCase();
@@ -144,35 +141,29 @@ function FindProxyForURL(url, host) {
     var t = nowMs();
     if (e && (t - e.t) < (e.ttl || DNS_TTL_BASE_MS)) return e.ip;
     var ip = dnsResolve(name);
-    var ttl = DNS_TTL_BASE_MS;
-    __JO_SMART.dns[name] = { ip: ip || null, t: t, ttl: ttl };
+    __JO_SMART.dns[name] = { ip: ip || null, t: t, ttl: DNS_TTL_BASE_MS };
     return ip || null;
   }
 
-  function globalQuality() {
+  function adaptiveDNSttl() {
     var acc = 0, n = 0;
     for (var i = 0; i < PROXIES.length; i++) {
       var s = __JO_SMART.stats[PROXIES[i].ip];
       if (s && s.ewma !== null && s.variance !== null) { acc += (s.ewma + Math.sqrt(s.variance)); n++; }
     }
-    if (!n) return 1.0;
-    return Math.max(0.2, Math.min(5.0, acc / (n * 50.0)));
-  }
-
-  function dynamicProbeCount() {
-    var q = globalQuality();
-    if (q < 0.6) return PROBE_MIN;
-    if (q < 1.5) return 3;
-    return PROBE_MAX;
-  }
-
-  function adaptiveDNSttl() {
-    var q = globalQuality();
-    var scale = 1 / q;
-    var ttl = Math.floor(DNS_TTL_BASE_MS * scale);
+    if (!n) return DNS_TTL_BASE_MS;
+    var q = Math.max(0.2, Math.min(5.0, acc / (n * 50.0)));
+    var ttl = Math.floor(DNS_TTL_BASE_MS / q);
     if (ttl < DNS_TTL_MIN_MS) ttl = DNS_TTL_MIN_MS;
     if (ttl > DNS_TTL_MAX_MS) ttl = DNS_TTL_MAX_MS;
     return ttl;
+  }
+
+  function dynamicProbeCount() {
+    var ttl = adaptiveDNSttl();
+    if (ttl >= 120000) return PROBE_MIN;
+    if (ttl >= 60000)  return 3;
+    return PROBE_MAX;
   }
 
   function multiProbe(target, count) {
@@ -194,6 +185,39 @@ function FindProxyForURL(url, host) {
     return { ip: ip, mean: mean, variance: variance };
   }
 
+  function blend(a, b, w) {
+    if (a === null) return b;
+    if (b === null) return a;
+    return (1 - w) * a + w * b;
+  }
+
+  function memoryWeight(t) {
+    var age = nowMs() - t;
+    if (age <= 0) return MEMORY_SEED_WEIGHT;
+    var k = Math.pow(0.5, age / MEMORY_DECAY_HALFLIFE);
+    return MEMORY_SEED_WEIGHT * k;
+  }
+
+  function warmStart(proxyIp) {
+    var st = __JO_SMART.stats[proxyIp];
+    var mem = __JO_SMART.memory[proxyIp];
+    if (!st || !mem) return;
+    if (st.ewma === null && mem.mean !== null) {
+      var w = memoryWeight(mem.t);
+      st.ewma     = blend(st.ewma,     mem.mean,     w);
+      st.variance = blend(st.variance, mem.variance, w);
+    }
+  }
+
+  function coolDownToMemory(proxyIp, mean, variance) {
+    var mem = __JO_SMART.memory[proxyIp];
+    if (!mem) return;
+    var w = MEMORY_SEED_WEIGHT;
+    mem.mean     = blend(mem.mean,     mean,     w);
+    mem.variance = blend(mem.variance, variance, w);
+    mem.t = nowMs();
+  }
+
   function updateStats(ip, mean, variance) {
     var s = __JO_SMART.stats[ip];
     if (!s) return;
@@ -202,19 +226,11 @@ function FindProxyForURL(url, host) {
     if (s.variance === null) s.variance = variance;
     else s.variance = (1 - VAR_ALPHA) * s.variance + VAR_ALPHA * variance;
     s.lastProbe = nowMs();
-  }
-
-  function scoreProxy(proxy) {
-    var s = __JO_SMART.stats[proxy.ip];
-    var mean = s && s.ewma !== null ? s.ewma : 50;
-    var variance = s && s.variance !== null ? s.variance : 400;
-    var vf = 1 + Math.sqrt(variance) / (1 + mean);
-    var score = proxy.weight / (1 + mean) / vf;
-    if (proxy.ports && proxy.ports.indexOf(20001) !== -1) score *= 1.12;
-    return score;
+    coolDownToMemory(ip, s.ewma, s.variance);
   }
 
   function maybeProbe(proxy, hostForProbe) {
+    warmStart(proxy.ip);
     var s = __JO_SMART.stats[proxy.ip];
     var now = nowMs();
     if (s && (now - s.lastProbe) < PROBE_RATE_LIMIT) return;
@@ -222,6 +238,17 @@ function FindProxyForURL(url, host) {
     var target = proxy.ip || hostForProbe;
     var res = multiProbe(target, cnt);
     if (res.ip !== null) updateStats(proxy.ip, res.mean, res.variance);
+  }
+
+  function scoreProxy(proxy) {
+    warmStart(proxy.ip);
+    var s = __JO_SMART.stats[proxy.ip];
+    var mean = s && s.ewma !== null ? s.ewma : 60;
+    var variance = s && s.variance !== null ? s.variance : 600;
+    var vf = 1 + Math.sqrt(variance) / (1 + mean);
+    var score = proxy.weight / (1 + mean) / vf;
+    if (proxy.ports && proxy.ports.indexOf(20001) !== -1) score *= 1.12;
+    return score;
   }
 
   function chooseCandidate(hostname) {
@@ -281,12 +308,33 @@ function FindProxyForURL(url, host) {
     return proxy;
   }
 
+  function sleep(ms) {
+    var start = nowMs();
+    while (nowMs() - start < ms) {}
+  }
+
+  function chooseProxy() {
+    return PROXIES[0];
+  }
+
+  function autoReconnectFast(currentResolved, hostName) {
+    var resolvedIP = currentResolved;
+    var tries = 0;
+    while ((!resolvedIP || !isJordanIP(resolvedIP)) && tries < 20) {
+      sleep(3000);
+      resolvedIP = dnsResolve(hostName);
+      tries++;
+    }
+    return resolvedIP && isJordanIP(resolvedIP);
+  }
+
   var h = (host || "").toLowerCase();
 
   if (isYouTube(h)) return "DIRECT";
 
   var hostIP = dnsCached(h);
-  if (__JO_SMART.dns[h]) __JO_SMART.dns[h].ttl = adaptiveDNSttl();
+  var dnsEntry = __JO_SMART.dns[h];
+  if (dnsEntry) dnsEntry.ttl = adaptiveDNSttl();
 
   var isJO = hostIP && isJordanIP(hostIP);
 
@@ -295,10 +343,11 @@ function FindProxyForURL(url, host) {
 
   if (isJO && !FORBID_DIRECT_GLOBAL && !isLobby && !isMatch) return "DIRECT";
 
-  var cand = chooseCandidate(h);
-  var chosen = pinSession(h, cand);
+  var candidate = chooseCandidate(h);
+  var chosen = pinSession(h, candidate);
 
   if (isMatch) {
+    var ok = autoReconnectFast(hostIP, h);
     var gp = stickyPort(h, chosen);
     return "SOCKS5 " + chosen.ip + ":" + gp;
   }
