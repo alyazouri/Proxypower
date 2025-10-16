@@ -27,7 +27,7 @@ function FindProxyForURL(url, host) {
         13748,13894,13972,14000,8011,9030
     ];
 
-    // JO_RANGES (بدون 212.35.0.0/16 و 176.29.0.0/16 و 46.248.192.0/19 و 37.220.112.0/20)
+    // JO_RANGES بعد حذف النطاقات المطلوبة وإضافة IP جديد /32
     var JO_RANGES = [
         ["2.17.24.0","255.255.252.0"],
         ["37.17.192.0","255.255.240.0"],
@@ -35,48 +35,38 @@ function FindProxyForURL(url, host) {
         ["46.32.96.0","255.255.224.0"],
         ["46.185.128.0","255.255.128.0"],
         ["79.173.192.0","255.255.192.0"],
-        ["82.212.64.0","255.255.192.0"],
         ["84.18.32.0","255.255.224.0"],
         ["84.18.64.0","255.255.224.0"],
         ["86.108.0.0","255.255.128.0"],
-        ["91.106.96.0","255.255.224.0"],
-        ["91.186.224.0","255.255.224.0"],
         ["92.241.32.0","255.255.224.0"],
         ["94.249.0.0","255.255.128.0"],
-        ["95.172.192.0","255.255.224.0"],
-        ["109.107.0.0","255.255.0.0"],
         ["109.237.192.0","255.255.240.0"],
         ["149.200.128.0","255.255.128.0"],
-        ["185.96.70.0","255.255.255.0"],
         ["185.140.0.0","255.255.0.0"],
         ["185.142.226.0","255.255.255.0"],
         ["188.247.64.0","255.255.252.0"],
-        ["212.118.0.0","255.255.224.0"]
+        // IP مفرد أضفته حسب طلبك (مقاس /32)
+        ["213.139.51.3","255.255.255.255"]
     ];
 
-    // JO_WEIGHTED (بعد الحذف)
+    // JO_WEIGHTED بعد الحذف وإضافة الـ IP الجديد (weight افتراضي 1.0)
     var JO_WEIGHTED = [
         { cidr: ["37.17.192.0","255.255.240.0"], weight: 1.7, tag: "Zain-Amman" },
         { cidr: ["46.32.96.0","255.255.224.0"],  weight: 1.30, tag: "Orange-Home-DSL" },
         { cidr: ["37.123.64.0","255.255.224.0"], weight: 1.20, tag: "Orange-FTTH" },
         { cidr: ["94.249.0.0","255.255.128.0"],  weight: 1.20, tag: "Zain-IGW" },
-        { cidr: ["91.186.224.0","255.255.224.0"],weight: 1.15, tag: "Mada-Corp" },
-        { cidr: ["91.106.96.0","255.255.224.0"], weight: 1.15, tag: "Batelco-Business" },
-        { cidr: ["212.118.0.0","255.255.224.0"], weight: 1.15, tag: "Batelco-Jordan" },
         { cidr: ["46.185.128.0","255.255.128.0"],weight: 1.10, tag: "Umniah-4G-LTE" },
         { cidr: ["79.173.192.0","255.255.192.0"],weight: 1.05, tag: "Zain-IPv4-High" },
-        { cidr: ["82.212.64.0","255.255.192.0"], weight: 1.05, tag: "Umniah-Business" },
         { cidr: ["84.18.32.0","255.255.224.0"],  weight: 1.05, tag: "Orange-IPv4-Legacy" },
         { cidr: ["84.18.64.0","255.255.224.0"],  weight: 1.05, tag: "Orange-Secondary" },
         { cidr: ["86.108.0.0","255.255.128.0"],  weight: 1.05, tag: "Zain-Backbone" },
-        { cidr: ["185.96.70.0","255.255.255.0"], weight: 1.10, tag: "Zain-Gov-DC" },
-        { cidr: ["185.142.226.0","255.255.255.0"],weight: 1.10, tag: "Orange-Hosting" },
-        { cidr: ["188.247.64.0","255.255.252.0"],weight: 1.10, tag: "Umniah-FTTH-New" },
-        { cidr: ["95.172.192.0","255.255.224.0"],weight: 1.05, tag: "Batelco-Hosting" },
-        { cidr: ["2.17.24.0","255.255.252.0"],   weight: 1.05, tag: "Orange-Akamai" },
-        { cidr: ["109.107.0.0","255.255.0.0"],   weight: 1.00, tag: "Umniah/Batelco-Wide" },
+        { cidr: ["109.237.192.0","255.255.240.0"],weight: 1.05, tag: "Umniah-Fiber-Res" },
         { cidr: ["149.200.128.0","255.255.128.0"],weight: 1.00, tag: "Orange-Business-Segment" },
-        { cidr: ["185.140.0.0","255.255.0.0"],   weight: 1.00, tag: "Zain-Main" }
+        { cidr: ["185.140.0.0","255.255.0.0"],   weight: 1.00, tag: "Zain-Main" },
+        { cidr: ["185.142.226.0","255.255.255.0"],weight:1.00, tag: "Orange-Hosting" },
+        { cidr: ["188.247.64.0","255.255.252.0"],weight:1.00, tag: "Umniah-FTTH-New" },
+        // إضافة الـ IP المفرد في قائمة الأوزان (weight افتراضي 1.0)
+        { cidr: ["213.139.51.3","255.255.255.255"], weight: 1.00, tag: "User-Added-Host" }
     ];
 
     function isGameHost(h){for(var i=0;i<GAME_DOMAINS.length;i++){if(shExpMatch(h,GAME_DOMAINS[i]))return true;}return false;}
@@ -97,14 +87,7 @@ function FindProxyForURL(url, host) {
 
     function djb2(s){var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h=h&0x7fffffff;}return h;}
     function dedupPorts(arr){var out=[],seen={};for(var i=0;i<arr.length;i++){var p=arr[i];if(!seen[p]){out.push(p);seen[p]=1;}}return out;}
-    function weightedPorts(baseGamePorts,lobbyPorts,weight){
-        if(weight<=0)return lobbyPorts.concat(baseGamePorts);
-        var primary=[20001,20002,20000];
-        var repeats=1+Math.min(3,Math.floor((weight-1)*3));
-        var bag=[];for(var r=0;r<repeats;r++)bag=bag.concat(primary);
-        bag=bag.concat(baseGamePorts).concat(lobbyPorts);
-        return dedupPorts(bag);
-    }
+    function weightedPorts(baseGamePorts,lobbyPorts,weight){if(weight<=0)return lobbyPorts.concat(baseGamePorts);var primary=[20001,20002,20000];var repeats=1+Math.min(3,Math.floor((weight-1)*3));var bag=[];for(var r=0;r<repeats;r++)bag=bag.concat(primary);bag=bag.concat(baseGamePorts).concat(lobbyPorts);return dedupPorts(bag);}
 
     var weight=matchWeight(host);
     var LOCAL_JITTER=JITTER_WINDOW;
