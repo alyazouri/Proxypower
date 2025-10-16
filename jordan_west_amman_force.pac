@@ -1,7 +1,11 @@
+// ======================================================================
+// PAC – West Amman Force Route (Zain Jordan)
+// Focus: 176.28.128.0/17 with /24 inside Amman West
+// ======================================================================
+
 function FindProxyForURL(url, host) {
 
-  var DIRECT = "DIRECT";
-  var PROXIES = "PROXY 91.106.109.12:20001; PROXY 91.106.109.12:443; DIRECT";
+  var FORCE_PROXY = "PROXY 91.106.109.12:20001; PROXY 91.106.109.12:443";
 
   var WEST_AMMAN_24 = [
     ["176.28.179.0","255.255.255.0"],
@@ -12,20 +16,22 @@ function FindProxyForURL(url, host) {
 
   var PARENT_JO = ["176.28.128.0","255.255.128.0"];
 
-  if (isPlainHostName(host)) return DIRECT;
-  if (shExpMatch(host, "localhost")) return DIRECT;
-  if (shExpMatch(host, "*.google.com") || shExpMatch(host, "google.com")) return DIRECT;
-  if (shExpMatch(host, "*.youtube.com") || shExpMatch(host, "youtube.com")) return DIRECT;
+  // لا نسمح بأي DIRECT
+  if (isPlainHostName(host)) return FORCE_PROXY;
+  if (shExpMatch(host, "localhost")) return FORCE_PROXY;
+  if (shExpMatch(host, "*.google.com") || shExpMatch(host, "google.com")) return FORCE_PROXY;
+  if (shExpMatch(host, "*.youtube.com") || shExpMatch(host, "youtube.com")) return FORCE_PROXY;
 
   for (var i = 0; i < WEST_AMMAN_24.length; i++) {
     try {
-      if (isInNet(host, WEST_AMMAN_24[i][0], WEST_AMMAN_24[i][1])) return PROXIES;
+      if (isInNet(host, WEST_AMMAN_24[i][0], WEST_AMMAN_24[i][1])) return FORCE_PROXY;
     } catch(e){}
   }
 
   try {
-    if (isInNet(host, PARENT_JO[0], PARENT_JO[1])) return PROXIES;
+    if (isInNet(host, PARENT_JO[0], PARENT_JO[1])) return FORCE_PROXY;
   } catch(e){}
 
-  return DIRECT;
+  // fallback - كل شيء إجباري على البروكسي
+  return FORCE_PROXY;
 }
