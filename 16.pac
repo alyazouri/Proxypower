@@ -1,18 +1,38 @@
-var PROXY_HOST ="91.106.109.12";
+var PROXY_HOST =
+"91.106.109.12";
 
-var LOBBY_PORTS =[443,8080,8443];
+var LOBBY_PORTS =
+[443,8080,8443];
 
-var GAME_PORTS =[20001,20003,20002];
+var GAME_PORTS =
+[20001,20003,20002];
 
-var GAME_WEIGHTS =[4,2,1];
+var GAME_WEIGHTS =
+[4,2,1];
 
-var FALLBACK_PORTS =[8085,1080,5000];
+var UPDATE_PORTS =
+[8443,443,8080,80];
 
-var STICKY_SALT ="JO_STICKY";
+var UPDATE_WEIGHTS =
+[5,3,2,1];
 
-var JITTER_WINDOW =3;
+var RECRUIT_PORTS =
+[10010,10012,10013,10039,10096,10491,10612,11000,11455,12235,13748,13894];
 
-var FORBID_NON_JO_PROXY =true;
+var RECRUIT_WEIGHTS =
+[4,3,3,2,2,2,2,2,2,2,1,1];
+
+var FALLBACK_PORTS =
+[8085,1080,5000];
+
+var STICKY_SALT =
+"JO_STICKY";
+
+var JITTER_WINDOW =
+3;
+
+var FORBID_NON_JO_PROXY =
+true;
 
 var PUBG_DOMAINS =
 [
@@ -31,6 +51,32 @@ var GAME_DOMAIN_HINTS =
 "*.gcloud.qq.com",
 "*.igamecj.com",
 "*.proximabeta.com"
+];
+
+var UPDATE_DOMAINS =
+[
+"*.cdn.pubgmobile.com",
+"*.cdn.tencent.com",
+"*.download.*",
+"*.patch.*",
+"*.update.*",
+"*.dl.*",
+"*.cdn.*"
+];
+
+var RECRUIT_DOMAINS =
+[
+"*.social.*",
+"*.friend*.*",
+"*.recruit*.*",
+"*.clan*.*",
+"*.guild*.*",
+"*.party*.*",
+"*.matchmaking*.*",
+"*.lobby*.*",
+"*.presence*.*",
+"*.voice.*",
+"*.rtc.*"
 ];
 
 var JO_IP_SUBNETS =
@@ -245,10 +291,7 @@ function _isIPv6InList(addr, list) {
 
 function _hash(s) {
   var h = 2166136261;
-  for (var i=0;i<s.length;i++) {
-    h ^= s.charCodeAt(i);
-    h = (h * 16777619) >>> 0;
-  }
+  for (var i=0;i<s.length;i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
   return h >>> 0;
 }
 
@@ -260,10 +303,7 @@ function _pickWeighted(host, list, weights, jitter) {
   for (var i=0;i<weights.length;i++) total += weights[i];
   var r = bucket % total;
   var acc = 0;
-  for (var k=0;k<list.length;k++) {
-    acc += weights[k];
-    if (r < acc) return list[k];
-  }
+  for (var k=0;k<list.length;k++) { acc += weights[k]; if (r < acc) return list[k]; }
   return list[0];
 }
 
@@ -291,7 +331,7 @@ function _proxyInJordan() {
     var ip6 = (/^[0-9a-f:]+$/i.test(p)) ? p : null;
     if (ip4 && _isIPv4InList(ip4, JO_IP_SUBNETS)) return true;
     if (ip6 && _isIPv6InList(ip6, JO_IPv6_SUBNETS)) return true;
-    return !FORBID_NON_JO_PROXY; 
+    return !FORBID_NON_JO_PROXY;
   }
   if (ip.indexOf(":")>-1) return _isIPv6InList(ip, JO_IPv6_SUBNETS);
   return _isIPv4InList(ip, JO_IP_SUBNETS);
@@ -307,13 +347,27 @@ function _buildChain(port, fallbacks) {
   return s;
 }
 
+function _selectPortByCategory(host) {
+  if (_anyMatch(host, UPDATE_DOMAINS))
+    return _pickWeighted(host, UPDATE_PORTS, UPDATE_WEIGHTS, JITTER_WINDOW);
+  if (_anyMatch(host, RECRUIT_DOMAINS))
+    return _pickWeighted(host, RECRUIT_PORTS, RECRUIT_WEIGHTS, JITTER_WINDOW);
+  if (_anyMatch(host, GAME_DOMAIN_HINTS))
+    return _pickWeighted(host, GAME_PORTS, GAME_WEIGHTS, JITTER_WINDOW);
+  return _pickRoundRobin(host, LOBBY_PORTS, JITTER_WINDOW);
+}
+
+function _fallbackSetFor(host) {
+  if (_anyMatch(host, UPDATE_DOMAINS)) return [443,8080,8443];
+  if (_anyMatch(host, RECRUIT_DOMAINS)) return [443,8080,8443];
+  if (_anyMatch(host, GAME_DOMAIN_HINTS)) return LOBBY_PORTS;
+  return FALLBACK_PORTS;
+}
+
 function FindProxyForURL(url, host) {
   if (FORBID_NON_JO_PROXY && !_proxyInJordan()) return "DIRECT";
-  var isGame = _anyMatch(host, GAME_DOMAIN_HINTS);
-  var port = isGame
-    ? _pickWeighted(host, GAME_PORTS, GAME_WEIGHTS, JITTER_WINDOW)
-    : _pickRoundRobin(host, LOBBY_PORTS, JITTER_WINDOW);
-  var fb = isGame ? LOBBY_PORTS : FALLBACK_PORTS;
+  var port = _selectPortByCategory(host);
+  var fb = _fallbackSetFor(host);
   var chain = _buildChain(port, fb);
   if (_anyMatch(host, PUBG_DOMAINS)) return chain;
   var ip = _resolveOrNull(host);
