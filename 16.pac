@@ -81,12 +81,11 @@ var RECRUIT_DOMAINS =
 
 var JO_IP_SUBNETS =
 [
-["2.59.52.0","255.255.252.0"]
+["185.96.70.36","255.255.255.255"]
 ];
 
 var JO_IPv6_SUBNETS =
 [
-
 ];
 
 function _isIPv4InList(ip, list) {
