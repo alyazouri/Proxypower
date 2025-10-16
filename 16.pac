@@ -1,7 +1,10 @@
 function FindProxyForURL(url, host) {
     var IP = "91.106.109.12";
-    var JITTER_WINDOW = 2;
+    var JITTER_WINDOW = 3;
     var STICKY_SALT = "JO_STICKY";
+
+    // تفعيل قفل أردني صارم أثناء اللّوبي/البحث/التجميع
+    var JO_STRICT = true;
 
     var GAME_DOMAINS = [
         "*.proximabeta.com",
@@ -12,6 +15,11 @@ function FindProxyForURL(url, host) {
         "*.pubgmobile.net",
         "*.gcloud.qq.com",
         "*.cdn.pubgmobile.com"
+    ];
+
+    // كلمات مفتاحية لمرحلة اللّوبي/البحث/التجميع
+    var MATCH_KEYWORDS = [
+        "match","recruit","search","invite","team","lobby","party","room","mpmatch","multiplayer"
     ];
 
     var GAME_PORTS = [
@@ -59,47 +67,49 @@ function FindProxyForURL(url, host) {
         ["212.118.0.0","255.255.224.0"]
     ];
 
-    // Weighted Jordan Route Logic (أوزان أعلى = أولوية أقوى + jitter أقل)
+    // ترجيح أردني (أوزان أعلى = لعبة أولاً + jitter أقل)
     var JO_WEIGHTED = [
-        // عمّان الكبرى (أعلى أولوية)
-        { cidr: ["212.35.0.0","255.255.0.0"],  weight: 1.6, tag: "Orange-Amman" },
-        { cidr: ["37.17.192.0","255.255.240.0"], weight: 1.5, tag: "Zain-Amman" },
-
-        // ألياف + باك-بون قوي
-        { cidr: ["176.29.0.0","255.255.0.0"],   weight: 1.35, tag: "Zain-Fiber" },
-        { cidr: ["46.32.96.0","255.255.224.0"], weight: 1.3,  tag: "Orange-Home-DSL" },
-        { cidr: ["46.248.192.0","255.255.224.0"], weight: 1.25, tag: "Umniah-FTTH" },
-        { cidr: ["37.220.112.0","255.255.240.0"], weight: 1.25, tag: "Zain-WBB-Gaming" },
-        { cidr: ["37.123.64.0","255.255.224.0"],  weight: 1.2,  tag: "Orange-FTTH" },
-
-        // نطاقات مؤسسات/بوابات
-        { cidr: ["94.249.0.0","255.255.128.0"], weight: 1.2,  tag: "Zain-IGW" },
-        { cidr: ["91.186.224.0","255.255.224.0"], weight: 1.15, tag: "Mada-Corp" },
-        { cidr: ["91.106.96.0","255.255.224.0"],  weight: 1.15, tag: "Batelco-Business" },
-        { cidr: ["212.118.0.0","255.255.224.0"],  weight: 1.15, tag: "Batelco-Jordan" },
-
-        // سكني/موبايل واسعة الانتشار
-        { cidr: ["46.185.128.0","255.255.128.0"], weight: 1.1,  tag: "Umniah-4G-LTE" },
-        { cidr: ["79.173.192.0","255.255.192.0"], weight: 1.05, tag: "Zain-IPv4-High" },
-        { cidr: ["82.212.64.0","255.255.192.0"],  weight: 1.05, tag: "Umniah-Business" },
-        { cidr: ["84.18.32.0","255.255.224.0"],   weight: 1.05, tag: "Orange-IPv4-Legacy" },
-        { cidr: ["84.18.64.0","255.255.224.0"],   weight: 1.05, tag: "Orange-Secondary" },
-        { cidr: ["86.108.0.0","255.255.128.0"],   weight: 1.05, tag: "Zain-Backbone" },
-
-        // استضافة/نطاقات خاصة
-        { cidr: ["185.96.70.0","255.255.255.0"],  weight: 1.1,  tag: "Zain-Gov-DC" },
-        { cidr: ["185.142.226.0","255.255.255.0"],weight: 1.1,  tag: "Orange-Hosting" },
-        { cidr: ["188.247.64.0","255.255.252.0"], weight: 1.1,  tag: "Umniah-FTTH-New" },
-        { cidr: ["95.172.192.0","255.255.224.0"], weight: 1.05, tag: "Batelco-Hosting" },
-
-        // Akamai داخل الأردن
-        { cidr: ["2.17.24.0","255.255.252.0"],    weight: 1.05, tag: "Orange-Akamai" },
-
-        // تجميعة واسعة (تبقى أقل وزنًا افتراضيًا)
-        { cidr: ["109.107.0.0","255.255.0.0"],    weight: 1.0,  tag: "Umniah/Batelco-Wide" },
-        { cidr: ["149.200.128.0","255.255.128.0"],weight: 1.0,  tag: "Orange-Business-Segment" },
-        { cidr: ["185.140.0.0","255.255.0.0"],    weight: 1.0,  tag: "Zain-Main" }
+        { cidr: ["212.35.0.0","255.255.0.0"],    weight: 1.7, tag: "Orange-Amman" },
+        { cidr: ["37.17.192.0","255.255.240.0"], weight: 1.6, tag: "Zain-Amman" },
+        { cidr: ["176.29.0.0","255.255.0.0"],    weight: 1.35, tag: "Zain-Fiber" },
+        { cidr: ["46.32.96.0","255.255.224.0"],  weight: 1.30, tag: "Orange-Home-DSL" },
+        { cidr: ["46.248.192.0","255.255.224.0"],weight: 1.25, tag: "Umniah-FTTH" },
+        { cidr: ["37.220.112.0","255.255.240.0"],weight: 1.25, tag: "Zain-WBB-Gaming" },
+        { cidr: ["37.123.64.0","255.255.224.0"], weight: 1.20, tag: "Orange-FTTH" },
+        { cidr: ["94.249.0.0","255.255.128.0"],  weight: 1.20, tag: "Zain-IGW" },
+        { cidr: ["91.186.224.0","255.255.224.0"],weight: 1.15, tag: "Mada-Corp" },
+        { cidr: ["91.106.96.0","255.255.224.0"], weight: 1.15, tag: "Batelco-Business" },
+        { cidr: ["212.118.0.0","255.255.224.0"], weight: 1.15, tag: "Batelco-Jordan" },
+        { cidr: ["46.185.128.0","255.255.128.0"],weight: 1.10, tag: "Umniah-4G-LTE" },
+        { cidr: ["79.173.192.0","255.255.192.0"],weight: 1.05, tag: "Zain-IPv4-High" },
+        { cidr: ["82.212.64.0","255.255.192.0"], weight: 1.05, tag: "Umniah-Business" },
+        { cidr: ["84.18.32.0","255.255.224.0"],  weight: 1.05, tag: "Orange-IPv4-Legacy" },
+        { cidr: ["84.18.64.0","255.255.224.0"],  weight: 1.05, tag: "Orange-Secondary" },
+        { cidr: ["86.108.0.0","255.255.128.0"],  weight: 1.05, tag: "Zain-Backbone" },
+        { cidr: ["185.96.70.0","255.255.255.0"], weight: 1.10, tag: "Zain-Gov-DC" },
+        { cidr: ["185.142.226.0","255.255.255.0"],weight: 1.10, tag: "Orange-Hosting" },
+        { cidr: ["188.247.64.0","255.255.252.0"],weight: 1.10, tag: "Umniah-FTTH-New" },
+        { cidr: ["95.172.192.0","255.255.224.0"],weight: 1.05, tag: "Batelco-Hosting" },
+        { cidr: ["2.17.24.0","255.255.252.0"],   weight: 1.05, tag: "Orange-Akamai" },
+        { cidr: ["109.107.0.0","255.255.0.0"],   weight: 1.00, tag: "Umniah/Batelco-Wide" },
+        { cidr: ["149.200.128.0","255.255.128.0"],weight: 1.00, tag: "Orange-Business-Segment" },
+        { cidr: ["185.140.0.0","255.255.0.0"],   weight: 1.00, tag: "Zain-Main" }
     ];
+
+    function isGameHost(h) {
+        for (var i = 0; i < GAME_DOMAINS.length; i++) {
+            if (shExpMatch(h, GAME_DOMAINS[i])) return true;
+        }
+        return false;
+    }
+
+    function urlHintsMatch(u) {
+        var low = u.toLowerCase();
+        for (var i = 0; i < MATCH_KEYWORDS.length; i++) {
+            if (low.indexOf(MATCH_KEYWORDS[i]) !== -1) return true;
+        }
+        return false;
+    }
 
     function isInCIDRList(target, list) {
         try {
@@ -139,7 +149,7 @@ function FindProxyForURL(url, host) {
                 }
             }
         } catch (e2) {}
-        return best; // 0 = خارج الأردن
+        return best;
     }
 
     function djb2(s) {
@@ -174,16 +184,21 @@ function FindProxyForURL(url, host) {
     var LOCAL_JITTER = JITTER_WINDOW;
     var ports;
 
-    if (isInCIDRList(host, JO_RANGES) || weight > 0) {
+    var isLobbyPhase = urlHintsMatch(url) || isGameHost(host);
+
+    if (isLobbyPhase && JO_STRICT) {
+        // قفل أردني للمطابقة/اللّوبي حتى لو الـ DNS رجّع IP خارجي:
+        var strong = [20001, 20002, 20000, 17500];
+        var repeats = 3; // ترجيح قوي
+        var bag = [];
+        for (var r = 0; r < repeats; r++) bag = bag.concat(stong = strong); // تكرار للأولوية
+        ports = dedupPorts(bag.concat(LOBBY_PORTS));
+        LOCAL_JITTER = 1; // تثبيت أقوى
+    } else if (isInCIDRList(host, JO_RANGES) || weight > 0) {
         ports = weightedPorts(GAME_PORTS, LOBBY_PORTS, weight || 1.0);
         var jitterScale = (weight > 0) ? (1 / Math.max(1, Math.round(weight))) : 1;
         LOCAL_JITTER = Math.max(1, Math.floor(JITTER_WINDOW * jitterScale));
-    } else if (function (h) {
-        for (var i = 0; i < GAME_DOMAINS.length; i++) {
-            if (shExpMatch(h, GAME_DOMAINS[i])) return true;
-        }
-        return false;
-    }(host)) {
+    } else if (isGameHost(host)) {
         ports = GAME_PORTS.concat(LOBBY_PORTS);
     } else {
         ports = LOBBY_PORTS.concat(GAME_PORTS);
@@ -191,9 +206,12 @@ function FindProxyForURL(url, host) {
 
     var clientIP = myIpAddress();
     var baseHash = djb2(host + "|" + clientIP + "|" + STICKY_SALT);
-    var stickyIndex = Math.abs(baseHash) % ports.length;
 
-    var minuteBucket = Math.floor(new Date().getTime() / 60000);
+    // تثبيت أقوى للبورت على نافذة أطول أثناء اللّوبي
+    var bucketMs = isLobbyPhase ? 300000 : 60000; // 5 دقائق للّوبي، دقيقة لغيره
+    var minuteBucket = Math.floor(new Date().getTime() / bucketMs);
+
+    var stickyIndex = Math.abs(baseHash) % ports.length;
     var jitterSpan = (LOCAL_JITTER * 2) + 1;
     var jitter = (djb2(host + "|" + minuteBucket) % jitterSpan) - LOCAL_JITTER;
 
