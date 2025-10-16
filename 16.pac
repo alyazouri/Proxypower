@@ -86,7 +86,7 @@ var JO_IP_SUBNETS =
 
 var JO_IPv6_SUBNETS =
 [
-["2001:67c:2124::","/48"]
+
 ];
 
 function _isIPv4InList(ip, list) {
