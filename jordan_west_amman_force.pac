@@ -1,37 +1,35 @@
-// ======================================================================
-// PAC – West Amman Force Route (Zain Jordan)
-// Focus: 176.28.128.0/17 with /24 inside Amman West
-// ======================================================================
-
 function FindProxyForURL(url, host) {
-
   var FORCE_PROXY = "PROXY 91.106.109.12:20001; PROXY 91.106.109.12:443";
 
-  var WEST_AMMAN_24 = [
-    ["176.28.179.0","255.255.255.0"],
-    ["176.28.184.0","255.255.255.0"],
-    ["176.28.221.0","255.255.255.0"],
-    ["176.28.252.0","255.255.255.0"]
+  // Jordanian IP ranges (West Amman subnets, restored from original WEST_AMMAN_24)
+  var JORDAN_LOCAL = [
+    ["86.108.0.0", "255.255.128.0"],    // /17
+    ["37.202.67.0", "255.255.255.0"],   // /24
+    ["37.220.112.0", "255.255.240.0"],  // /20
+    ["91.106.104.0", "255.255.248.0"],  // /21
+    ["92.241.32.0", "255.255.224.0"],   // /19
+    ["95.172.192.0", "255.255.224.0"],  // /19
+    ["46.185.128.0", "255.255.128.0"],  // /17
+    ["79.173.192.0", "255.255.192.0"]   // /18
   ];
 
-  var PARENT_JO = ["176.28.128.0","255.255.128.0"];
-
-  // لا نسمح بأي DIRECT
-  if (isPlainHostName(host)) return FORCE_PROXY;
-  if (shExpMatch(host, "localhost")) return FORCE_PROXY;
-  if (shExpMatch(host, "*.google.com") || shExpMatch(host, "google.com")) return FORCE_PROXY;
-  if (shExpMatch(host, "*.youtube.com") || shExpMatch(host, "youtube.com")) return FORCE_PROXY;
-
-  for (var i = 0; i < WEST_AMMAN_24.length; i++) {
-    try {
-      if (isInNet(host, WEST_AMMAN_24[i][0], WEST_AMMAN_24[i][1])) return FORCE_PROXY;
-    } catch(e){}
+  // Force proxy for specific hosts
+  if (isPlainHostName(host) ||
+      shExpMatch(host, "localhost") ||
+      shExpMatch(host, "*.google.com") ||
+      shExpMatch(host, "google.com") ||
+      shExpMatch(host, "*.youtube.com") ||
+      shExpMatch(host, "youtube.com")) {
+    return FORCE_PROXY;
   }
 
-  try {
-    if (isInNet(host, PARENT_JO[0], PARENT_JO[1])) return FORCE_PROXY;
-  } catch(e){}
+  // Allow DIRECT for local Jordanian IP ranges
+  for (var i = 0; i < JORDAN_LOCAL.length; i++) {
+    if (isInNet(host, JORDAN_LOCAL[i][0], JORDAN_LOCAL[i][1])) {
+      return "DIRECT";
+    }
+  }
 
-  // fallback - كل شيء إجباري على البروكسي
+  // Fallback: force all non-local traffic to proxy
   return FORCE_PROXY;
 }
