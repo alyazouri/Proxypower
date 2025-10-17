@@ -8,7 +8,7 @@ function FindProxyForURL(url, host) {
 
     // إن أردت تفعيل فحص زمن المسار للبروكسي (ms) — ضع قيمة >0
     // لو =0 => لا فحص زمني (لا مشكلة، فقط التوجيه)
-    var PROXY_MAX_MS = 21;
+    var PROXY_MAX_MS = 30;
 
     // TTL لكاش DNS (ms)
     var DNS_CACHE_TTL_MS = 30000;
