@@ -1,7 +1,7 @@
 function FindProxyForURL(url, host) {
     var PROXY_HOST = "91.106.109.12";
 
-    var ROUTE_MAX_MS = 20;
+    var ROUTE_MAX_MS = 21;
     var DNS_CACHE_TTL_MS = 30000;
 
     var PORTS = {
