@@ -15,8 +15,6 @@ function FindProxyForURL(url, host) {
     var JITTER_WINDOW = 3;
 
     var JO_IP_SUBNETS = [
-      ["92.241.32.0","92.241.224.0"],
-      ["95.172.192.0","95.172.224.0"],
       ["109.107.224.0","109.107.255.0"]  // /19
     ];
 
