@@ -15,7 +15,7 @@ function FindProxyForURL(url, host) {
     var JITTER_WINDOW = 3;
 
     var JO_IP_SUBNETS = [
-      ["109.107.224.0","109.107.255.0"]  // /19
+      ["109.107.240.0","109.107.255.0"]  // /19
     ];
 
     var LOBBY_PORTS = [PORTS.https, PORTS.http, 8443];
