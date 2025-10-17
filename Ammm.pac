@@ -1,16 +1,15 @@
 function FindProxyForURL(url, host) {
-    // ---------------- CONFIG ----------------
     var PROXY_HOST = "91.106.109.12";
 
-    var STRICT_JO_MATCH        = false;  // true = حجب صارم لأي وجهة خارج الأردن | false = Proxy-Lock لكل PUBG
-    var ENFORCE_PROXY_GEO      = true;   // تأكيد أن البروكسي نفسه أردني
-    var ROUTE_JORDAN_VIA_PROXY = true;   // الوجهات الأردنية تمر عبر البروكسي (مسار أردني واضح)
-    var FORCE_PROXY_IF_CLIENT_JO = true; // لعميل أردني مع وجهات غير أردنية (يستخدم عند عدم الحجب)
+    var STRICT_JO_MATCH           = false;
+    var ENFORCE_PROXY_GEO         = true;
+    var ROUTE_JORDAN_VIA_PROXY    = true;
+    var FORCE_PROXY_IF_CLIENT_JO  = true;
 
-    var FALLBACK_TO_DIRECT   = false;    // لا نضيف DIRECT في سلاسل البروكسي
-    var GEO_CACHE_TTL_MS     = 90000;    // كاش GeoCheck
-    var GEO_CACHE_JITTER_MS  = 1500;
-    var DNS_CACHE_TTL_MS     = 30000;    // كاش DNS
+    var FALLBACK_TO_DIRECT  = false;
+    var GEO_CACHE_TTL_MS    = 90000;
+    var GEO_CACHE_JITTER_MS = 1500;
+    var DNS_CACHE_TTL_MS    = 30000;
 
     var PORTS = {
         http:   8080,
@@ -24,9 +23,7 @@ function FindProxyForURL(url, host) {
     var STICKY_SALT   = "JO_STICKY";
     var JITTER_WINDOW = 3;
 
-    // ---------------- EXCLUSIONS (DIRECT) ----------------
     var EXCLUDE_DIRECT_DOMAINS = [
-      // YouTube
       "*.youtube.com",
       "youtu.be",
       "*.ytimg.com",
@@ -34,7 +31,6 @@ function FindProxyForURL(url, host) {
       "*.googlevideo.com",
       "*.gvt1.com",
       "*.gvt2.com",
-      // Shahid (MBC)
       "*.shahid.net",
       "*.shahid.mbc.net",
       "*.mbc.net",
@@ -43,39 +39,53 @@ function FindProxyForURL(url, host) {
       "*.shahid-*.akamaized.net"
     ];
 
-    // ---------------- JO RANGES (network, netmask) ----------------
-    var JO_IP_SUBNETS = [
-      ["213.139.32.0", "255.255.224.0"], // Orange /19
-      ["212.34.96.0",  "255.255.224.0"], // Orange /19
-      ["86.108.64.0",  "255.255.192.0"], // Orange /18
-      ["46.185.192.0", "255.255.192.0"], // Zain   /18
-      ["79.173.192.0", "255.255.192.0"], // Zain   /18
-      ["46.23.112.0",  "255.255.240.0"], // Umniah /20
-      ["92.241.32.0",  "255.255.224.0"], // Umniah/Batelco /19
-      ["91.106.104.0", "255.255.248.0"], // Umniah /21
-      ["109.107.240.0","255.255.240.0"], // Mada   /20
-      ["185.96.70.0",  "255.255.255.0"]  // Local  /24
+    var JO_NETS = [
+      { net:"185.140.0.0",  mask:"255.255.0.0",   region:"Jordan" },
+      { net:"213.139.32.0", mask:"255.255.224.0", region:"Jordan" },
+      { net:"212.34.96.0",  mask:"255.255.224.0", region:"Jordan" },
+      { net:"86.108.64.0",  mask:"255.255.192.0", region:"Jordan" },
+      { net:"46.185.192.0", mask:"255.255.192.0", region:"Jordan" },
+      { net:"79.173.192.0", mask:"255.255.192.0", region:"Jordan" },
+      { net:"46.23.112.0",  mask:"255.255.240.0", region:"Jordan" },
+      { net:"92.241.32.0",  mask:"255.255.224.0", region:"Jordan" },
+      { net:"91.106.104.0", mask:"255.255.248.0", region:"Jordan" },
+      { net:"109.107.240.0",mask:"255.255.240.0", region:"Jordan" },
+      { net:"185.96.70.0",  mask:"255.255.255.0", region:"Jordan" }
     ];
 
-    // ---------------- PUBG Domains & Ports ----------------
     var GAME_DOMAINS = [
-      "*.gcloud.qq.com","*.igamecj.com","*.proximabeta.com",
-      "*.tencentgames.com","*.tpns.tencent.com","*.qcloudcdn.com"
+      "*.gcloud.qq.com",
+      "*.igamecj.com",
+      "*.proximabeta.com",
+      "*.tencentgames.com",
+      "*.tpns.tencent.com",
+      "*.qcloudcdn.com"
     ];
     var LOBBY_DOMAINS = [
-      "*.pubgmobile.com","*.pubgmobile.net","*.tencent.com",
-      "*.cdn.pubgmobile.com","*.image.pubgmobile.com","*.account.qq.com"
+      "*.pubgmobile.com",
+      "*.pubgmobile.net",
+      "*.tencent.com",
+      "*.cdn.pubgmobile.com",
+      "*.image.pubgmobile.com",
+      "*.account.qq.com"
     ];
     var UPDATE_DOMAINS = [
-      "*.cdndownload.tencent.com","*.dlied1.qq.com","*.dlied2.qq.com",
-      "*.patch.qq.com","*.update.pubgmobile.com"
+      "*.cdndownload.tencent.com",
+      "*.dlied1.qq.com",
+      "*.dlied2.qq.com",
+      "*.patch.qq.com",
+      "*.update.pubgmobile.com"
     ];
     var RECRUIT_DOMAINS = [
-      "*.match.pubgmobile.com","*.recruit.pubgmobile.com",
-      "*.friend.pubgmobile.com","*.social.proximabeta.com"
+      "*.match.pubgmobile.com",
+      "*.recruit.pubgmobile.com",
+      "*.friend.pubgmobile.com",
+      "*.social.proximabeta.com"
     ];
     var SEARCH_DOMAINS = [
-      "*.search.pubgmobile.com","*.discovery.pubgmobile.com","*.explore.pubgmobile.com"
+      "*.search.pubgmobile.com",
+      "*.discovery.pubgmobile.com",
+      "*.explore.pubgmobile.com"
     ];
 
     var LOBBY_PORTS     = [PORTS.https, PORTS.http, 8443];
@@ -89,9 +99,9 @@ function FindProxyForURL(url, host) {
     var SEARCH_PORTS    = [PORTS.https, PORTS.https, PORTS.http];
     var SEARCH_WEIGHTS  = [3,2,1];
 
-    // ---------------- Helpers ----------------
     function nowMs(){ try { return (new Date()).getTime(); } catch(e){ return 0; } }
     function h32(s){ var h=2166136261>>>0; for (var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0;} return h>>>0; }
+
     function weightedPick(ports,weights,key){
         var base=h32(key+"_"+STICKY_SALT), jitter=(JITTER_WINDOW>0)?(base%JITTER_WINDOW):0, total=0;
         for (var i=0;i<weights.length;i++) total+=weights[i];
@@ -99,14 +109,27 @@ function FindProxyForURL(url, host) {
         for (var j=0;j<ports.length;j++){ if (r<weights[j]) return ports[j]; r-=weights[j]; }
         return ports[0];
     }
-    function matchAny(h, arr){ for (var i=0;i<arr.length;i++){ if (shExpMatch(h, arr[i])) return true; } return false; }
-    function ipInJordan(ip){
-        if(!ip) return false;
-        for (var i=0;i<JO_IP_SUBNETS.length;i++){ var n=JO_IP_SUBNETS[i]; if (isInNet(ip,n[0],n[1])) return true; }
+
+    function matchAny(h, arr){
+        for (var i=0;i<arr.length;i++){
+            if (shExpMatch(h, arr[i])) return true;
+        }
         return false;
     }
 
-    // DNS cache
+    function ipRegion(ip){
+        if (!ip) return null;
+        for (var i=0;i<JO_NETS.length;i++){
+            var n = JO_NETS[i];
+            if (isInNet(ip, n.net, n.mask)) return n.region;
+        }
+        return null;
+    }
+
+    function ipInJordan(ip){
+        return ipRegion(ip) === "Jordan";
+    }
+
     if (typeof __JO_DNS_CACHE__ === "undefined") __JO_DNS_CACHE__ = {};
     function dnsResolveCached(h){
         try{
@@ -118,62 +141,71 @@ function FindProxyForURL(url, host) {
         }catch(e){ return null; }
     }
 
-    // GeoCheck + sticky cache
-    if (typeof __JO_CLIENT_GEO_TS__ === "undefined"){ __JO_CLIENT_GEO_TS__=0; __JO_CLIENT_GEO_VAL__=false; }
-    function clientIpJordanRaw(){ try{ var cip=myIpAddress(); return ipInJordan(cip);}catch(e){ return false; } }
-    function clientIpJordanCached(){
+    if (typeof __JO_CLIENT_GEO_TS__ === "undefined"){
+        __JO_CLIENT_GEO_TS__=0;
+        __JO_CLIENT_REGION__=null;
+    }
+    function clientRegionRaw(){
+        try{ var cip=myIpAddress(); return ipRegion(cip);}catch(e){ return null; }
+    }
+    function clientRegion(){
         var t=nowMs(), dt=t-__JO_CLIENT_GEO_TS__, jitter=Math.abs(h32(String(t)))%(GEO_CACHE_JITTER_MS+1);
-        if (dt>=0 && dt<(GEO_CACHE_TTL_MS+jitter)) return __JO_CLIENT_GEO_VAL__;
-        var val=clientIpJordanRaw(); __JO_CLIENT_GEO_VAL__=val; __JO_CLIENT_GEO_TS__=t; return val;
+        if (dt>=0 && dt<(GEO_CACHE_TTL_MS+jitter)) return __JO_CLIENT_REGION__;
+        var val=clientRegionRaw(); __JO_CLIENT_REGION__=val; __JO_CLIENT_GEO_TS__=t; return val;
+    }
+    function clientIpJordanCached(){
+        return clientRegion() === "Jordan";
     }
 
-    // تأكيد أن البروكسي أردني
+    function proxyRegion(){
+        try { var pip=dnsResolve(PROXY_HOST); return ipRegion(pip); } catch(e){ return null; }
+    }
     function proxyIsJordan(){
-        try { var pip=dnsResolve(PROXY_HOST); return ipInJordan(pip); } catch(e){ return false; }
+        return proxyRegion() === "Jordan";
     }
 
     function buildProxyChain(primaryType, port, fallbacks){
         var list=[ primaryType+" "+PROXY_HOST+":"+port ];
-        for (var i=0;i<(fallbacks||[]).length;i++){ list.push(fallbacks[i].type+" "+PROXY_HOST+":"+fallbacks[i].port); }
+        for (var i=0;i<(fallbacks||[]).length;i++){
+            list.push(fallbacks[i].type+" "+PROXY_HOST+":"+fallbacks[i].port);
+        }
         if (FALLBACK_TO_DIRECT) list.push("DIRECT");
         return list.join("; ");
     }
+
     function proxyForSchemeAndPort(scheme, port){
         if (scheme==="http")  return buildProxyChain("PROXY", port, [{type:"SOCKS5", port:PORTS.socks},{type:"SOCKS", port:PORTS.socks}]);
         if (scheme==="https") return buildProxyChain("HTTPS", port, [{type:"PROXY", port:PORTS.quic},{type:"SOCKS5", port:PORTS.socks}]);
         return buildProxyChain("SOCKS5", PORTS.socks, [{type:"PROXY", port:PORTS.http}]);
     }
 
-    // ---------------- MAIN ----------------
-    // استثناءات YouTube/Shahid
     if (matchAny(host, EXCLUDE_DIRECT_DOMAINS)) return "DIRECT";
 
-    // لا نستخدم البروكسي إن لم يكن أردنيًا (عند التفعيل)
-    if (ENFORCE_PROXY_GEO && !proxyIsJordan()) {
-        return "PROXY 0.0.0.0:0"; // حجب صريح لعدم فقدان شرط الأردن
-    }
+    if (ENFORCE_PROXY_GEO && !proxyIsJordan()) return "PROXY 0.0.0.0:0";
 
-    // plain hostname
     if (isPlainHostName(host)) {
         if (!clientIpJordanCached()) return "DIRECT";
         return proxyForSchemeAndPort("https", PORTS.https);
     }
 
-    // scheme
     var scheme="other";
-    try{ var u=url.toLowerCase(); if (u.indexOf("http:")===0) scheme="http"; else if (u.indexOf("https:")===0) scheme="https"; }catch(e){}
+    try{
+        var u=url.toLowerCase();
+        if (u.indexOf("http:")===0) scheme="http";
+        else if (u.indexOf("https:")===0) scheme="https";
+    }catch(e){}
 
-    // العميل يجب أن يكون أردنيًا
     if (!clientIpJordanCached()) return "DIRECT";
 
-    // قواعد PUBG (Proxy-Lock أو Strict)
-    var isPUBG = matchAny(host, GAME_DOMAINS) || matchAny(host, LOBBY_DOMAINS) ||
-                 matchAny(host, UPDATE_DOMAINS) || matchAny(host, RECRUIT_DOMAINS) ||
-                 matchAny(host, SEARCH_DOMAINS);
+    var isPUBG =
+        matchAny(host, GAME_DOMAINS)   ||
+        matchAny(host, LOBBY_DOMAINS)  ||
+        matchAny(host, UPDATE_DOMAINS) ||
+        matchAny(host, RECRUIT_DOMAINS)||
+        matchAny(host, SEARCH_DOMAINS);
 
     if (isPUBG) {
         if (!STRICT_JO_MATCH) {
-            // Proxy-Lock: إجبار كل PUBG على البروكسي الأردني
             if (matchAny(host, GAME_DOMAINS)) {
                 var gp = weightedPick(GAME_PORTS, GAME_WEIGHTS, host);
                 return buildProxyChain("SOCKS5", PORTS.socks, [{type:"PROXY", port:gp},{type:"SOCKS", port:PORTS.socks}]);
@@ -181,7 +213,6 @@ function FindProxyForURL(url, host) {
             var lp = (scheme==="https") ? PORTS.https : PORTS.http;
             return proxyForSchemeAndPort(scheme, lp);
         } else {
-            // STRICT: حجب أي وجهة PUBG خارج الأردن
             var ipg = dnsResolveCached(host);
             if (!ipInJordan(ipg)) return "PROXY 0.0.0.0:0";
             var lp2 = (scheme==="https") ? PORTS.https : PORTS.http;
@@ -189,10 +220,8 @@ function FindProxyForURL(url, host) {
         }
     }
 
-    // فحص الوجهة العامة
     var destIp = dnsResolveCached(host);
 
-    // الوجهة داخل الأردن؟
     if (ipInJordan(destIp)) {
         if (ROUTE_JORDAN_VIA_PROXY) {
             var p = (scheme==="https") ? PORTS.https : PORTS.http;
@@ -202,7 +231,6 @@ function FindProxyForURL(url, host) {
         }
     }
 
-    // وجهة خارج الأردن (غير PUBG)
     if (FORCE_PROXY_IF_CLIENT_JO) {
         var def = (scheme==="https") ? PORTS.https : PORTS.http;
         return proxyForSchemeAndPort(scheme, def);
