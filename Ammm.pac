@@ -45,7 +45,6 @@ function FindProxyForURL(url, host) {
 
     // ---------------- JO RANGES (network, netmask) ----------------
     var JO_IP_SUBNETS = [
-      ["100.64.0.0",   "255.192.0.0"],   // CGNAT /10
       ["212.34.96.0",  "255.255.224.0"], // Orange /19
       ["213.139.32.0", "255.255.224.0"], // Orange /19
       ["86.108.64.0",  "255.255.192.0"], // Orange /18
