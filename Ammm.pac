@@ -1,114 +1,188 @@
-// PAC: JO_NETS proxy-only, everything else DIRECT (bypass)
 function FindProxyForURL(url, host) {
-    // ============ CONFIG ============
-    var PROXY_HOST       = "91.106.109.12"; // البروكسي الأردني الوحيد
-    var PROXY_PORT_HTTPS = 8443;
-    var PROXY_PORT_HTTP  = 8080;
-    var PROXY_PORT_SOCKS = 1080;
+  var PROXY_HOST = "91.106.109.12";
 
-    // إن أردت تفعيل فحص زمن المسار للبروكسي (ms) — ضع قيمة >0
-    // لو =0 => لا فحص زمني (لا مشكلة، فقط التوجيه)
-    var PROXY_MAX_MS = 10;
+  var PORTS = {
+    LOBBY: [443, 8080, 8443],
+    MATCH: [20001, 20002, 20003],
+    RECRUIT_SEARCH: [10010, 10012, 10013, 10039, 10096, 10491, 10612, 11000, 11455, 12235],
+    UPDATES: [80, 443, 8443, 8080],
+    CDNs: [80, 8080, 443]
+  };
 
-    // TTL لكاش DNS (ms)
-    var DNS_CACHE_TTL_MS = 30000;
+  var PORT_WEIGHTS = {
+    LOBBY: [5, 3, 2],
+    MATCH: [4, 2, 1],
+    RECRUIT_SEARCH: [4, 3, 3, 2, 2, 2, 2, 2, 2, 1],
+    UPDATES: [5, 3, 2, 1],
+    CDNs: [3, 2, 2]
+  };
 
-    // ============ JO NETS (network, mask) ============
-    var JO_NETS = [
-      ["86.108.64.0","86.108.192.0"],
-      ["109.107.240.0","109.107.255.0"],
-      ["213.139.32.0","213.139.224.0"],
-      ["212.34.96.0","212.34.224.0"],
-      ["46.185.192.0","46.185.255.0"],
-      ["79.173.192.0","79.173.255.0"],
-      ["185.140.0.0","185.140.255.0"],
-      ["46.23.112.0","46.23.240.0"],
-      ["92.241.32.0","92.241.224.0"],
-      ["91.106.104.0","91.106.248.0"],
-      ["185.96.70.0","185.96.255.0"]
-    ];
+  var JO_IP_SUBNETS = [
+    ["185.140.0.0","255.255.240.0"],
+    ["212.35.0.0","255.255.240.0"],
+    ["109.107.0.0","255.255.240.0"],
+    ["176.29.0.0","255.255.240.0"],
+    ["46.185.128.0","255.255.240.0"],
+    ["46.32.96.0","255.255.240.0"],
+    ["46.248.192.0","255.255.240.0"],
+    ["37.17.192.0","255.255.240.0"],
+    ["109.237.192.0","255.255.240.0"],
+    ["37.123.64.0","255.255.240.0"],
+    ["79.173.192.0","255.255.240.0"]
+  ];
 
-    // ============ HELPERS ============
-    function nowMs(){ try { return (new Date()).getTime(); } catch(e){ return 0; } }
+  var FORBID_NON_JO = true;
+  var BLOCK_REPLY   = "PROXY 0.0.0.0:0";
 
-    function ipInJordan(ip){
-        if (!ip) return false;
-        for (var i=0;i<JO_NETS.length;i++){
-            var n = JO_NETS[i];
-            try { if (isInNet(ip, n[0], n[1])) return true; } catch(e){}
-        }
-        return false;
+  var STICKY_SALT = "JO_STICKY";
+  var STICKY_TTL_MINUTES = 30;
+  var JITTER_WINDOW = 2;
+
+  var now = new Date().getTime();
+  var root = (typeof globalThis !== "undefined" ? globalThis : this);
+  if (!root._PAC_CACHE) root._PAC_CACHE = {};
+  var CACHE = root._PAC_CACHE;
+
+  var PUBG_DOMAINS = {
+    LOBBY: [
+      "*.pubgmobile.com", "*.pubgmobile.net",
+      "*.proximabeta.com", "*.igamecj.com"
+    ],
+    MATCH: [
+      "*.gcloud.qq.com", "gpubgm.com"
+    ],
+    RECRUIT_SEARCH: [
+      "match.igamecj.com", "match.proximabeta.com",
+      "teamfinder.igamecj.com", "teamfinder.proximabeta.com"
+    ],
+    UPDATES: [
+      "cdn.pubgmobile.com", "updates.pubgmobile.com",
+      "patch.igamecj.com", "hotfix.proximabeta.com",
+      "dlied1.qq.com", "dlied2.qq.com", "gpubgm.com"
+    ],
+    CDNs: [
+      "cdn.igamecj.com", "cdn.proximabeta.com",
+      "cdn.tencentgames.com", "*.qcloudcdn.com",
+      "*.cloudfront.net", "*.edgesuite.net"
+    ]
+  };
+
+  var URL_PATTERNS = {
+    LOBBY: [
+      "*/account/login*", "*/client/version*",
+      "*/status/heartbeat*", "*/presence/*", "*/friends/*"
+    ],
+    MATCH: [
+      "*/matchmaking/*", "*/mms/*",
+      "*/game/start*", "*/game/join*", "*/report/battle*"
+    ],
+    RECRUIT_SEARCH: [
+      "*/teamfinder/*", "*/clan/*",
+      "*/social/*", "*/search/*", "*/recruit/*"
+    ],
+    UPDATES: [
+      "*/patch*", "*/hotfix*", "*/update*",
+      "*/download*", "*/assets/*", "*/assetbundle*", "*/obb*"
+    ],
+    CDNs: [
+      "*/cdn/*", "*/static/*", "*/image/*",
+      "*/media/*", "*/video/*", "*/res/*", "*/pkg/*"
+    ]
+  };
+
+  function hostMatchesAnyDomain(h, patterns) {
+    for (var i = 0; i < patterns.length; i++) {
+      if (shExpMatch(h, patterns[i])) return true;
+      var p = patterns[i].replace(/^\*\./, ".");
+      if (h.slice(-p.length) === p) return true;
     }
+    return false;
+  }
 
-    if (typeof __DNS_CACHE__ === "undefined") __DNS_CACHE__ = {};
-    function dnsResolveCached(host){
-        try{
-            var rec = __DNS_CACHE__[host], t = nowMs();
-            if (rec && (t - rec.ts) < DNS_CACHE_TTL_MS) return rec.ip;
-            var ip = dnsResolve(host);
-            __DNS_CACHE__[host] = { ip: ip, ts: t };
-            return ip;
-        }catch(e){ return null; }
+  function pathMatches(urlStr, patterns) {
+    for (var i = 0; i < patterns.length; i++) {
+      if (shExpMatch(urlStr, patterns[i])) return true;
     }
+    return false;
+  }
 
-    // زمان قياس (تقريبي باستخدام dnsResolve)
-    if (typeof __DNS_TIMED__ === "undefined") __DNS_TIMED__ = {};
-    function dnsResolveTimed(host){
-        try{
-            var rec = __DNS_TIMED__[host], t = nowMs();
-            if (rec && (t - rec.ts) < DNS_CACHE_TTL_MS) return { ip: rec.ip, dt: rec.dt };
-            var t0 = nowMs();
-            var ip = dnsResolve(host);
-            var dt = Math.max(1, nowMs() - t0);
-            __DNS_TIMED__[host] = { ip: ip, dt: dt, ts: nowMs() };
-            return { ip: ip, dt: dt };
-        }catch(e){ return { ip: null, dt: 9999 }; }
+  function ipInAnyJordanRange(ip) {
+    if (!ip) return false;
+    for (var j = 0; j < JO_IP_SUBNETS.length; j++) {
+      if (isInNet(ip, JO_IP_SUBNETS[j][0], JO_IP_SUBNETS[j][1])) return true;
     }
+    return false;
+  }
 
-    function proxyChain(){
-        // ترتيب: HTTPS -> PROXY -> SOCKS5 (بدون DIRECT)
-        return "HTTPS " + PROXY_HOST + ":" + PROXY_PORT_HTTPS +
-               "; PROXY " + PROXY_HOST + ":" + PROXY_PORT_HTTP +
-               "; SOCKS5 " + PROXY_HOST + ":" + PROXY_PORT_SOCKS;
+  function weightedPick(ports, weights) {
+    var sum = 0;
+    for (var i = 0; i < weights.length; i++) sum += weights[i];
+    var jitter = (JITTER_WINDOW > 0) ? Math.floor(Math.random() * JITTER_WINDOW) : 0;
+    var r = Math.floor(Math.random() * (sum + jitter)) + 1;
+    var acc = 0;
+    for (var k = 0; k < ports.length; k++) {
+      acc += (weights[k] || 1);
+      if (r <= acc) return ports[k];
     }
+    return ports[0];
+  }
 
-    function proxyStatusOK(){
-        if (!PROXY_MAX_MS || PROXY_MAX_MS <= 0) {
-            // لا فحص زمني: نكتفي بأن نحل اسم البروكسي ونفحص إن كان داخل JO_NETS
-            try {
-                var pip = dnsResolveCached(PROXY_HOST);
-                return pip && ipInJordan(pip);
-            } catch(e){ return false; }
-        } else {
-            // فحص زمني تقريبي + تحقق من أردنية IP البروكسي
-            var r = dnsResolveTimed(PROXY_HOST);
-            if (!r.ip) return false;
-            if (r.dt > PROXY_MAX_MS) return false;
-            return ipInJordan(r.ip);
-        }
+  function proxyForCategory(category) {
+    var stickyKey = STICKY_SALT + "_PORT_" + category;
+    var ttl = STICKY_TTL_MINUTES * 60 * 1000;
+    var entry = CACHE[stickyKey];
+    if (entry && (now - entry.t) < ttl) {
+    return "PROXY " + PROXY_HOST + ":" + entry.p;
     }
+    var p = weightedPick(PORTS[category], PORT_WEIGHTS[category]);
+    CACHE[stickyKey] = { p: p, t: now };
+    return "PROXY " + PROXY_HOST + ":" + p;
+  }
 
-    // ============ POLICY ============
-    // حل اسم الوجهة (نحتاج IP لنقرر إذا داخل JO_NETS أو لا)
-    var dest = dnsResolveTimed(host);
-    if (!dest.ip) {
-        // لو ما قدرنا نحل اسم الوجهة: لمنع خروج غير مرغوب نمررها DIRECT (حسب طلبك يمكن تغييرها إلى حجب)
-        // هنا نختار DIRECT لأن سؤالك كان عن bypass للخوادم خارج الأردن
-        return "DIRECT";
-    }
+  function resolveIfHost(h) {
+    if (!h) return "";
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) return h;
+    var r = dnsResolve(h);
+    return (r && r !== "0.0.0.0") ? r : "";
+  }
 
-    // إذا الوجهة داخل JO_NETS -> اجبر المرور عبر البروكسي الأردني (بعد فحصه)
-    if (ipInJordan(dest.ip)) {
-        if (!proxyStatusOK()) {
-            // إن فشل فحص البروكسي (غير أردني أو بطيء) — نمنع المرور عبر مسار خارجي
-            // خياران: 1) حجب كامل  => "PROXY 0.0.0.0:0"
-            //          2) السماح DIRECT => "DIRECT"
-            // سأضع الحجب كخيار آمن: لمنع فتح اتصال غير أردني عند فشل البروكسي
-            return "PROXY 0.0.0.0:0";
-        }
-        return proxyChain();
-    }
+  var geoClientKey = STICKY_SALT + "_CLIENT_JO";
+  var geoTTL = STICKY_TTL_MINUTES * 60 * 1000;
+  var geoClient = CACHE[geoClientKey];
+  var clientOK;
+  if (geoClient && (now - geoClient.t) < geoTTL) {
+    clientOK = geoClient.ok;
+  } else {
+    var myip = resolveIfHost(myIpAddress());
+    clientOK = ipInAnyJordanRange(myip);
+    CACHE[geoClientKey] = { ok: clientOK, t: now };
+  }
 
-    // إذا الوجهة خارج JO_NETS -> bypass (DIRECT)
-    return "DIRECT";
+  var geoProxyKey = STICKY_SALT + "_PROXY_JO";
+  var geoProxy = CACHE[geoProxyKey];
+  var proxyOK;
+  if (geoProxy && (now - geoProxy.t) < geoTTL) {
+    proxyOK = geoProxy.ok;
+  } else {
+    var proxyIP = resolveIfHost(PROXY_HOST);
+    proxyOK = ipInAnyJordanRange(proxyIP);
+    CACHE[geoProxyKey] = { ok: proxyOK, t: now };
+  }
+
+  if (!(clientOK && proxyOK)) {
+    return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+  }
+
+  for (var cat in URL_PATTERNS) {
+    if (pathMatches(url, URL_PATTERNS[cat])) return proxyForCategory(cat);
+  }
+
+  for (var c in PUBG_DOMAINS) {
+    if (hostMatchesAnyDomain(host, PUBG_DOMAINS[c])) return proxyForCategory(c);
+  }
+
+  var dst = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host : resolveIfHost(host);
+  if (dst && ipInAnyJordanRange(dst)) return proxyForCategory("LOBBY");
+
+  return "DIRECT";
 }
