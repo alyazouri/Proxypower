@@ -1,5 +1,5 @@
 function FindProxyForURL(url, host) {
-    var PROXY_HOST = "91.106.109.12";
+    var PROXY_HOST = "109.107.253.245";
 
     // proxy ports (يمكنك تعديل الأرقام حسب إعداد البروكسي الفعلي)
     var PORTS = {
