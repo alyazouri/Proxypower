@@ -17,24 +17,15 @@ function FindProxyForURL(url, host) {
     CDNs           : [3, 2, 2]
   };
 
-  // نطاقات الأردن فقط (منقّحة)
+  // الأردن فقط — بعد إزالة 37.202.x/16 و 91.106.96.0/21 و 212.118.0.0/20
   var JO_IP_RANGES = [
-    [ipToInt("37.202.64.0"),  ipToInt("37.202.71.255")],
-    [ipToInt("37.202.72.0"),  ipToInt("37.202.79.255")],
-    [ipToInt("37.202.80.0"),  ipToInt("37.202.87.255")],
-    [ipToInt("37.202.88.0"),  ipToInt("37.202.95.255")],
-    [ipToInt("37.202.96.0"),  ipToInt("37.202.103.255")],
-    [ipToInt("37.202.104.0"), ipToInt("37.202.111.255")],
-    [ipToInt("37.202.112.0"), ipToInt("37.202.119.255")],
-    [ipToInt("37.202.120.0"), ipToInt("37.202.127.255")],
-
     [ipToInt("37.220.112.0"), ipToInt("37.220.119.255")],
     [ipToInt("37.220.120.0"), ipToInt("37.220.127.255")],
 
     [ipToInt("46.23.112.0"),  ipToInt("46.23.119.255")],
     [ipToInt("46.23.120.0"),  ipToInt("46.23.127.255")],
 
-    [ipToInt("46.32.96.0"),   ipToInt("46.32.127.255")],  // مدمجة
+    [ipToInt("46.32.96.0"),   ipToInt("46.32.127.255")],
 
     [ipToInt("46.185.128.0"), ipToInt("46.185.135.255")],
     [ipToInt("46.185.136.0"), ipToInt("46.185.143.255")],
@@ -83,8 +74,6 @@ function FindProxyForURL(url, host) {
     [ipToInt("86.108.104.0"), ipToInt("86.108.111.255")],
     [ipToInt("86.108.112.0"), ipToInt("86.108.119.255")],
     [ipToInt("86.108.120.0"), ipToInt("86.108.127.255")],
-
-    [ipToInt("91.106.96.0"),  ipToInt("91.106.103.255")],
 
     [ipToInt("91.186.224.0"), ipToInt("91.186.231.255")],
     [ipToInt("91.186.232.0"), ipToInt("91.186.239.255")],
@@ -182,9 +171,6 @@ function FindProxyForURL(url, host) {
     [ipToInt("212.35.240.0"), ipToInt("212.35.247.255")],
     [ipToInt("212.35.248.0"), ipToInt("212.35.255.255")],
 
-    [ipToInt("212.118.0.0"), ipToInt("212.118.7.255")],
-    [ipToInt("212.118.8.0"), ipToInt("212.118.15.255")],
-
     [ipToInt("213.139.32.0"), ipToInt("213.139.39.255")],
     [ipToInt("213.139.40.0"), ipToInt("213.139.47.255")],
     [ipToInt("213.139.48.0"), ipToInt("213.139.55.255")],
@@ -241,9 +227,7 @@ function FindProxyForURL(url, host) {
     let low = 0, high = JO_IP_RANGES.length - 1;
     while (low <= high) {
       const mid = (low + high) >> 1;
-      const range = JO_IP_RANGES[mid];
-      if (!range) break;
-      const s = range[0], e = range[1];
+      const [s, e] = JO_IP_RANGES[mid];
       if (ipInt < s) { high = mid - 1; continue; }
       if (ipInt > e) { low  = mid + 1; continue; }
       return true;
