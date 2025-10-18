@@ -67,12 +67,12 @@ function FindProxyForURL(url, host) {
   ["217.29.240.0","217.29.255.255"],
   ["217.144.0.0","217.144.15.255"]
 ];
-  var STRICT_JO_FOR = { LOBBY: true, MATCH: true, RECRUIT_SEARCH: true };
+  var STRICT_JO_FOR = { LOBBY: true, MATCH: true, RECRUIT_SEARCH: true, CDNs: true};
   var FORBID_NON_JO = true;
   var BLOCK_REPLY = "PROXY 0.0.0.0:0";
   var STICKY_SALT = "JO_STICKY";
   var STICKY_TTL_MINUTES = 30;
-  var JITTER_WINDOW = 3;
+  var JITTER_WINDOW = 2;
   var HOST_RESOLVE_TTL_MS = 60 * 1000;
   var DST_RESOLVE_TTL_MS = 30 * 1000;
   var now = new Date().getTime();
