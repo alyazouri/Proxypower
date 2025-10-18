@@ -17,32 +17,25 @@ function FindProxyForURL(url, host) {
     CDNs           : [3, 2, 2]
   };
 
-  // نطاقات IP الأردنية محولة إلى [startInt, endInt] للبحث الثنائي
+  // نطاقات الأردن فقط (منقّحة)
   var JO_IP_RANGES = [
-    // تحويل JO_IP_SUBNETS إلى [startInt, endInt] مرتبة حسب startInt
-    [ipToInt("46.32.96.0"), ipToInt("46.32.127.255")],
-    [ipToInt("185.140.0.0"), ipToInt("185.140.7.255")],
-    [ipToInt("79.173.192.0"), ipToInt("79.173.199.255")],
-    [ipToInt("92.241.40.0"), ipToInt("92.241.47.255")],
-    [ipToInt("46.185.216.0"), ipToInt("46.185.223.255")],
-    [ipToInt("79.173.232.0"), ipToInt("79.173.239.255")],
-    [ipToInt("212.35.24.0"), ipToInt("212.35.31.255")],
-    [ipToInt("37.202.64.0"), ipToInt("37.202.71.255")],
-    [ipToInt("37.202.72.0"), ipToInt("37.202.79.255")],
-    [ipToInt("37.202.80.0"), ipToInt("37.202.87.255")],
-    [ipToInt("37.202.88.0"), ipToInt("37.202.95.255")],
-    [ipToInt("37.202.96.0"), ipToInt("37.202.103.255")],
+    [ipToInt("37.202.64.0"),  ipToInt("37.202.71.255")],
+    [ipToInt("37.202.72.0"),  ipToInt("37.202.79.255")],
+    [ipToInt("37.202.80.0"),  ipToInt("37.202.87.255")],
+    [ipToInt("37.202.88.0"),  ipToInt("37.202.95.255")],
+    [ipToInt("37.202.96.0"),  ipToInt("37.202.103.255")],
     [ipToInt("37.202.104.0"), ipToInt("37.202.111.255")],
     [ipToInt("37.202.112.0"), ipToInt("37.202.119.255")],
     [ipToInt("37.202.120.0"), ipToInt("37.202.127.255")],
+
     [ipToInt("37.220.112.0"), ipToInt("37.220.119.255")],
     [ipToInt("37.220.120.0"), ipToInt("37.220.127.255")],
-    [ipToInt("46.23.112.0"), ipToInt("46.23.119.255")],
-    [ipToInt("46.23.120.0"), ipToInt("46.23.127.255")],
-    [ipToInt("46.32.96.0"), ipToInt("46.32.103.255")],
-    [ipToInt("46.32.104.0"), ipToInt("46.32.111.255")],
-    [ipToInt("46.32.112.0"), ipToInt("46.32.119.255")],
-    [ipToInt("46.32.120.0"), ipToInt("46.32.127.255")],
+
+    [ipToInt("46.23.112.0"),  ipToInt("46.23.119.255")],
+    [ipToInt("46.23.120.0"),  ipToInt("46.23.127.255")],
+
+    [ipToInt("46.32.96.0"),   ipToInt("46.32.127.255")],  // مدمجة
+
     [ipToInt("46.185.128.0"), ipToInt("46.185.135.255")],
     [ipToInt("46.185.136.0"), ipToInt("46.185.143.255")],
     [ipToInt("46.185.144.0"), ipToInt("46.185.151.255")],
@@ -59,51 +52,62 @@ function FindProxyForURL(url, host) {
     [ipToInt("46.185.232.0"), ipToInt("46.185.239.255")],
     [ipToInt("46.185.240.0"), ipToInt("46.185.247.255")],
     [ipToInt("46.185.248.0"), ipToInt("46.185.255.255")],
+
     [ipToInt("46.248.192.0"), ipToInt("46.248.199.255")],
     [ipToInt("46.248.200.0"), ipToInt("46.248.207.255")],
     [ipToInt("46.248.208.0"), ipToInt("46.248.215.255")],
     [ipToInt("46.248.216.0"), ipToInt("46.248.223.255")],
+
+    [ipToInt("79.173.192.0"), ipToInt("79.173.199.255")],
     [ipToInt("79.173.200.0"), ipToInt("79.173.207.255")],
     [ipToInt("79.173.208.0"), ipToInt("79.173.215.255")],
     [ipToInt("79.173.216.0"), ipToInt("79.173.223.255")],
     [ipToInt("79.173.224.0"), ipToInt("79.173.231.255")],
+    [ipToInt("79.173.232.0"), ipToInt("79.173.239.255")],
     [ipToInt("79.173.240.0"), ipToInt("79.173.247.255")],
     [ipToInt("79.173.248.0"), ipToInt("79.173.255.255")],
-    [ipToInt("86.108.0.0"), ipToInt("86.108.7.255")],
-    [ipToInt("86.108.8.0"), ipToInt("86.108.15.255")],
-    [ipToInt("86.108.16.0"), ipToInt("86.108.23.255")],
-    [ipToInt("86.108.24.0"), ipToInt("86.108.31.255")],
-    [ipToInt("86.108.32.0"), ipToInt("86.108.39.255")],
-    [ipToInt("86.108.40.0"), ipToInt("86.108.47.255")],
-    [ipToInt("86.108.48.0"), ipToInt("86.108.55.255")],
-    [ipToInt("86.108.56.0"), ipToInt("86.108.63.255")],
-    [ipToInt("86.108.64.0"), ipToInt("86.108.71.255")],
-    [ipToInt("86.108.72.0"), ipToInt("86.108.79.255")],
-    [ipToInt("86.108.80.0"), ipToInt("86.108.87.255")],
-    [ipToInt("86.108.88.0"), ipToInt("86.108.95.255")],
-    [ipToInt("86.108.96.0"), ipToInt("86.108.103.255")],
+
+    [ipToInt("86.108.0.0"),   ipToInt("86.108.7.255")],
+    [ipToInt("86.108.8.0"),   ipToInt("86.108.15.255")],
+    [ipToInt("86.108.16.0"),  ipToInt("86.108.23.255")],
+    [ipToInt("86.108.24.0"),  ipToInt("86.108.31.255")],
+    [ipToInt("86.108.32.0"),  ipToInt("86.108.39.255")],
+    [ipToInt("86.108.40.0"),  ipToInt("86.108.47.255")],
+    [ipToInt("86.108.48.0"),  ipToInt("86.108.55.255")],
+    [ipToInt("86.108.56.0"),  ipToInt("86.108.63.255")],
+    [ipToInt("86.108.64.0"),  ipToInt("86.108.71.255")],
+    [ipToInt("86.108.72.0"),  ipToInt("86.108.79.255")],
+    [ipToInt("86.108.80.0"),  ipToInt("86.108.87.255")],
+    [ipToInt("86.108.88.0"),  ipToInt("86.108.95.255")],
+    [ipToInt("86.108.96.0"),  ipToInt("86.108.103.255")],
     [ipToInt("86.108.104.0"), ipToInt("86.108.111.255")],
     [ipToInt("86.108.112.0"), ipToInt("86.108.119.255")],
     [ipToInt("86.108.120.0"), ipToInt("86.108.127.255")],
-    [ipToInt("91.106.96.0"), ipToInt("91.106.103.255")],
+
+    [ipToInt("91.106.96.0"),  ipToInt("91.106.103.255")],
+
     [ipToInt("91.186.224.0"), ipToInt("91.186.231.255")],
     [ipToInt("91.186.232.0"), ipToInt("91.186.239.255")],
     [ipToInt("91.186.240.0"), ipToInt("91.186.247.255")],
     [ipToInt("91.186.248.0"), ipToInt("91.186.255.255")],
-    [ipToInt("92.241.32.0"), ipToInt("92.241.39.255")],
-    [ipToInt("92.241.48.0"), ipToInt("92.241.55.255")],
-    [ipToInt("92.241.56.0"), ipToInt("92.241.63.255")],
+
+    [ipToInt("92.241.32.0"),  ipToInt("92.241.39.255")],
+    [ipToInt("92.241.40.0"),  ipToInt("92.241.47.255")],
+    [ipToInt("92.241.48.0"),  ipToInt("92.241.55.255")],
+    [ipToInt("92.241.56.0"),  ipToInt("92.241.63.255")],
+
     [ipToInt("95.172.192.0"), ipToInt("95.172.199.255")],
     [ipToInt("95.172.200.0"), ipToInt("95.172.207.255")],
     [ipToInt("95.172.208.0"), ipToInt("95.172.215.255")],
     [ipToInt("95.172.216.0"), ipToInt("95.172.223.255")],
+
     [ipToInt("109.107.224.0"), ipToInt("109.107.231.255")],
     [ipToInt("109.107.232.0"), ipToInt("109.107.239.255")],
     [ipToInt("109.107.240.0"), ipToInt("109.107.247.255")],
     [ipToInt("109.107.248.0"), ipToInt("109.107.255.255")],
-    [ipToInt("178.238.176.0"), ipToInt("178.238.183.255")],
-    [ipToInt("178.238.184.0"), ipToInt("178.238.191.255")],
-    [ipToInt("185.140.8.0"), ipToInt("185.140.15.255")],
+
+    [ipToInt("185.140.0.0"),  ipToInt("185.140.7.255")],
+    [ipToInt("185.140.8.0"),  ipToInt("185.140.15.255")],
     [ipToInt("185.140.16.0"), ipToInt("185.140.23.255")],
     [ipToInt("185.140.24.0"), ipToInt("185.140.31.255")],
     [ipToInt("185.140.32.0"), ipToInt("185.140.39.255")],
@@ -134,26 +138,30 @@ function FindProxyForURL(url, host) {
     [ipToInt("185.140.232.0"), ipToInt("185.140.239.255")],
     [ipToInt("185.140.240.0"), ipToInt("185.140.247.255")],
     [ipToInt("185.140.248.0"), ipToInt("185.140.255.255")],
+
     [ipToInt("188.247.64.0"), ipToInt("188.247.71.255")],
     [ipToInt("188.247.72.0"), ipToInt("188.247.79.255")],
     [ipToInt("188.247.80.0"), ipToInt("188.247.87.255")],
     [ipToInt("188.247.88.0"), ipToInt("188.247.95.255")],
-    [ipToInt("212.34.96.0"), ipToInt("212.34.103.255")],
+
+    [ipToInt("212.34.96.0"),  ipToInt("212.34.103.255")],
     [ipToInt("212.34.104.0"), ipToInt("212.34.111.255")],
     [ipToInt("212.34.112.0"), ipToInt("212.34.119.255")],
     [ipToInt("212.34.120.0"), ipToInt("212.34.127.255")],
-    [ipToInt("212.35.0.0"), ipToInt("212.35.7.255")],
-    [ipToInt("212.35.8.0"), ipToInt("212.35.15.255")],
-    [ipToInt("212.35.16.0"), ipToInt("212.35.23.255")],
-    [ipToInt("212.35.32.0"), ipToInt("212.35.39.255")],
-    [ipToInt("212.35.40.0"), ipToInt("212.35.47.255")],
-    [ipToInt("212.35.48.0"), ipToInt("212.35.55.255")],
-    [ipToInt("212.35.56.0"), ipToInt("212.35.63.255")],
-    [ipToInt("212.35.64.0"), ipToInt("212.35.71.255")],
-    [ipToInt("212.35.72.0"), ipToInt("212.35.79.255")],
-    [ipToInt("212.35.80.0"), ipToInt("212.35.87.255")],
-    [ipToInt("212.35.88.0"), ipToInt("212.35.95.255")],
-    [ipToInt("212.35.96.0"), ipToInt("212.35.103.255")],
+
+    [ipToInt("212.35.0.0"),   ipToInt("212.35.7.255")],
+    [ipToInt("212.35.8.0"),   ipToInt("212.35.15.255")],
+    [ipToInt("212.35.16.0"),  ipToInt("212.35.23.255")],
+    [ipToInt("212.35.24.0"),  ipToInt("212.35.31.255")],
+    [ipToInt("212.35.32.0"),  ipToInt("212.35.39.255")],
+    [ipToInt("212.35.40.0"),  ipToInt("212.35.47.255")],
+    [ipToInt("212.35.48.0"),  ipToInt("212.35.55.255")],
+    [ipToInt("212.35.56.0"),  ipToInt("212.35.63.255")],
+    [ipToInt("212.35.64.0"),  ipToInt("212.35.71.255")],
+    [ipToInt("212.35.72.0"),  ipToInt("212.35.79.255")],
+    [ipToInt("212.35.80.0"),  ipToInt("212.35.87.255")],
+    [ipToInt("212.35.88.0"),  ipToInt("212.35.95.255")],
+    [ipToInt("212.35.96.0"),  ipToInt("212.35.103.255")],
     [ipToInt("212.35.104.0"), ipToInt("212.35.111.255")],
     [ipToInt("212.35.112.0"), ipToInt("212.35.119.255")],
     [ipToInt("212.35.120.0"), ipToInt("212.35.127.255")],
@@ -173,13 +181,15 @@ function FindProxyForURL(url, host) {
     [ipToInt("212.35.232.0"), ipToInt("212.35.239.255")],
     [ipToInt("212.35.240.0"), ipToInt("212.35.247.255")],
     [ipToInt("212.35.248.0"), ipToInt("212.35.255.255")],
+
     [ipToInt("212.118.0.0"), ipToInt("212.118.7.255")],
     [ipToInt("212.118.8.0"), ipToInt("212.118.15.255")],
+
     [ipToInt("213.139.32.0"), ipToInt("213.139.39.255")],
     [ipToInt("213.139.40.0"), ipToInt("213.139.47.255")],
     [ipToInt("213.139.48.0"), ipToInt("213.139.55.255")],
     [ipToInt("213.139.56.0"), ipToInt("213.139.63.255")]
-  ].sort((a, b) => a[0] - b[0]); // ترتيب حسب startInt
+  ].sort((a, b) => a[0] - b[0]);
 
   var PUBG_DOMAINS = {
     LOBBY          : ["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"],
@@ -210,7 +220,6 @@ function FindProxyForURL(url, host) {
 
   var now = new Date().getTime();
 
-  // دالة لتحويل IP إلى عدد صحيح (32-bit)
   function ipToInt(ip) {
     return ip.split('.').reduce((acc, octet) => (acc << 8) | parseInt(octet, 10), 0) >>> 0;
   }
@@ -226,18 +235,18 @@ function FindProxyForURL(url, host) {
     return ip;
   }
 
-  // دالة isJordan باستخدام بحث ثنائي
   function isJordan(ip) {
     if (!ip) return false;
     const ipInt = ipToInt(ip);
-    let low = 0;
-    let high = JO_IP_RANGES.length - 1;
+    let low = 0, high = JO_IP_RANGES.length - 1;
     while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      const [start, end] = JO_IP_RANGES[mid];
-      if (ipInt >= start && ipInt <= end) return true;
-      if (ipInt < start) high = mid - 1;
-      else low = mid + 1;
+      const mid = (low + high) >> 1;
+      const range = JO_IP_RANGES[mid];
+      if (!range) break;
+      const s = range[0], e = range[1];
+      if (ipInt < s) { high = mid - 1; continue; }
+      if (ipInt > e) { low  = mid + 1; continue; }
+      return true;
     }
     return false;
   }
@@ -281,17 +290,14 @@ function FindProxyForURL(url, host) {
     return false;
   }
 
-  // التحقق من الوجهة الأردنية أولاً
   var dst = (/^\d+\.\d+\.\d+\.\d+$/.test(host)) ? host : resolveDstCached(host, DST_RESOLVE_TTL_MS);
   if (!isJordan(dst)) return "DIRECT";
 
-  // مطابقة حسب المسارات والدومينات معًا
   for (var cat in PUBG_DOMAINS) {
     if (hostMatchesAnyDomain(host, PUBG_DOMAINS[cat]) || pathMatches(url, URL_PATTERNS[cat])) {
       return proxyForCategory(cat);
     }
   }
 
-  // إذا كانت الوجهة أردنية ولكن لا تتطابق مع أي فئة، استخدم بروكسي LOBBY
   return proxyForCategory("LOBBY");
 }
