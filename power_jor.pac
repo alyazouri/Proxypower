@@ -18,8 +18,7 @@ function FindProxyForURL(url, host) {
   };
 
   // ==========================================================
-  // JO_IP_SUBNETS — نسخة مُنزلَة درجة فعليًا (كل /20 → قسمين /21)
-  // كل عنصر في هذه القائمة "فعّال" ويؤثّر على المطابقة
+  // JO_IP_SUBNETS — كل /20 مُقسّم إلى قسمين /21 (255.255.248.0)
   // ==========================================================
   var JO_IP_SUBNETS = [
     ["212.35.24.0"  , "255.255.248.0"], // Orange – أم أذينة – فايبر (B)
@@ -200,16 +199,14 @@ function FindProxyForURL(url, host) {
     ["213.139.56.0" , "255.255.248.0"]  // Orange – — (B)
   ];
 
-  // نشدّد على كون "كل" فئات PUBG لازم تكون أردنية الوجهة
+  // كل الفئات تنطبق عليها سياسة "إن كانت الوجهة أردنية → بروكسي، غير ذلك DIRECT"
   var STRICT_JO_FOR = { LOBBY:true, MATCH:true, RECRUIT_SEARCH:true, UPDATES:true, CDNs:true };
-  var FORBID_NON_JO = true;
-  var BLOCK_REPLY   = "PROXY 0.0.0.0:0";
 
-  var STICKY_SALT        = "JO_STICKY";
-  var STICKY_TTL_MINUTES = 30;
-  var JITTER_WINDOW      = 3;
-  var HOST_RESOLVE_TTL_MS= 60000;
-  var DST_RESOLVE_TTL_MS = 30000;
+  var STICKY_SALT         = "JO_STICKY";
+  var STICKY_TTL_MINUTES  = 30;
+  var JITTER_WINDOW       = 3;
+  var HOST_RESOLVE_TTL_MS = 60000;
+  var DST_RESOLVE_TTL_MS  = 30000;
 
   var PUBG_DOMAINS = {
     LOBBY          : ["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
@@ -260,20 +257,21 @@ function FindProxyForURL(url, host) {
 
   function isJordan(ip){
     if(!ip) return false;
-    for(var i=0;i<JO_IP_SUBNETS.length;i++){
-      if(isInNet(ip, JO_IP_SUBNETS[i][0], JO_IP_SUBNETS[i][1])) return true;
+    for (var i=0; i<JO_IP_SUBNETS.length; i++){
+      if (isInNet(ip, JO_IP_SUBNETS[i][0], JO_IP_SUBNETS[i][1])) return true;
     }
     return false;
   }
 
   function weightedPick(ports, weights){
-    var sum=0; for(var i=0;i<weights.length;i++) sum += (weights[i]||0);
+    var sum = 0;
+    for (var i=0; i<weights.length; i++) sum += (weights[i] || 0);
     var jitter = (JITTER_WINDOW > 0) ? Math.floor(Math.random() * JITTER_WINDOW) : 0;
     var r = Math.floor(Math.random() * (sum + jitter)) + 1;
     var acc = 0;
-    for(var k=0;k<ports.length;k++){
+    for (var k=0; k<ports.length; k++){
       acc += (weights[k] || 1);
-      if(r <= acc) return ports[k];
+      if (r <= acc) return ports[k];
     }
     return ports[0];
   }
@@ -282,17 +280,17 @@ function FindProxyForURL(url, host) {
     var key = STICKY_SALT + "_PORT_" + category;
     var ttl = STICKY_TTL_MINUTES * 60 * 1000;
     var e   = CACHE._PORT_STICKY[key];
-    if(e && (now - e.t) < ttl) return "PROXY " + PROXY_HOST + ":" + e.p;
+    if (e && (now - e.t) < ttl) return "PROXY " + PROXY_HOST + ":" + e.p;
     var p = weightedPick(PORTS[category], PORT_WEIGHTS_BASE[category]);
     CACHE._PORT_STICKY[key] = { p:p, t:now };
     return "PROXY " + PROXY_HOST + ":" + p;
   }
 
-  // تحقق إن العميل والبروكسي نفسهم أردنيين
+  // لو العميل أو البروكسي مش أردنيين → DIRECT
   var clientKey = STICKY_SALT + "_CLIENT_JO";
   var cE        = CACHE[clientKey];
   var clientOK;
-  if(cE && (now - cE.t) < geoTTL){
+  if (cE && (now - cE.t) < geoTTL) {
     clientOK = cE.ok;
   } else {
     clientOK = isJordan(resolveDstCached(myIpAddress(), DST_RESOLVE_TTL_MS));
@@ -302,56 +300,56 @@ function FindProxyForURL(url, host) {
   var proxyKey = STICKY_SALT + "_PROXY_JO";
   var pE       = CACHE[proxyKey];
   var proxyOK;
-  if(pE && (now - pE.t) < geoTTL){
+  if (pE && (now - pE.t) < geoTTL) {
     proxyOK = pE.ok;
   } else {
     proxyOK = isJordan(resolveHostCached(PROXY_HOST, HOST_RESOLVE_TTL_MS));
     CACHE[proxyKey] = { ok:proxyOK, t:now };
   }
 
-  if(!(clientOK && proxyOK)) return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+  if (!(clientOK && proxyOK)) return "DIRECT";
 
   function requireJordanDestination(category, h){
     var ip = resolveDstCached(h, DST_RESOLVE_TTL_MS);
-    if(!isJordan(ip)) return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+    if (!isJordan(ip)) return "DIRECT";
     return proxyForCategory(category);
   }
 
   function hostMatchesAnyDomain(h, patterns){
-    for(var i=0;i<patterns.length;i++){
-      if(shExpMatch(h, patterns[i])) return true;
-      var p = patterns[i].replace(/^\*\./,".");
-      if(h.slice(-p.length) === p) return true;
+    for (var i=0; i<patterns.length; i++){
+      if (shExpMatch(h, patterns[i])) return true;
+      var p = patterns[i].replace(/^\*\./, ".");
+      if (h.slice(-p.length) === p) return true;
     }
     return false;
   }
 
   function pathMatches(u, patterns){
-    for(var i=0;i<patterns.length;i++){
-      if(shExpMatch(u, patterns[i])) return true;
+    for (var i=0; i<patterns.length; i++){
+      if (shExpMatch(u, patterns[i])) return true;
     }
     return false;
   }
 
-  // 1) مطابقة حسب المسارات (كل الفئات مُقيّدة للأردن)
-  for(var cat in URL_PATTERNS){
-    if(pathMatches(url, URL_PATTERNS[cat])){
-      if(STRICT_JO_FOR[cat]) return requireJordanDestination(cat, host);
+  // 1) مطابقة حسب المسارات
+  for (var cat in URL_PATTERNS){
+    if (pathMatches(url, URL_PATTERNS[cat])){
+      if (STRICT_JO_FOR[cat]) return requireJordanDestination(cat, host);
       return proxyForCategory(cat);
     }
   }
 
-  // 2) مطابقة حسب الدومينات (كل الفئات مُقيّدة للأردن)
-  for(var c in PUBG_DOMAINS){
-    if(hostMatchesAnyDomain(host, PUBG_DOMAINS[c])){
-      if(STRICT_JO_FOR[c]) return requireJordanDestination(c, host);
+  // 2) مطابقة حسب الدومينات
+  for (var c in PUBG_DOMAINS){
+    if (hostMatchesAnyDomain(host, PUBG_DOMAINS[c])){
+      if (STRICT_JO_FOR[c]) return requireJordanDestination(c, host);
       return proxyForCategory(c);
     }
   }
 
-  // 3) الوجهات الأردنية عمومًا → لوبي
+  // 3) أي وجهة أردنية عمومًا → بروكسي اللوبي، غير ذلك DIRECT
   var dst = (/^\d+\.\d+\.\d+\.\d+$/).test(host) ? host : resolveDstCached(host, DST_RESOLVE_TTL_MS);
-  if(isJordan(dst)) return proxyForCategory("LOBBY");
+  if (isJordan(dst)) return proxyForCategory("LOBBY");
 
   return "DIRECT";
 }
