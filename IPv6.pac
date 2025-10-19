@@ -26,29 +26,11 @@ function FindProxyForURL(url, host) {
 
   // نطاقات IPv6 الأردنية (من-إلى)
   var JO_V6_48_RANGES = [
-    ["2a00:18d8:0:0000:0000:0000:0000:0000","2a00:18d8:0:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:1:0000:0000:0000:0000:0000","2a00:18d8:1:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:2:0000:0000:0000:0000:0000","2a00:18d8:2:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:3:0000:0000:0000:0000:0000","2a00:18d8:3:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:4:0000:0000:0000:0000:0000","2a00:18d8:4:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:5:0000:0000:0000:0000:0000","2a00:18d8:5:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:6:0000:0000:0000:0000:0000","2a00:18d8:6:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:7:0000:0000:0000:0000:0000","2a00:18d8:7:ffff:ffff:ffff:ffff:ffff"]
+    ["2a00:18d8:0:0:0:0:0:0","2a00:18d8:0:3ff:ffff:ffff:ffff:ffff"]
   ];
 
   var JO_V6_64_AREAS = {
-    "Khalda": [
-      ["2a00:18d8:1:100:0000:0000:0000:0000","2a00:18d8:1:100:ffff:ffff:ffff:ffff"],
-      ["2a00:18d8:1:101:0000:0000:0000:0000","2a00:18d8:1:101:ffff:ffff:ffff:ffff"]
-    ],
-    "Dabouq": [
-      ["2a00:18d8:2:200:0000:0000:0000:0000","2a00:18d8:2:200:ffff:ffff:ffff:ffff"],
-      ["2a00:18d8:2:201:0000:0000:0000:0000","2a00:18d8:2:201:ffff:ffff:ffff:ffff"]
-    ],
-    "Madaba": [
-      ["2a00:18d8:3:300:0000:0000:0000:0000","2a00:18d8:3:300:ffff:ffff:ffff:ffff"],
-      ["2a00:18d8:3:301:0000:0000:0000:0000","2a00:18d8:3:301:ffff:ffff:ffff:ffff"]
-    ]
+  ["2a00:18d8:0:0:0:0:0:0","2a00:18d8:0:3ff:ffff:ffff:ffff:ffff"]
   };
 
   // PUBG نطاقات ودوال مطابقة
