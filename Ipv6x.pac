@@ -36,12 +36,7 @@ var RECRUIT_PORTS = {10010:true,11000:true};
 
 // رينجات IPv6 الأردنية
 var JO_V6_RANGES = [
-  {
-    from_prefix: "2a00:18d8:150::/64",
-    to_prefix:   "2a00:18d8:150:88c::/64",
-    from_address:"2a00:18d8:0150:0000:0000:0000:0000:0000",
-    to_address:  "2a00:18d8:0150:088c:ffff:ffff:ffff:ffff"
-  }
+  ["2a00:18d8:0001:0000:0000:0000:0000:0000", "2a00:18d8:0001:3fff:ffff:ffff:ffff:ffff"]
 ];
 
 // ===== Helpers =====
