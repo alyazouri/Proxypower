@@ -1,59 +1,140 @@
-function FindProxyForURL(url, host) {
-var PROXY_HOSTS=["91.106.109.12"];
-var PROXY_CHAIN=function(h){return["HTTPS "+h+":8443","PROXY "+h+":8080","SOCKS5 "+h+":1080","SOCKS "+h+":1080"].join("; ");};
-var BLACKHOLE="PROXY 0.0.0.0:9";
-var PUBG_DOMAINS=[
-".proximabeta.com",
-".igamecj.com",
-".tencentgames.com",
-".tencent.com",
-".pubgmobile.com",
-".pubgmobile.net",
-".gcloud.qq.com",
-".cdn.pubgmobile.com",
-".pubgmobilecdn.com",
-".awsstatic.com"
+// jo_pubg_v6_ranges_ports_slim.pac
+// هدف: تقليل المنافذ المسموحة DIRECT على رنجات الأردن، مع إبقاء مباريات PUBG أساسية فقط.
+// - PUBG domains => عبر البروكسي الأردني (IPv4/IPv6) مع sticky rotation 5000..5002.
+// - أي هدف IPv6 داخل JO_V6_RANGES وعلى المنافذ المسموحة أدناه => DIRECT.
+// - كل الباقي => عبر البروكسي الأردني.
+// ملاحظة: PAC لا يوجّه UDP؛ التأثير أساسًا على HTTP/HTTPS.
+
+var PROXY_IPV4 = "91.106.109.12";
+var PROXY_IPV6 = "64:ff9b::5b6a:6d0c";
+var BASE_PORT  = 5000;
+var PORT_SPAN  = 3;     // 5000..5002 (تقليل)
+var STICKY_MINUTES = 30;
+
+// دومينات PUBG (ويب/خدمات)
+var PUBG_DOMAINS = [
+  "*.proximabeta.com",
+  "*.igamecj.com",
+  "*.tencentgames.com",
+  "*.tencent.com",
+  "*.pubgmobile.com",
+  "*.pubgmobile.net",
+  "*.gcloud.qq.com",
+  "*.cdn.pubgmobile.com",
+  "*.dl.pubgmobile.com",
+  "*.app.pubgmobile.com",
+  "*.unity3d.com",
+  "*.akamaized.net"
 ];
-var YT_DOMAINS=[
-".youtube.com",
-".googlevideo.com",
-".ytimg.com",
-".yt.be"
+
+// 👇 منافذ قليلة ومركّزة
+var PORTS = {
+  LOBBY:   [443],
+  MATCH:   [20001, 20002, 20003],
+  RECRUIT: [10010, 11000],
+  UPDATES: [443],
+  CDNs:    [443]
+};
+
+// دمج المنافذ لمجموعة واحدة مسموحة
+var ALLOWED_PORTS = (function(){
+  var s = {};
+  for (var k in PORTS) for (var i=0;i<PORTS[k].length;i++) s[PORTS[k][i]] = true;
+  return s;
+})();
+
+// رنجات الأردن (from → to)
+var JO_V6_RANGES = [
+  {
+    from_prefix: "2a00:18d8:150::/64",
+    to_prefix:   "2a00:18d8:150:88c::/64",
+    from_address:"2a00:18d8:0150:0000:0000:0000:0000:0000",
+    to_address:  "2a00:18d8:0150:088c:ffff:ffff:ffff:ffff"
+  },
+  {
+    from_prefix: "2a00:18d8:150:938::/64",
+    to_prefix:   "2a00:18d8:150:938::/64",
+    from_address:"2a00:18d8:0150:0938:0000:0000:0000:0000",
+    to_address:  "2a00:18d8:0150:0938:ffff:ffff:ffff:ffff"
+  }
 ];
-var JO_V6=[
-["2a00:18d8:150::","2a00:18d8:150:88c:ffff:ffff:ffff:ffff"],
-["2a00:18d8:150:938::","2a00:18d8:150:938:ffff:ffff:ffff:ffff"]
-];
-var PORTS_TCP=[10012,17000,17500,18081,20000,20001,20002,20371,80,443];
-var PORTS_UDP=[8011,9030,10010,10013,10039,10096,10491,10612,11455,12235,13748,13894,13972,17000,17500,20000,20001,20002];
-var PORT_RANGES=[[12070,12460],[41182,41192]];
-function isIPv6(h){return h.indexOf(":")!==-1;}
-function exp6(s){s=s.toLowerCase();if(s.charAt(0)==="["&&s.charAt(s.length-1)==="]")s=s.slice(1,-1);var p=s.split("::"),a=p[0]?p[0].split(":"):[],b=(p.length>1&&p[1])?p[1].split(":"):[];var m=8-(a.length+b.length),mid=[];for(var i=0;i<m;i++)mid.push("0");var f=a.concat(mid,b);for(var j=0;j<8;j++)f[j]=("0000"+(f[j]||"0")).slice(-4);return f;}
-function cmp6(a,b){for(var i=0;i<8;i++){var da=parseInt(a[i],16),db=parseInt(b[i],16);if(da<db)return-1;if(da>db)return 1;}return 0;}
-function inV6(h,s,e){var A=exp6(h),S=exp6(s),E=exp6(e);return cmp6(A,S)>=0&&cmp6(A,E)<=0;}
-function anyMatch(h,arr){for(var i=0;i<arr.length;i++){if(dnsDomainIs(h,arr[i]))return true;}return false;}
-function hash32(str){var h=2166136261>>>0;for(var i=0;i<str.length;i++){h^=str.charCodeAt(i);h=(h*16777619)>>>0;}return h>>>0;}
-function choose(arr,key){return arr[hash32(key)%arr.length];}
-function getScheme(u){var m=u.match(/^([a-z]+):\/\//i);return m?m[1].toLowerCase():"";}
-function getPort(u){var p=parseInt(u.substring(u.lastIndexOf(":")+1))||0;if(p)return p;var s=getScheme(u);if(s==="https")return 443;if(s==="http")return 80;return 0;}
-function inRanges(p,rs){for(var i=0;i<rs.length;i++){if(p>=rs[i][0]&&p<=rs[i][1])return true;}return false;}
-function isPubgPort(p){if(PORTS_TCP.indexOf(p)!==-1||PORTS_UDP.indexOf(p)!==-1)return true;return inRanges(p,PORT_RANGES);}
-var h=(host||"").toLowerCase();
-if(anyMatch(h,YT_DOMAINS))return"DIRECT";
-var ph=choose(PROXY_HOSTS,h||host);
-function allowOnlyIfJOv6(dst){
-if(isIPv6(dst)){for(var i=0;i<JO_V6.length;i++){if(inV6(dst,JO_V6[i][0],JO_V6[i][1]))return PROXY_CHAIN(ph);}return BLACKHOLE;}
-var r=dnsResolve(dst);
-if(r&&r.indexOf(":")===-1)return BLACKHOLE;
-return BLACKHOLE;
+
+// ===== Helpers =====
+function padLeft(s,len){ return ("0000"+s).substr(-len); }
+function expandIPv6ToHex(ip){
+  if(!ip||ip.indexOf(':')===-1) return null;
+  var parts=ip.split('::'),L=[],R=[];
+  if(parts.length===1){ L=ip.split(':'); }
+  else { L=(parts[0]==='')?[]:parts[0].split(':'); R=(parts[1]==='')?[]:parts[1].split(':'); }
+  for(var i=0;i<L.length;i++) L[i]=padLeft(L[i],4);
+  for(var j=0;j<R.length;j++) R[j]=padLeft(R[j],4);
+  var miss=8-(L.length+R.length),mid=[]; for(var k=0;k<miss;k++) mid.push("0000");
+  var full=L.concat(mid).concat(R); if(full.length!==8) return null;
+  return full.join('').toLowerCase();
 }
-if(isIPv6(host)){}
-else{
-var rIP=dnsResolve(h);
-if(rIP&&rIP.indexOf(":")===-1){}
+function ipv6HexInRange(expHex, fromHex, toHex){
+  return !!(expHex && fromHex && toHex) && (expHex >= fromHex && expHex <= toHex);
 }
-if(anyMatch(h,PUBG_DOMAINS))return allowOnlyIfJOv6(host);
-var p=getPort(url);
-if(isPubgPort(p))return allowOnlyIfJOv6(host);
-return BLACKHOLE;
+function resolveToIPv6(host){
+  if(host.indexOf(':')!==-1) return host;
+  try{ var r=dnsResolve(host); if(r && r.indexOf(':')!==-1) return r; }catch(e){}
+  return null;
+}
+function isDomainMatch(host, pattern){
+  var h=host.toLowerCase(), p=pattern.toLowerCase();
+  if(p.indexOf('*.')===0){ var base=p.substr(2); return (h===base||h.endsWith('.'+base)); }
+  return h===p;
+}
+function isPUBGDomain(host){
+  for(var i=0;i<PUBG_DOMAINS.length;i++) if(isDomainMatch(host,PUBG_DOMAINS[i])) return true;
+  return false;
+}
+function djb2(str){
+  var h=5381; for(var i=0;i<str.length;i++){ h=((h<<5)+h)+str.charCodeAt(i); h&=0xFFFFFFFF; }
+  return Math.abs(h);
+}
+function chooseStickyPort(){
+  var clientIP="unknown"; try{ clientIP=myIpAddress(); }catch(e){}
+  var windowIdx=Math.floor((new Date()).getTime()/(STICKY_MINUTES*60*1000));
+  var n=djb2(clientIP+"|"+windowIdx)%PORT_SPAN;
+  return BASE_PORT+n; // 5000..5002
+}
+function proxyList(){
+  var p=chooseStickyPort();
+  return "PROXY " + PROXY_IPV4 + ":" + p + "; PROXY [" + PROXY_IPV6 + "]:" + p;
+}
+function hostIsInJoRangesByIPv6(host){
+  var v6=resolveToIPv6(host);
+  if(!v6||v6.indexOf(':')===-1) return false;
+  var hex=expandIPv6ToHex(v6); if(!hex) return false;
+  for(var i=0;i<JO_V6_RANGES.length;i++){
+    var r=JO_V6_RANGES[i];
+    var fromHex=r.from_address.replace(/:/g,'').toLowerCase();
+    var toHex  =r.to_address.replace(/:/g,'').toLowerCase();
+    if(ipv6HexInRange(hex,fromHex,toHex)) return true;
+  }
+  return false;
+}
+
+// ===== Main =====
+function FindProxyForURL(url, host){
+  if(isPlainHostName(host)||host==="localhost") return "DIRECT";
+// دومينات ببجي عبر البروكسي الأردني
+  if(isPUBGDomain(host)) return proxyList();
+
+  // رنجات الأردن + منافذ قليلة ومركزة => DIRECT
+  var port = (function(u){
+    var m=u.match(/^[a-z0-9+.-]+:\\/\\/[^\\/]*:(\\d+)(?:\\/|$)/i);
+    if(m&&m[1]) return parseInt(m[1],10);
+    if(u.indexOf("https:")===0) return 443;
+    if(u.indexOf("http:")===0)  return 80;
+    return -1;
+  })(url);
+
+  try{
+    if(hostIsInJoRangesByIPv6(host) && port!==-1 && ALLOWED_PORTS[port]) return "DIRECT";
+  }catch(e){}
+
+  // غير ذلك => بروكسي أردني
+  return proxyList();
 }
