@@ -1,17 +1,20 @@
-// jo_pubg_v6_ranges_ports_slim.pac
-// هدف: تقليل المنافذ المسموحة DIRECT على رنجات الأردن، مع إبقاء مباريات PUBG أساسية فقط.
-// - PUBG domains => عبر البروكسي الأردني (IPv4/IPv6) مع sticky rotation 5000..5002.
-// - أي هدف IPv6 داخل JO_V6_RANGES وعلى المنافذ المسموحة أدناه => DIRECT.
-// - كل الباقي => عبر البروكسي الأردني.
-// ملاحظة: PAC لا يوجّه UDP؛ التأثير أساسًا على HTTP/HTTPS.
+// jo_pubg_autoping_dynamic.pac
+// بروكسي: 91.106.109.12:1080
+// ميزات:
+// 1) FORCE_JO_PROXY للتبديل السريع لرينجات الأردن بين DIRECT و PROXY
+// 2) Auto-Ping: قياس زمني بسيط باستخدام dnsResolve مع كاش 60s + عتبات 30/60ms
+// 3) دومينات PUBG تختار أسرع مسار تلقائي (بروكسي أو مباشر)
+// 4) منافذ الماتش (20001-20003) + التجنيد (10010,11000) دائماً عبر البروكسي
+// ملاحظة: PAC يوجّه HTTP/HTTPS (TCP). UDP الحقيقي يتطلب SOCKS5-UDP/TUN على الجهاز/الراوتر.
 
-var PROXY_IPV4 = "91.106.109.12";
-var PROXY_IPV6 = "64:ff9b::5b6a:6d0c";
-var BASE_PORT  = 5000;
-var PORT_SPAN  = 3;     // 5000..5002 (تقليل)
-var STICKY_MINUTES = 30;
+var PROXY = "PROXY 91.106.109.12:1080";
 
-// دومينات PUBG (ويب/خدمات)
+// 🔧 بدّل حسب رغبتك:
+// false = رينجات الأردن DIRECT (أداء أفضل) [افتراضي]
+// true  = رينجات الأردن عبر البروكسي (إجبار توحيد مسار/هوية IP)
+var FORCE_JO_PROXY = false;
+
+// دومينات PUBG الأساسية
 var PUBG_DOMAINS = [
   "*.proximabeta.com",
   "*.igamecj.com",
@@ -27,25 +30,24 @@ var PUBG_DOMAINS = [
   "*.akamaized.net"
 ];
 
-// 👇 منافذ قليلة ومركّزة
-var PORTS = {
-  LOBBY:   [443],
-  MATCH:   [20001, 20002, 20003],
-  RECRUIT: [10010, 11000],
-  UPDATES: [443],
-  CDNs:    [443]
-};
+// منافذ الماتش والتجنيد
+var MATCH_PORTS   = {20001:true,20002:true,20003:true};
+var RECRUIT_PORTS = {10010:true,11000:true};
 
-// دمج المنافذ لمجموعة واحدة مسموحة
-var ALLOWED_PORTS = (function(){
-  var s = {};
-  for (var k in PORTS) for (var i=0;i<PORTS[k].length;i++) s[PORTS[k][i]] = true;
-  return s;
-})();
-
-// رنجات الأردن (from → to)
+// رينجات IPv6 الأردنية
 var JO_V6_RANGES = [
-  ["2a00:18d8:150::","2a00:18d8:150:88c::"]
+  {
+    from_prefix: "2a00:18d8:150::/64",
+    to_prefix:   "2a00:18d8:150:88c::/64",
+    from_address:"2a00:18d8:0150:0000:0000:0000:0000:0000",
+    to_address:  "2a00:18d8:0150:088c:ffff:ffff:ffff:ffff"
+  },
+  {
+    from_prefix: "2a00:18d8:150:938::/64",
+    to_prefix:   "2a00:18d8:150:938::/64",
+    from_address:"2a00:18d8:0150:0938:0000:0000:0000:0000",
+    to_address:  "2a00:18d8:0150:0938:ffff:ffff:ffff:ffff"
+  }
 ];
 
 // ===== Helpers =====
@@ -78,52 +80,84 @@ function isPUBGDomain(host){
   for(var i=0;i<PUBG_DOMAINS.length;i++) if(isDomainMatch(host,PUBG_DOMAINS[i])) return true;
   return false;
 }
-function djb2(str){
-  var h=5381; for(var i=0;i<str.length;i++){ h=((h<<5)+h)+str.charCodeAt(i); h&=0xFFFFFFFF; }
-  return Math.abs(h);
+function extractPort(u){
+  var m = u.match(/^[a-z0-9+.-]+:\\/\\/[^\\/]*:(\\d+)(?:\\/|$)/i);
+  if(m && m[1]) return parseInt(m[1],10);
+  if(u.indexOf("https:")===0) return 443;
+  if(u.indexOf("http:")===0)  return 80;
+  return -1;
 }
-function chooseStickyPort(){
-  var clientIP="unknown"; try{ clientIP=myIpAddress(); }catch(e){}
-  var windowIdx=Math.floor((new Date()).getTime()/(STICKY_MINUTES*60*1000));
-  var n=djb2(clientIP+"|"+windowIdx)%PORT_SPAN;
-  return BASE_PORT+n; // 5000..5002
+
+// ===== Auto-Ping Logic (with cache & hysteresis) =====
+var PING_CACHE = { value: "PROXY", ms: 0, ts: 0 }; // value: "PROXY" or "DIRECT"
+var PING_TARGET = "91.106.109.12"; // نقيس استجابة البروكسي الأردني
+var PING_CACHE_TTL_MS = 60000;     // 60 ثانية
+var THRESH_FAST = 30;  // ms: أسرع من هذا => PROXY
+var THRESH_SLOW = 60;  // ms: أبطأ من هذا => DIRECT
+
+function nowMs(){ return (new Date()).getTime(); }
+
+function measureProxyLatencyMs() {
+  var t1 = nowMs();
+  try { dnsResolve(PING_TARGET); } catch(e) {}
+  var t2 = nowMs();
+  var dt = t2 - t1;
+  if (dt < 0) dt = 0;
+  return dt;
 }
-function proxyList(){
-  var p=chooseStickyPort();
-  return "PROXY " + PROXY_IPV4 + ":" + p + "; PROXY [" + PROXY_IPV6 + "]:" + p;
-}
-function hostIsInJoRangesByIPv6(host){
-  var v6=resolveToIPv6(host);
-  if(!v6||v6.indexOf(':')===-1) return false;
-  var hex=expandIPv6ToHex(v6); if(!hex) return false;
-  for(var i=0;i<JO_V6_RANGES.length;i++){
-    var r=JO_V6_RANGES[i];
-    var fromHex=r.from_address.replace(/:/g,'').toLowerCase();
-    var toHex  =r.to_address.replace(/:/g,'').toLowerCase();
-    if(ipv6HexInRange(hex,fromHex,toHex)) return true;
+
+// يعيد "PROXY" أو "DIRECT" حسب القياس مع هسترة
+function decideRouteByLatency() {
+  var t = nowMs();
+  if (t - PING_CACHE.ts < PING_CACHE_TTL_MS && PING_CACHE.ms > 0) {
+    return PING_CACHE.value;
   }
-  return false;
+  var ms = measureProxyLatencyMs();
+
+  var val = PING_CACHE.value;
+  if (val === "PROXY") {
+    // لا نتحول لـ DIRECT إلا إذا صار بطيئ > THRESH_SLOW
+    if (ms > THRESH_SLOW) val = "DIRECT";
+  } else {
+    // لا نتحول لـ PROXY إلا إذا صار سريع < THRESH_FAST
+    if (ms < THRESH_FAST) val = "PROXY";
+  }
+
+  PING_CACHE = { value: val, ms: ms, ts: t };
+  return val;
 }
 
 // ===== Main =====
 function FindProxyForURL(url, host){
   if(isPlainHostName(host)||host==="localhost") return "DIRECT";
-// دومينات ببجي عبر البروكسي الأردني
-  if(isPUBGDomain(host)) return proxyList();
 
-  // رنجات الأردن + منافذ قليلة ومركزة => DIRECT
-  var port = (function(u){
-    var m=u.match(/^[a-z0-9+.-]+:\\/\\/[^\\/]*:(\\d+)(?:\\/|$)/i);
-    if(m&&m[1]) return parseInt(m[1],10);
-    if(u.indexOf("https:")===0) return 443;
-    if(u.indexOf("http:")===0)  return 80;
-    return -1;
-  })(url);
+  // منافذ الماتش/التجنيد دائماً عبر البروكسي (TCP ضمن PAC)
+  var port = extractPort(url);
+  if (MATCH_PORTS[port] || RECRUIT_PORTS[port]) return PROXY;
 
-  try{
-    if(hostIsInJoRangesByIPv6(host) && port!==-1 && ALLOWED_PORTS[port]) return "DIRECT";
-  }catch(e){}
+  // دومينات PUBG: نختار أسرع مسار ديناميكياً
+  if (isPUBGDomain(host)) {
+    var dyn = decideRouteByLatency(); // "PROXY" أو "DIRECT"
+    return (dyn === "PROXY") ? PROXY : "DIRECT";
+  }
 
-  // غير ذلك => بروكسي أردني
-  return proxyList();
+  // إذا الهدف يقع داخل رينجات IPv6 الأردنية => حسب FORCE_JO_PROXY
+  var v6 = resolveToIPv6(host);
+  if (v6 && v6.indexOf(':')!==-1) {
+    var hex = expandIPv6ToHex(v6);
+    if (hex) {
+      for (var i=0;i<JO_V6_RANGES.length;i++){
+        var r = JO_V6_RANGES[i];
+        var fromHex = r.from_address.replace(/:/g,'').toLowerCase();
+        var toHex   = r.to_address.replace(/:/g,'').toLowerCase();
+        if (ipv6HexInRange(hex, fromHex, toHex)) {
+          return FORCE_JO_PROXY ? PROXY : "DIRECT";
+        }
+      }
+    }
+  }
+
+  // الباقي: نستخدم نفس قرار الأوتو-بنغ كخيار افتراضي ذكي
+  var defDyn = decideRouteByLatency();
+  return (defDyn === "PROXY") ? PROXY : "DIRECT";
 }
