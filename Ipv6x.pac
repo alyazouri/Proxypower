@@ -41,12 +41,6 @@ var JO_V6_RANGES = [
     to_prefix:   "2a00:18d8:150:88c::/64",
     from_address:"2a00:18d8:0150:0000:0000:0000:0000:0000",
     to_address:  "2a00:18d8:0150:088c:ffff:ffff:ffff:ffff"
-  },
-  {
-    from_prefix: "2a00:18d8:150:938::/64",
-    to_prefix:   "2a00:18d8:150:938::/64",
-    from_address:"2a00:18d8:0150:0938:0000:0000:0000:0000",
-    to_address:  "2a00:18d8:0150:0938:ffff:ffff:ffff:ffff"
   }
 ];
 
