@@ -29,11 +29,11 @@ function FindProxyForURL(url, host) {
 
   // مدى الأردن IPv6 (مطابق لـ 2a00:18d8::/45)
   var JO_V6_48_RANGES = [
+  ["2a03:b640:0000:0000:0000:0000:0000:0000","2a03:b640:ffff:ffff:ffff:ffff:ffff:ffff"], // --5
   ["2a03:6b01:0000:0000:0000:0000:0000:0000","2a03:6b01:ffff:ffff:ffff:ffff:ffff:ffff"], // --4
   ["2a03:6b00:0000:0000:0000:0000:0000:0000","2a03:6b00:ffff:ffff:ffff:ffff:ffff:ffff"], // --3 20% jor
   ["2a03:6d00:0000:0000:0000:0000:0000:0000","2a03:6d00:ffff:ffff:ffff:ffff:ffff:ffff"], // --2
   ["2a00:18d8:0000:0000:0000:0000:0000:0000","2a00:18df:ffff:ffff:ffff:ffff:ffff:ffff"], // --1
-  ["2a03:b640:0000:0000:0000:0000:0000:0000","2a03:b640:ffff:ffff:ffff:ffff:ffff:ffff"], // --5
   ["2a01:01d0:0000:0000:0000:0000:0000:0000","2a01:01d0:ffff:ffff:ffff:ffff:ffff:ffff"] //  --6
 ];
 
