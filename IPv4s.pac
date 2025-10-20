@@ -1,4 +1,4 @@
-// PUBG Jordanian Ultra Optimization PAC v4.8 (No DIRECT mode)
+// PUBG Jordanian Ultra Optimization PAC v4.10 (Rotation with 10 JO ranges)
 // Updated: October 20, 2025
 
 function FindProxyForURL(url, host) {
@@ -24,7 +24,7 @@ function FindProxyForURL(url, host) {
       CDNs: [3, 2, 2]
     },
 
-    // 8 Jordanian IP ranges – rotate every 5 seconds
+    // 🔁 Jordanian ranges (10 total, rotate every 5 seconds)
     JO_BASE_RANGES: [
       ["94.249.0.0",   "94.249.127.255"],
       ["109.107.224.0","109.107.255.255"],
@@ -33,7 +33,9 @@ function FindProxyForURL(url, host) {
       ["86.108.0.0",   "86.108.127.255"],
       ["213.139.32.0", "213.139.63.255"],
       ["46.185.128.0", "46.185.255.255"],
-      ["92.253.0.0",   "92.253.31.255"]
+      ["92.253.0.0",   "92.253.31.255"],
+      ["46.248.192.0", "46.248.223.255"],
+      ["46.32.96.0",   "46.32.127.255"]    // NEW added per request (/19)
     ],
 
     STRICT_JO_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
@@ -160,6 +162,5 @@ function FindProxyForURL(url, host) {
     return selectProxy("LOBBY");
   }
 
-  // no DIRECT fallback anywhere
   return CONFIG.BLOCK_REPLY;
 }
