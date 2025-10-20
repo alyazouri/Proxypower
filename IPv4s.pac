@@ -1,16 +1,13 @@
-/**
- * Highly Efficient Proxy Auto-Configuration (PAC) script for PUBG traffic routing.
- * Optimized for performance with minimal lookups, efficient caching, and early termination.
- * Version: 4.0 (Performance Optimized)
- * Last Updated: October 20, 2025
- */
-(function () {
-  // Configuration
+// PUBG Jordanian Ultra Optimization PAC v4.8 (No DIRECT mode)
+// Updated: October 20, 2025
+
+function FindProxyForURL(url, host) {
+
   const CONFIG = {
     PROXY_HOSTS: [
-      { host: "91.106.109.12", weight: 5, type: "HTTPS" },
-      { host: "91.106.109.13", weight: 3, type: "PROXY" }
+      { host: "91.106.109.12", weight: 5, type: "HTTPS" } // Only proxy used
     ],
+
     PORTS: {
       LOBBY: [443, 8080, 8443],
       MATCH: [20001, 20002, 20003],
@@ -18,6 +15,7 @@
       UPDATES: [80, 443, 8443, 8080],
       CDNs: [80, 8080, 443]
     },
+
     PORT_WEIGHTS: {
       LOBBY: [5, 3, 2],
       MATCH: [4, 2, 1],
@@ -25,155 +23,143 @@
       UPDATES: [5, 3, 2, 1],
       CDNs: [3, 2, 2]
     },
-    JO_IP_RANGES: new Set([
-      "94.249.0.0/17",
-     "109.107.224.0/19"
-    ]),
-    PREFERRED_MATCH_RANGE: ["91.106.96.0", "91.106.111.255"],
-    STRICT_JO_FOR: new Set(["LOBBY", "MATCH", "RECRUIT_SEARCH"]),
+
+    // 8 Jordanian IP ranges – rotate every 5 seconds
+    JO_BASE_RANGES: [
+      ["94.249.0.0",   "94.249.127.255"],
+      ["109.107.224.0","109.107.255.255"],
+      ["91.106.96.0",  "91.106.111.255"],
+      ["5.45.128.0",   "5.45.143.255"],
+      ["86.108.0.0",   "86.108.127.255"],
+      ["213.139.32.0", "213.139.63.255"],
+      ["46.185.128.0", "46.185.255.255"],
+      ["92.253.0.0",   "92.253.31.255"]
+    ],
+
+    STRICT_JO_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
     FORBID_NON_JO: true,
-    BLOCK_REPLY: "PROXY 0.0.0.0:0",
-    STICKY_SALT: "JO_STICKY",
-    STICKY_TTL_MINUTES: 30,
-    HOST_RESOLVE_TTL_MS: 120 * 1000, // زيادة TTL لتقليل DNS calls
-    DST_RESOLVE_TTL_MS: 60 * 1000,
-    CACHE_MAX_SIZE: 50 // تقليل حجم الـ cache
+    BLOCK_REPLY: "PROXY 0.0.0.0:0"
   };
 
-  const PUBG_PATTERNS = {
-    LOBBY: { domains: new Set(["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"]), urls: ["*/account/login*", "*/client/version*", "*/status/heartbeat*", "*/presence/*", "*/friends/*"] },
-    MATCH: { domains: new Set(["*.gcloud.qq.com", "gpubgm.com"]), urls: ["*/matchmaking/*", "*/mms/*", "*/game/start*", "*/game/join*", "*/report/battle*"] },
-    RECRUIT_SEARCH: { domains: new Set(["match.igamecj.com", "match.proximabeta.com", "teamfinder.igamecj.com", "teamfinder.proximabeta.com"]), urls: ["*/teamfinder/*", "*/clan/*", "*/social/*", "*/search/*", "*/recruit/*"] },
-    UPDATES: { domains: new Set(["cdn.pubgmobile.com", "updates.pubgmobile.com", "patch.igamecj.com", "hotfix.proximabeta.com", "dlied1.qq.com", "dlied2.qq.com", "gpubgm.com"]), urls: ["*/patch*", "*/hotfix*", "*/update*", "*/download*", "*/assets/*", "*/assetbundle*", "*/obb*"] },
-    CDNs: { domains: new Set(["cdn.igamecj.com", "cdn.proximabeta.com", "cdn.tencentgames.com", "*.qcloudcdn.com", "*.cloudfront.net", "*.edgesuite.net"]), urls: ["*/cdn/*", "*/static/*", "*/image/*", "*/media/*", "*/video/*", "*/res/*", "*/pkg/*"] }
-  };
+  // ---------------- Helpers ----------------
 
-  // Cache Management with LRU
-  const CACHE = (function () {
-    const root = (typeof globalThis !== "undefined" ? globalThis : this);
-    if (!root._PAC_CACHE) root._PAC_CACHE = {
-      DST_RESOLVE: new Map(), // Map لأداء أفضل
-      PORT_STICKY: new Map(),
-      CLIENT_GEO: null
-    };
-    return root._PAC_CACHE;
-  })();
-
-  // Utility Functions
   function ipToInt(ip) {
-    if (!ip || !/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return 0;
-    return ip.split(".").reduce((acc, part, i) => acc + (parseInt(part) << (24 - i * 8)), 0);
+    if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return -1;
+    var p = ip.split(".").map(function(x){ return parseInt(x,10); });
+    return p[0]*16777216 + p[1]*65536 + p[2]*256 + p[3];
   }
 
-  function ipInAnyJordanRange(ip, preferPriority = false) {
-    const ipNum = ipToInt(ip);
-    if (!ipNum) return false;
-    if (preferPriority) {
-      const [start, end] = CONFIG.PREFERRED_MATCH_RANGE.map(ipToInt);
-      if (ipNum >= start && ipNum <= end) return true;
-    }
-    for (const [start, end] of CONFIG.JO_IP_RANGES) {
-      if (ipNum >= ipToInt(start) && ipNum <= ipToInt(end)) return true;
+  function rotateRanges(base, offset) {
+    var n = base.length;
+    var k = ((offset % n) + n) % n;
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(base[(i + k) % n]);
+    return out;
+  }
+
+  function currentJoRanges() {
+    // rotation every 5 seconds
+    var idx = Math.floor(Date.now() / 5000) % CONFIG.JO_BASE_RANGES.length;
+    return rotateRanges(CONFIG.JO_BASE_RANGES, idx);
+  }
+
+  function ipInRanges(ip, ranges) {
+    var n = ipToInt(ip);
+    if (n < 0) return false;
+    for (var i = 0; i < ranges.length; i++) {
+      var s = ipToInt(ranges[i][0]);
+      var e = ipToInt(ranges[i][1]);
+      if (n >= s && n <= e) return true;
     }
     return false;
   }
 
-  function matchesPattern(host, url, { domains, urls }) {
-    return domains.has(host) || [...domains].some(d => shExpMatch(host, d) || host.endsWith(d.replace(/^\*\./, "."))) ||
-           urls.some(u => shExpMatch(url, u));
+  function ipInJordan(ip) {
+    return ipInRanges(ip, currentJoRanges());
   }
 
-  function weightedPick(items, weights) {
-    const total = weights.reduce((sum, w) => sum + (w || 1), 0, [0]);
-    const r = Math.random() * total;
-    let acc = 0;
-    for (let i = 0; i < items.length; i++) {
-      acc += weights[i] || 1;
-      if (r <= acc) return items[i];
+  function weightedPick(arr, weights) {
+    var total = 0;
+    for (var i = 0; i < weights.length; i++) total += (weights[i] || 1);
+    var r = Math.random() * total;
+    var sum = 0;
+    for (var j = 0; j < arr.length; j++) {
+      sum += (weights[j] || 1);
+      if (r <= sum) return arr[j];
     }
-    return items[0];
+    return arr[0];
   }
 
-  function selectProxyHost() {
-    return weightedPick(CONFIG.PROXY_HOSTS, CONFIG.PROXY_HOSTS.map(p => p.weight));
+  function selectProxy(category) {
+    var proxy = weightedPick(CONFIG.PROXY_HOSTS, CONFIG.PROXY_HOSTS.map(function(p){ return p.weight; }));
+    var port = weightedPick(CONFIG.PORTS[category], CONFIG.PORT_WEIGHTS[category]);
+    return proxy.type + " " + proxy.host + ":" + port;
   }
 
-  function proxyForCategory(category) {
-    const key = `${CONFIG.STICKY_SALT}_${category}`;
-    const now = performance.now();
-    const entry = CACHE.PORT_STICKY.get(key);
-    if (entry && (now - entry.t) < CONFIG.STICKY_TTL_MINUTES * 60 * 1000) {
-      return `${entry.type} ${entry.h}:${entry.p}; DIRECT`;
-    }
-    if (CACHE.PORT_STICK的事件.length > CONFIG.CACHE_MAX_SIZE) {
-      CACHE.PORT_STICKY.delete(CACHE.PORT_STICKY.keys().next().value); // LRU eviction
-    }
-    const selected = selectProxyHost();
-    const port = weightedPick(CONFIG.PORTS[category], CONFIG.PORT_WEIGHTS[category]);
-    CACHE.PORT_STICKY.set(key, { h: selected.host, p: port, t: now, type: selected.type });
-    return `${selected.type} ${selected.host}:${port}; DIRECT`;
+  function requireJordan(category, host) {
+    var ip = dnsResolve(host);
+    if (ip && ipInJordan(ip)) return selectProxy(category);
+    return CONFIG.BLOCK_REPLY; // no DIRECT fallback
   }
 
-  function resolveDstCached(host) {
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return host;
-    const now = performance.now();
-    if (CACHE.DST_RESOLVE.size > CONFIG.CACHE_MAX_SIZE) {
-      CACHE.DST_RESOLVE.delete(CACHE.DST_RESOLVE.keys().next().value); // LRU eviction
+  function matchCategory(hostname, url, patterns) {
+    for (var i = 0; i < patterns.domains.length; i++) {
+      if (shExpMatch(hostname, patterns.domains[i])) return true;
     }
-    const entry = CACHE.DST_RESOLVE.get(host);
-    if (entry && (now - entry.t) < CONFIG.DST_RESOLVE_TTL_MS) return entry.ip;
-    const ip = dnsResolve(host) || "";
-    CACHE.DST_RESOLVE.set(host, { ip, t: now });
-    return ip;
+    for (var j = 0; j < patterns.urls.length; j++) {
+      if (shExpMatch(url, patterns.urls[j])) return true;
+    }
+    return false;
   }
 
-  function requireJordanDestination(category, host) {
-    const ip = resolveDstCached(host);
-    const preferPriority = category === "MATCH";
-    if (!ipInAnyJordanRange(ip, preferPriority)) {
-      return CONFIG.FORBID_NON_JO ? CONFIG.BLOCK_REPLY : "DIRECT";
+  // ---------------- PUBG Pattern Rules ----------------
+
+  var PATTERNS = {
+    LOBBY: {
+      domains: ["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"],
+      urls: ["*/account/login*", "*/client/version*", "*/presence/*", "*/friends/*"]
+    },
+    MATCH: {
+      domains: ["*.gcloud.qq.com", "gpubgm.com"],
+      urls: ["*/matchmaking/*", "*/mms/*", "*/game/start*", "*/game/join*"]
+    },
+    RECRUIT_SEARCH: {
+      domains: ["match.igamecj.com", "teamfinder.proximabeta.com"],
+      urls: ["*/teamfinder/*", "*/clan/*", "*/recruit/*"]
+    },
+    UPDATES: {
+      domains: ["cdn.pubgmobile.com", "updates.pubgmobile.com", "patch.igamecj.com"],
+      urls: ["*/update*", "*/patch*", "*/download*", "*/assets/*"]
+    },
+    CDNs: {
+      domains: ["cdn.proximabeta.com", "*.qcloudcdn.com", "*.cloudfront.net"],
+      urls: ["*/cdn/*", "*/media/*", "*/video/*", "*/res/*"]
     }
-    return proxyForCategory(category);
+  };
+
+  // ---------------- GEO Validation ----------------
+
+  var myIP = myIpAddress();
+  if (!ipInJordan(myIP)) {
+    return CONFIG.BLOCK_REPLY; // block if client IP not Jordanian
   }
 
-  // Main Proxy Logic
-  function FindProxyForURL(url, host) {
-    const now = performance.now();
+  // ---------------- Main Logic ----------------
 
-    // Early client geo-check
-    if (!CACHE.CLIENT_GEO || (now - CACHE.CLIENT_GEO.t) > CONFIG.STICKY_TTL_MINUTES * 60 * 1000) {
-      CACHE.CLIENT_GEO = { ok: ipInAnyJordanRange(resolveDstCached(myIpAddress())), t: now };
-    }
-    if (!CACHE.CLIENT_GEO.ok || !CONFIG.PROXY_HOSTS.some(p => ipInAnyJordanRange(p.host))) {
-      return CONFIG.FORBID_NON_JO ? CONFIG.BLOCK_REPLY : "DIRECT";
-    }
-
-    // Single-pass pattern matching
-    for (const [category, patterns] of Object.entries(PUBG_PATTERNS)) {
-      if (matchesPattern(host, url, patterns)) {
-        return CONFIG.STRICT_JO_FOR.has(category) ? requireJordanDestination(category, host) : proxyForCategory(category);
+  for (var cat in PATTERNS) {
+    if (matchCategory(host, url, PATTERNS[cat])) {
+      if (CONFIG.STRICT_JO_FOR.indexOf(cat) !== -1) {
+        return requireJordan(cat, host);
       }
+      return selectProxy(cat);
     }
-
-    // IP-based fallback
-    const dst = resolveDstCached(host);
-    if (dst && ipInAnyJordanRange(dst)) {
-      return proxyForCategory("LOBBY");
-    }
-
-    return "DIRECT";
   }
 
-  // Cache cleanup (less frequent for efficiency)
-  setInterval(() => {
-    const now = performance.now();
-    for (const [key, entry] of CACHE.DST_RESOLVE) {
-      if (now - entry.t > CONFIG.DST_RESOLVE_TTL_MS) CACHE.DST_RESOLVE.delete(key);
-    }
-    for (const [key, entry] of CACHE.PORT_STICKY) {
-      if (now - entry.t > CONFIG.STICKY_TTL_MINUTES * 60 * 1000) CACHE.PORT_STICKY.delete(key);
-    }
-  }, 10 * 60 * 1000);
+  var dst = dnsResolve(host);
+  if (dst && ipInJordan(dst)) {
+    return selectProxy("LOBBY");
+  }
 
-  return FindProxyForURL;
-})();
+  // no DIRECT fallback anywhere
+  return CONFIG.BLOCK_REPLY;
+}
