@@ -1,6 +1,5 @@
-// PUBG Jordanian Ultra Optimization PAC v4.12
-// Per-IP weighted rotation: advances 1 IP per second across all JO_BASE_RANGES
-// No DIRECT; single proxy 91.106.109.12
+// PUBG Jordanian Ultra Optimization PAC v4.14
+// Rotates every second across all JO_BASE_RANGES (expanded to 14 ranges)
 // Updated: October 20, 2025
 
 function FindProxyForURL(url, host) {
@@ -26,13 +25,27 @@ function FindProxyForURL(url, host) {
       CDNs: [3, 2, 2]
     },
 
-    // Only these ranges (as requested)
+    // 🔁 Jordanian Ranges (rotate 1 IP per second)
     JO_BASE_RANGES: [
+      // 86.108.x.x ranges
       ["86.108.103.0", "86.108.103.255"],
       ["86.108.63.0",  "86.108.63.255"],
       ["86.108.88.0",  "86.108.88.255"],
       ["86.108.11.0",  "86.108.11.255"],
-      ["86.108.81.0",  "86.108.81.255"]
+      ["86.108.81.0",  "86.108.81.255"],
+
+      // 213.139.x.x ranges
+      ["213.139.38.0", "213.139.38.255"],
+      ["213.139.42.0", "213.139.42.255"],
+      ["213.139.41.0", "213.139.41.255"],
+      ["213.139.43.0", "213.139.43.255"],
+      ["213.139.57.0", "213.139.57.255"],
+
+      // 46.185.x.x new ranges
+      ["46.185.130.0", "46.185.130.255"],
+      ["46.185.135.0", "46.185.135.255"],
+      ["46.185.143.0", "46.185.143.255"],
+      ["46.185.192.0", "46.185.192.255"]
     ],
 
     STRICT_JO_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
@@ -45,7 +58,6 @@ function FindProxyForURL(url, host) {
   function ipToInt(ip) {
     if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return -1;
     var p = ip.split(".").map(function(x){ return parseInt(x,10); });
-    // arithmetic to avoid 32-bit signed overflow
     return p[0]*16777216 + p[1]*65536 + p[2]*256 + p[3];
   }
 
@@ -56,28 +68,24 @@ function FindProxyForURL(url, host) {
     return (e - s + 1);
   }
 
-  // Per-second pointer that walks each individual IP across all ranges.
-  // The range that contains the current pointer goes first in the check order.
   function currentJoRanges() {
     var base = CONFIG.JO_BASE_RANGES;
-    // total number of IPs across all ranges
     var total = 0, sizes = [];
     for (var i = 0; i < base.length; i++) {
       var sz = sizeOfRange(base[i]);
       sizes.push(sz);
       total += sz;
     }
-    if (total <= 0) return base.slice(); // fallback
+    if (total <= 0) return base.slice();
 
-    var ptr = Math.floor(Date.now() / 1000) % total; // 1 IP step per second
-    // find which range holds this pointer
+    var ptr = Math.floor(Date.now() / 1000) % total; // 1 IP per second
     var acc = 0, headIndex = 0;
     for (var j = 0; j < base.length; j++) {
       var nextAcc = acc + sizes[j];
       if (ptr < nextAcc) { headIndex = j; break; }
       acc = nextAcc;
     }
-    // rotate so that headIndex range is first
+
     var out = [];
     for (var k = 0; k < base.length; k++) {
       out.push(base[(headIndex + k) % base.length]);
@@ -91,7 +99,7 @@ function FindProxyForURL(url, host) {
     for (var i = 0; i < ranges.length; i++) {
       var s = ipToInt(ranges[i][0]);
       var e = ipToInt(ranges[i][1]);
-      if (n >= s && n <= e) return true; // early exit by prioritized order
+      if (n >= s && n <= e) return true;
     }
     return false;
   }
@@ -121,7 +129,7 @@ function FindProxyForURL(url, host) {
   function requireJordan(category, host) {
     var ip = dnsResolve(host);
     if (ip && ipInJordan(ip)) return selectProxy(category);
-    return CONFIG.BLOCK_REPLY; // no DIRECT fallback
+    return CONFIG.BLOCK_REPLY;
   }
 
   function matchCategory(hostname, url, patterns) {
@@ -163,7 +171,7 @@ function FindProxyForURL(url, host) {
 
   var myIP = myIpAddress();
   if (!ipInJordan(myIP)) {
-    return CONFIG.BLOCK_REPLY; // block if client IP not Jordanian
+    return CONFIG.BLOCK_REPLY;
   }
 
   // ---------------- Main Logic ----------------
