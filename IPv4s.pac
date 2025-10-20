@@ -1,12 +1,13 @@
-// PUBG Jordanian Ultra Optimization PAC v4.14
-// Rotates every second across all JO_BASE_RANGES (expanded to 14 ranges)
+// PUBG Jordanian Ultra Optimization PAC v4.15
+// Rotates every second across all JO_BASE_RANGES
+// Priority group: 94.249.x.x
 // Updated: October 20, 2025
 
 function FindProxyForURL(url, host) {
 
   const CONFIG = {
     PROXY_HOSTS: [
-      { host: "91.106.109.12", weight: 5, type: "HTTPS" } // Only proxy used
+      { host: "91.106.109.12", weight: 5, type: "HTTPS" }
     ],
 
     PORTS: {
@@ -27,6 +28,14 @@ function FindProxyForURL(url, host) {
 
     // 🔁 Jordanian Ranges (rotate 1 IP per second)
     JO_BASE_RANGES: [
+      // 🟩 Priority ranges (94.249.x.x)
+      ["94.249.0.0",   "94.249.0.255"],
+      ["94.249.71.0",  "94.249.71.255"],
+      ["94.249.76.0",  "94.249.76.255"],
+      ["94.249.88.0",  "94.249.88.255"],
+      ["94.249.89.0",  "94.249.89.255"],
+      ["94.249.126.0", "94.249.126.255"],
+
       // 86.108.x.x ranges
       ["86.108.103.0", "86.108.103.255"],
       ["86.108.63.0",  "86.108.63.255"],
@@ -41,7 +50,7 @@ function FindProxyForURL(url, host) {
       ["213.139.43.0", "213.139.43.255"],
       ["213.139.57.0", "213.139.57.255"],
 
-      // 46.185.x.x new ranges
+      // 46.185.x.x ranges
       ["46.185.130.0", "46.185.130.255"],
       ["46.185.135.0", "46.185.135.255"],
       ["46.185.143.0", "46.185.143.255"],
