@@ -1,4 +1,6 @@
-// PUBG Jordanian Ultra Optimization PAC v4.10 (Rotation with 10 JO ranges)
+// PUBG Jordanian Ultra Optimization PAC v4.12
+// Per-IP weighted rotation: advances 1 IP per second across all JO_BASE_RANGES
+// No DIRECT; single proxy 91.106.109.12
 // Updated: October 20, 2025
 
 function FindProxyForURL(url, host) {
@@ -24,18 +26,13 @@ function FindProxyForURL(url, host) {
       CDNs: [3, 2, 2]
     },
 
-    // 🔁 Jordanian ranges (10 total, rotate every 5 seconds)
+    // Only these ranges (as requested)
     JO_BASE_RANGES: [
-      ["94.249.0.0",   "94.249.127.255"],
-      ["109.107.224.0","109.107.255.255"],
-      ["91.106.96.0",  "91.106.111.255"],
-      ["5.45.128.0",   "5.45.143.255"],
-      ["86.108.0.0",   "86.108.127.255"],
-      ["213.139.32.0", "213.139.63.255"],
-      ["46.185.128.0", "46.185.255.255"],
-      ["92.253.0.0",   "92.253.31.255"],
-      ["46.248.192.0", "46.248.223.255"],
-      ["46.32.96.0",   "46.32.127.255"]    // NEW added per request (/19)
+      ["86.108.103.0", "86.108.103.255"],
+      ["86.108.63.0",  "86.108.63.255"],
+      ["86.108.88.0",  "86.108.88.255"],
+      ["86.108.11.0",  "86.108.11.255"],
+      ["86.108.81.0",  "86.108.81.255"]
     ],
 
     STRICT_JO_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
@@ -48,21 +45,44 @@ function FindProxyForURL(url, host) {
   function ipToInt(ip) {
     if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return -1;
     var p = ip.split(".").map(function(x){ return parseInt(x,10); });
+    // arithmetic to avoid 32-bit signed overflow
     return p[0]*16777216 + p[1]*65536 + p[2]*256 + p[3];
   }
 
-  function rotateRanges(base, offset) {
-    var n = base.length;
-    var k = ((offset % n) + n) % n;
-    var out = [];
-    for (var i = 0; i < n; i++) out.push(base[(i + k) % n]);
-    return out;
+  function sizeOfRange(r) {
+    var s = ipToInt(r[0]);
+    var e = ipToInt(r[1]);
+    if (s < 0 || e < 0 || e < s) return 0;
+    return (e - s + 1);
   }
 
+  // Per-second pointer that walks each individual IP across all ranges.
+  // The range that contains the current pointer goes first in the check order.
   function currentJoRanges() {
-    // rotation every 5 seconds
-    var idx = Math.floor(Date.now() / 5000) % CONFIG.JO_BASE_RANGES.length;
-    return rotateRanges(CONFIG.JO_BASE_RANGES, idx);
+    var base = CONFIG.JO_BASE_RANGES;
+    // total number of IPs across all ranges
+    var total = 0, sizes = [];
+    for (var i = 0; i < base.length; i++) {
+      var sz = sizeOfRange(base[i]);
+      sizes.push(sz);
+      total += sz;
+    }
+    if (total <= 0) return base.slice(); // fallback
+
+    var ptr = Math.floor(Date.now() / 1000) % total; // 1 IP step per second
+    // find which range holds this pointer
+    var acc = 0, headIndex = 0;
+    for (var j = 0; j < base.length; j++) {
+      var nextAcc = acc + sizes[j];
+      if (ptr < nextAcc) { headIndex = j; break; }
+      acc = nextAcc;
+    }
+    // rotate so that headIndex range is first
+    var out = [];
+    for (var k = 0; k < base.length; k++) {
+      out.push(base[(headIndex + k) % base.length]);
+    }
+    return out;
   }
 
   function ipInRanges(ip, ranges) {
@@ -71,7 +91,7 @@ function FindProxyForURL(url, host) {
     for (var i = 0; i < ranges.length; i++) {
       var s = ipToInt(ranges[i][0]);
       var e = ipToInt(ranges[i][1]);
-      if (n >= s && n <= e) return true;
+      if (n >= s && n <= e) return true; // early exit by prioritized order
     }
     return false;
   }
