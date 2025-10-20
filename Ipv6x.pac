@@ -29,11 +29,10 @@ var EXCLUDE_DOMAINS = [
 var MATCH_PORTS   = {20001:true,20002:true,20003:true};
 var RECRUIT_PORTS = {10010:true,11000:true};
 
-// نطاق IPv6 الأردني: 2a00:18d8:1::/54
-var JO_V6_RANGES = [
-  ["2a00:18d8:0001:0000:0000:0000:0000:0000","2a00:18d8:0001:3fff:ffff:ffff:ffff:ffff"]
-];
 
+var JO_V6_RANGES = [
+  ["fdd8:a491:44ac:0000:0000:0000:0000:0000","fdd8:a491:44ac:ffff:ffff:ffff:ffff:ffff"]
+];
 // ===== Helpers =====
 function pad4(h){h=h||"0";return("0000"+h).slice(-4).toLowerCase();}
 function expandIPv6ToHex(ip){
