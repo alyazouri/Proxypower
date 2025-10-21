@@ -18,9 +18,10 @@ function FindProxyForURL(url, host) {
 
     var service = h.match(/lobby|match|arena|ranked/i) ? "matchmaking" : isMatchPort(port) ? "game" : h.match(/update|cdn/i) ? "update" : "lobby";
 
-    if (service === "matchmaking" || service === "lobby") return isInJOv6(ip) ? PRIMARY : DROP;
-    if (service === "game" && isMatchPort(port)) return isInJOv6(ip) ? PRIMARY : (isInJOBackupv6(ip) ? BACKUP : DROP);
-    return isInJOv6(ip) ? PRIMARY : DROP;
+    // إعطاء الأولوية للنطاقات الأردنية في جميع الأوضاع
+    if (isInJOv6(ip)) return PRIMARY;
+    if (service === "game" && isMatchPort(port) && isInJOBackupv6(ip)) return BACKUP;
+    return DROP; // إسقاط أي اتصال غير أردني
   }
 
   return isAdOrTracker(h) ? DROP : PRIMARY;
@@ -45,15 +46,16 @@ function extractPort(u) {
 
 function isInJOv6(ip) {
   const prefixes = {
-    "2a0d:8d80::": "ffff:fff0::", // Zain Fiber (10ms)
-    "2a0e:1c00::": "ffff:fff0::", // Orange Fiber (12ms)
-    "2a0f:b700::": "ffff:fff0::", // Umniah 5G (15ms)
-    "2a02:cb40::": "ffff:fff0::"  // JDC/GO (14ms)
+    "2a0d:8d80::": "ffff:ffff:c000::", // Zain Fiber (10ms)
+    "2a0e:1c00::": "ffff:ffff:c000::", // Orange Fiber (12ms)
+    "2a0f:b700::": "ffff:ffff:c000::", // Umniah 5G (15ms)
+    "2a02:cb40::": "ffff:ffff:c000::"  // JDC/GO (14ms)
   };
 
   const blockedPrefixes = [
     ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
     ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
+    ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
     ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
     ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
@@ -68,20 +70,21 @@ function isInJOv6(ip) {
 function isInJOBackupv6(ip) {
   // نطاقات أردنية احتياطية قوية ونقية جدًا (Fiber/5G)
   const prefixes = {
-    "2a0d:8d80:2000::": "ffff:ffff:c000::", // Zain Fiber Backup (12ms)
-    "2a0e:1c00:3000::": "ffff:ffff:c000::", // Orange Fiber Backup (14ms)
-    "2a0f:b700:2000::": "ffff:ffff:c000::", // Umniah 5G Backup (17ms)
-    "2a02:cb40:2000::": "ffff:ffff:c000::"  // JDC/GO Backup (15ms)
+    "2a0d:8d80:3000::": "ffff:ffff:c000::", // Zain Fiber Backup (11ms)
+    "2a0e:1c00:4000::": "ffff:ffff:c000::", // Orange Fiber Backup (13ms)
+    "2a0f:b700:3000::": "ffff:ffff:c000::", // Umniah 5G Backup (16ms)
+    "2a02:cb40:3000::": "ffff:ffff:c000::"  // JDC/GO Backup (14ms)
   };
 
   const blockedPrefixes = [
-    ["2a00:1508::", "ffff:fff8::"], // إيران
-    ["2001:790::", "ffff:ffff::"],  // إيران
-    ["2407:3140::", "ffff:ffff::"], // أفغانستان
+    ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
+    ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
+    ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
+    ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
-    ["2001:4538::", "ffff:ffff::"], // باكستان
-    ["2404:148::", "ffff:ffff::"],  // باكستان
-    ["2400:cb00::", "ffff:ff00::"] // باكستان
+    ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
+    ["2404:148::", "ffff:ffff::"],  // باكستان (SuperNet)
+    ["2400:cb00::", "ffff:ff00::"] // باكستان (PTCL)
   ];
 
   if (blockedPrefixes.some(p => isInNet(ip, p[0], p[1]))) return false;
@@ -92,6 +95,7 @@ function isInBlockedCountries(ip) {
   const blocked = [
     ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
     ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
+    ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
     ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
     ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
@@ -102,6 +106,8 @@ function isInBlockedCountries(ip) {
 }
 
 function isAdOrTracker(h) {
-  return ["doubleclick.net", "googlesyndication.com", "admob.com", "analytics.google.com", "crashlytics.com"]
-    .some(d => dnsDomainIs(h, d) || shExpMatch(h, "*." + d));
+  return [
+    "doubleclick.net", "googlesyndication.com", "admob.com",
+    "analytics.google.com", "crashlytics.com"
+  ].some(d => dnsDomainIs(h, d) || shExpMatch(h, "*." + d));
 }
