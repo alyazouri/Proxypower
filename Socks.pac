@@ -56,6 +56,7 @@ function isInJOv6(ip) {
     ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
     ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
     ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
+    ["2a0c:5a40::", "ffff:ffff::"], // إيران (Shatel)
     ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
     ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
@@ -70,16 +71,17 @@ function isInJOv6(ip) {
 function isInJOBackupv6(ip) {
   // نطاقات أردنية احتياطية قوية ونقية جدًا (Fiber/5G)
   const prefixes = {
-    "2a0d:8d80:3000::": "ffff:ffff:c000::", // Zain Fiber Backup (11ms)
-    "2a0e:1c00:4000::": "ffff:ffff:c000::", // Orange Fiber Backup (13ms)
-    "2a0f:b700:3000::": "ffff:ffff:c000::", // Umniah 5G Backup (16ms)
-    "2a02:cb40:3000::": "ffff:ffff:c000::"  // JDC/GO Backup (14ms)
+    "2a0d:8d80:4000::": "ffff:ffff:c000::", // Zain Fiber Backup (11ms)
+    "2a0e:1c00:5000::": "ffff:ffff:c000::", // Orange Fiber Backup (12ms)
+    "2a0f:b700:4000::": "ffff:ffff:c000::", // Umniah 5G Backup (15ms)
+    "2a02:cb40:4000::": "ffff:ffff:c000::"  // JDC/GO Backup (13ms)
   };
 
   const blockedPrefixes = [
     ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
     ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
     ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
+    ["2a0c:5a40::", "ffff:ffff::"], // إيران (Shatel)
     ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
     ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
@@ -96,6 +98,7 @@ function isInBlockedCountries(ip) {
     ["2a00:1508::", "ffff:fff8::"], // إيران (MTN Irancell)
     ["2001:790::", "ffff:ffff::"],  // إيران (RIPE NCC)
     ["2a0b:3040::", "ffff:ffff::"], // إيران (MCI)
+    ["2a0c:5a40::", "ffff:ffff::"], // إيران (Shatel)
     ["2407:3140::", "ffff:ffff::"], // أفغانستان (Afghan Telecom)
     ["2001:df0:400::", "ffff:ffff:ffc0::"], // أفغانستان
     ["2001:4538::", "ffff:ffff::"], // باكستان (CyberNet)
