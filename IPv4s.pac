@@ -1,6 +1,5 @@
-// PUBG Jordanian Ultra Optimization PAC v4.15
-// Rotates every second across all JO_BASE_RANGES
-// Priority group: 94.249.x.x
+// PUBG Jordanian Ultra Optimization PAC v4.16
+// Rotates 1 IP per second across JO_BASE_RANGES (priority 94.249.* at top)
 // Updated: October 20, 2025
 
 function FindProxyForURL(url, host) {
@@ -26,35 +25,32 @@ function FindProxyForURL(url, host) {
       CDNs: [3, 2, 2]
     },
 
-    // 🔁 Jordanian Ranges (rotate 1 IP per second)
+    // 🔁 JO_BASE_RANGES (priority 94.249.* first). Rotates pointer 1 IP/sec across all ranges.
     JO_BASE_RANGES: [
-      // 🟩 Priority ranges (94.249.x.x)
-      ["94.249.0.0",   "94.249.0.255"],
+      // Priority 94.249.* (checked first)
       ["94.249.71.0",  "94.249.71.255"],
       ["94.249.76.0",  "94.249.76.255"],
-      ["94.249.88.0",  "94.249.88.255"],
-      ["94.249.89.0",  "94.249.89.255"],
-      ["94.249.126.0", "94.249.126.255"],
 
-      // 86.108.x.x ranges
+      // existing 86.108.* ranges
       ["86.108.103.0", "86.108.103.255"],
       ["86.108.63.0",  "86.108.63.255"],
       ["86.108.88.0",  "86.108.88.255"],
-      ["86.108.11.0",  "86.108.11.255"],
       ["86.108.81.0",  "86.108.81.255"],
 
-      // 213.139.x.x ranges
-      ["213.139.38.0", "213.139.38.255"],
+      // existing 213.139.* ranges
       ["213.139.42.0", "213.139.42.255"],
       ["213.139.41.0", "213.139.41.255"],
-      ["213.139.43.0", "213.139.43.255"],
-      ["213.139.57.0", "213.139.57.255"],
 
-      // 46.185.x.x ranges
-      ["46.185.130.0", "46.185.130.255"],
+
+      // existing 46.185.* ranges
       ["46.185.135.0", "46.185.135.255"],
       ["46.185.143.0", "46.185.143.255"],
-      ["46.185.192.0", "46.185.192.255"]
+      ["46.185.192.0", "46.185.192.255"],
+
+      // === NEW: the 92.253.* /24 blocks you provided (added exactly, in this order) ===
+      ["92.253.35.0",  "92.253.35.255"],
+      ["92.253.121.0", "92.253.121.255"],
+      ["92.253.127.0", "92.253.127.255"]
     ],
 
     STRICT_JO_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
@@ -77,6 +73,8 @@ function FindProxyForURL(url, host) {
     return (e - s + 1);
   }
 
+  // Build rotation: pointer advances 1 IP per second across the combined JO_BASE_RANGES.
+  // The range that contains the pointer becomes first in the check order.
   function currentJoRanges() {
     var base = CONFIG.JO_BASE_RANGES;
     var total = 0, sizes = [];
@@ -87,7 +85,7 @@ function FindProxyForURL(url, host) {
     }
     if (total <= 0) return base.slice();
 
-    var ptr = Math.floor(Date.now() / 1000) % total; // 1 IP per second
+    var ptr = Math.floor(Date.now() / 1000) % total; // 1 IP step per second
     var acc = 0, headIndex = 0;
     for (var j = 0; j < base.length; j++) {
       var nextAcc = acc + sizes[j];
