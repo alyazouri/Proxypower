@@ -1,192 +1,56 @@
-// PUBG Jordanian Ultra Optimization PAC v6.0 (IPv6-only, no DIRECT)
-// Range enforced: 2a03:6b00::/32
-// Updated: October 20, 2025
-
 function FindProxyForURL(url, host) {
-  const CONFIG = {
-    PROXY_HOSTS: [
-      // استخدم IPv6 للبروكسي إن توفر لديك: مثال => { host: "[2a00:xxxx:...]", weight: 5, type: "HTTPS" }
-      { host: "91.106.109.12", weight: 5, type: "HTTPS" } // current proxy (IPv4 OK)
-    ],
+  var PROXY_DEFAULT = "SOCKS5 91.106.109.12:1080";
+  var PROXIES_MATCH = ["SOCKS5 91.106.109.12:20001"];
+  var DROP = "PROXY 0.0.0.0:0";
 
-    PORTS: {
-      LOBBY: [443, 8080, 8443],
-      MATCH: [20001, 20002, 20003],
-      RECRUIT_SEARCH: [10010, 10012, 10013, 10039, 10096, 10491, 10612, 11000, 11455, 12235],
-      UPDATES: [80, 443, 8443, 8080],
-      CDNs: [80, 8080, 443]
-    },
+  if (isPlainHostName(host) || host === "localhost") return PROXY_DEFAULT;
 
-    PORT_WEIGHTS: {
-      LOBBY: [5, 3, 2],
-      MATCH: [4, 2, 1],
-      RECRUIT_SEARCH: [4, 3, 3, 2, 2, 2, 2, 2, 2, 1],
-      UPDATES: [5, 3, 2, 1],
-      CDNs: [3, 2, 2]
-    },
+  var h = host.toLowerCase();
+  var p = extractPort(url);
 
-    // IPv6 prefix to allow: 2a03:6b00::/32  => first two hextets must be 2a03:6b00
-    ALLOW_V6_H1: "2a03",
-    ALLOW_V6_H2: "6b00",
-
-    STRICT_V6_FOR: ["LOBBY", "MATCH", "RECRUIT_SEARCH"],
-    BLOCK_REPLY: "PROXY 0.0.0.0:0"
-  };
-
-  // ---------------- IPv6 Helpers ----------------
-  function isIPv6(addr) {
-    return addr && addr.indexOf(":") !== -1;
+  if (isPubg(h) && isMatchPort(p)) {
+    var ip = dnsResolve(host);
+    if (ip && isIPv6Literal(ip) && isInNet(ip, "2a01:9700::", "ffff:ffe0:0000:0000:0000:0000:0000:0000"))
+      return pickProxy(PROXIES_MATCH, host, url);
+    return DROP;
   }
 
-  function stripZone(addr) {
-    // remove %eth0 etc.
-    var i = addr.indexOf("%");
-    return i >= 0 ? addr.substring(0, i) : addr;
-  }
+  if (isPubg(h)) return PROXY_DEFAULT;
 
-  // expand compressed IPv6 to 8 hextets (lowercase, no zone)
-  function expandIPv6(addr) {
-    addr = stripZone(addr).toLowerCase();
-    // handle :: shorthand
-    var parts = addr.split("::");
-    if (parts.length > 2) return null;
+  return PROXY_DEFAULT;
 
-    var head = parts[0] ? parts[0].split(":") : [];
-    var tail = (parts.length === 2 && parts[1]) ? parts[1].split(":") : [];
-
-    // validate hextets
-    function pad16(h) {
-      if (h === "") return "0";
-      var m = /^[0-9a-f]{1,4}$/.test(h);
-      return m ? h : null;
-    }
-
-    for (var i = 0; i < head.length; i++) { head[i] = pad16(head[i]); if (head[i] === null) return null; }
-    for (var j = 0; j < tail.length; j++) { tail[j] = pad16(tail[j]); if (tail[j] === null) return null; }
-
-    var missing = 8 - (head.length + tail.length);
-    if (parts.length === 1) {
-      // no '::', must already be 8
-      if (missing !== 0) return null;
-      return head;
-    } else {
-      if (missing < 0) return null;
-      var zeros = [];
-      for (var z = 0; z < missing; z++) zeros.push("0");
-      return head.concat(zeros, tail);
-    }
-  }
-
-  // check if IPv6 addr is within 2a03:6b00::/32 => first two hextets equal
-  function inAllowedV6(addr) {
-    if (!isIPv6(addr)) return false;
-    var hex = expandIPv6(addr);
-    if (!hex || hex.length !== 8) return false;
-    return (hex[0] === CONFIG.ALLOW_V6_H1 && hex[1] === CONFIG.ALLOW_V6_H2);
-  }
-
-  // -------------- Generic Helpers --------------
-  function weightedPick(arr, weights) {
-    var total = 0;
-    for (var i = 0; i < weights.length; i++) total += (weights[i] || 1);
-    var r = Math.random() * total;
-    var sum = 0;
-    for (var j = 0; j < arr.length; j++) {
-      sum += (weights[j] || 1);
-      if (r <= sum) return arr[j];
-    }
-    return arr[0];
-  }
-
-  function selectProxy(category) {
-    var proxy = weightedPick(CONFIG.PROXY_HOSTS, CONFIG.PROXY_HOSTS.map(function(p){ return p.weight; }));
-    var port = weightedPick(CONFIG.PORTS[category], CONFIG.PORT_WEIGHTS[category]);
-    // If proxy host is an IPv6 literal, ensure it's bracketed already (user should provide "[...]" form)
-    return proxy.type + " " + proxy.host + ":" + port;
-  }
-
-  function requireAllowedV6(category, hostname) {
-    var addrs = [];
-    if (typeof dnsResolveEx === "function") {
-      // returns CSV "ip,ip,ip"
-      var csv = dnsResolveEx(hostname);
-      if (csv) addrs = csv.split(/[,;]/);
-    } else {
-      // fallback (IPv4-only resolver); will fail the v6 check
-      var a4 = dnsResolve(hostname);
-      if (a4) addrs = [a4];
-    }
-
-    for (var i = 0; i < addrs.length; i++) {
-      var a = stripZone(addrs[i].trim());
-      if (inAllowedV6(a)) return selectProxy(category);
-    }
-    return CONFIG.BLOCK_REPLY;
-  }
-
-  function matchCategory(hostname, url, patterns) {
-    for (var i = 0; i < patterns.domains.length; i++) {
-      if (shExpMatch(hostname, patterns.domains[i])) return true;
-    }
-    for (var j = 0; j < patterns.urls.length; j++) {
-      if (shExpMatch(url, patterns.urls[j])) return true;
-    }
+  function isPubg(h) {
+    if (dnsDomainIs(h, "pubgmobile.com") || shExpMatch(h, "*.pubgmobile.com")) return true;
+    if (dnsDomainIs(h, "igamecj.com")      || shExpMatch(h, "*.igamecj.com"))      return true;
+    if (dnsDomainIs(h, "proximabeta.com")  || shExpMatch(h, "*.proximabeta.com"))  return true;
+    if (dnsDomainIs(h, "tencent.com")      || shExpMatch(h, "*.tencent.com"))      return true;
+    if (dnsDomainIs(h, "qcloudcdn.com")    || shExpMatch(h, "*.qcloudcdn.com"))    return true;
+    if (dnsDomainIs(h, "gcloudsdk.com")    || shExpMatch(h, "*.gcloudsdk.com"))    return true;
     return false;
   }
 
-  // ---------------- PUBG Patterns ----------------
-  var PATTERNS = {
-    LOBBY: {
-      domains: ["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"],
-      urls: ["*/account/login*", "*/client/version*", "*/presence/*", "*/friends/*"]
-    },
-    MATCH: {
-      domains: ["*.gcloud.qq.com", "gpubgm.com"],
-      urls: ["*/matchmaking/*", "*/mms/*", "*/game/start*", "*/game/join*"]
-    },
-    RECRUIT_SEARCH: {
-      domains: ["match.igamecj.com", "teamfinder.proximabeta.com"],
-      urls: ["*/teamfinder/*", "*/clan/*", "*/recruit/*"]
-    },
-    UPDATES: {
-      domains: ["cdn.pubgmobile.com", "updates.pubgmobile.com", "patch.igamecj.com"],
-      urls: ["*/update*", "*/patch*", "*/download*", "*/assets/*"]
-    },
-    CDNs: {
-      domains: ["cdn.proximabeta.com", "*.qcloudcdn.com", "*.cloudfront.net"],
-      urls: ["*/cdn/*", "*/media/*", "*/video/*", "*/res/*"]
-    }
-  };
-
-  // ---------------- Client IPv6 Gate ----------------
-  // لاعب ببجي لازم يكون ضمن الرينج 2a03:6b00::/32
-  var clientOK = false;
-  if (typeof myIpAddressEx === "function") {
-    var list = myIpAddressEx(); // "ip,ip,ip"
-    if (list) {
-      var ips = list.split(/[,;]/);
-      for (var i = 0; i < ips.length; i++) {
-        if (inAllowedV6(ips[i].trim())) { clientOK = true; break; }
-      }
-    }
-  } else {
-    // old engines: can't verify IPv6 -> اعتبره غير مطابق
-    clientOK = false;
-  }
-  if (!clientOK) return CONFIG.BLOCK_REPLY;
-
-  // ---------------- Main Logic ----------------
-  for (var cat in PATTERNS) {
-    if (matchCategory(host, url, PATTERNS[cat])) {
-      if (CONFIG.STRICT_V6_FOR.indexOf(cat) !== -1) {
-        return requireAllowedV6(cat, host);
-      }
-      // للفئات غير الصارمة، برضه نتحقق من أن الوجهة ضمن الرينج
-      return requireAllowedV6(cat, host);
-    }
+  function isMatchPort(port) {
+    return port >= 20001 && port <= 20003;
   }
 
-  // fallback: إن كان الدستينيشن ضمن الرينج، مرره كبروكسي لوجبة LOBBY
-  var fallback = requireAllowedV6("LOBBY", host);
-  return fallback;
+  function extractPort(u) {
+    var m = u.match(/^[a-z]+:\/\/[^\/:]+:(\d+)/i);
+    if (m && m[1]) return parseInt(m[1], 10);
+    if (u.indexOf("https://") === 0) return 443;
+    if (u.indexOf("http://")  === 0) return 80;
+    return 443;
+  }
+
+  function isIPv6Literal(s) {
+    return s.indexOf(":") !== -1 && s.indexOf("[") === -1 && s.indexOf("]") === -1;
+  }
+
+  function pickProxy(list, host, url) {
+    if (!list || list.length === 0) return PROXY_DEFAULT;
+    var key = host + "|" + url;
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = ((h << 5) - h) + key.charCodeAt(i);
+    h = Math.abs(h);
+    return list[h % list.length];
+  }
 }
