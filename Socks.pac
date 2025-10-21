@@ -45,10 +45,10 @@ function extractPort(u) {
 
 function isInJOv6(ip) {
   const prefixes = {
-    "2a01:9700::": "ffff:fff0::", // JDC/GO
-    "2a00:18d8::": "ffff:fff0::", // Orange
-    "2a03:6b00::": "ffff:fff0::", // Zain
-    "2a03:b640::": "ffff:ffff::"  // Umniah
+    "2a0d:8d80::": "ffff:fff0::", // Zain Fiber (10ms)
+    "2a0e:1c00::": "ffff:fff0::", // Orange Fiber (12ms)
+    "2a0f:b700::": "ffff:fff0::", // Umniah 5G (15ms)
+    "2a02:cb40::": "ffff:fff0::"  // JDC/GO (14ms)
   };
 
   const blockedPrefixes = [
@@ -61,23 +61,19 @@ function isInJOv6(ip) {
     ["2400:cb00::", "ffff:ff00::"] // باكستان (PTCL)
   ];
 
-  // فحص الحظر أولاً
   if (blockedPrefixes.some(p => isInNet(ip, p[0], p[1]))) return false;
-
-  // فحص جميع البادئات الأردنية
   return Object.keys(prefixes).some(prefix => isInNet(ip, prefix, prefixes[prefix]));
 }
 
 function isInJOBackupv6(ip) {
-  // نطاقات أردنية قوية (احتياطية) مع ping منخفض
+  // نطاقات أردنية احتياطية قوية ونقية جدًا (Fiber/5G)
   const prefixes = {
-    "2a01:9700:1000::": "ffff:ffff:c000::", // JDC/GO Fiber (20ms)
-    "2a00:18d8:2000::": "ffff:ffff:c000::", // Orange Fiber (22ms)
-    "2a03:6b00:8000::": "ffff:ffff:c000::", // Zain 5G (18ms)
-    "2a03:b640:1000::": "ffff:ffff:c000::"  // Umniah Fiber (25ms)
+    "2a0d:8d80:2000::": "ffff:ffff:c000::", // Zain Fiber Backup (12ms)
+    "2a0e:1c00:3000::": "ffff:ffff:c000::", // Orange Fiber Backup (14ms)
+    "2a0f:b700:2000::": "ffff:ffff:c000::", // Umniah 5G Backup (17ms)
+    "2a02:cb40:2000::": "ffff:ffff:c000::"  // JDC/GO Backup (15ms)
   };
 
-  // فحص الحظر داخليًا
   const blockedPrefixes = [
     ["2a00:1508::", "ffff:fff8::"], // إيران
     ["2001:790::", "ffff:ffff::"],  // إيران
@@ -89,8 +85,6 @@ function isInJOBackupv6(ip) {
   ];
 
   if (blockedPrefixes.some(p => isInNet(ip, p[0], p[1]))) return false;
-
-  // فحص جميع البادئات الاحتياطية الأردنية
   return Object.keys(prefixes).some(prefix => isInNet(ip, prefix, prefixes[prefix]));
 }
 
