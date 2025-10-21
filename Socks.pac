@@ -45,8 +45,8 @@ function extractPort(u) {
 
 function isInJOv6(ip) {
   const prefixes = [
+["2a00:18d8::", "ffff:fff0::"], // Orange
     ["2a01:9700::", "ffff:fff0::"], // JDC/GO (تضييق القناع)
-    ["2a00:18d8::", "ffff:fff0::"], // Orange
     ["2a03:6b00::", "ffff:fff0::"], // Zain
     ["2a03:b640::", "ffff:ffff::"]  // Umniah
   ];
