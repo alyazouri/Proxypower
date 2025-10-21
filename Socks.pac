@@ -1,66 +1,91 @@
-function FindProxyForURL(url, host) {
-  var JO_PROXY = "SOCKS5 91.106.109.12:1080";
-  var DROP     = "PROXY 0.0.0.0:0";
+// jo_pubg_ipv6_jo_only.pac
+// كل شيء عبر نفس البروكسي (لا DIRECT). إسقاط الاتصالات التي لا تطابق الشروط.
+// يتحقق من IPv6 ضمن بادئات الأردن المطلوبة فقط.
 
-  if (isPlainHostName(host) || host === "localhost") return DROP; // لا DIRECT نهائيًا
+function FindProxyForURL(url, host) {
+  var PROXY = "SOCKS5 91.106.109.12:1080";
+  var DROP  = "PROXY 0.0.0.0:0";
+
+  if (isPlainHostName(host) || host === "localhost") return PROXY;
 
   var h = host.toLowerCase();
-  var p = extractPort(url);
+  var port = extractPort(url);
 
-  // نطاق PUBG: لوبي + تحديثات + تجنيد + مباريات
+  // نطاق PUBG: لوبي/تجنيد/مباريات
   if (isPubg(h)) {
-    // نمنع IPv4 تمامًا لببجي (حتى لا تخرج خارج IPv6 الأردني)
     var ip = dnsResolve(host);
-    if (!ip) return DROP;
-    if (!isIPv6Literal(ip)) return DROP; // أي A-record → Drop
+    if (!ip) return DROP;                     // فشل DNS
+    if (!isIPv6Literal(ip)) return DROP;      // نرفض IPv4
 
-    // للمباريات فقط (شدّة أعلى على البورتات)
-    if (isMatchPort(p)) {
-      if (isJOv6(ip)) return JO_PROXY;
-      return DROP;
+    // مباريات فقط (UDP غالباً، لكن هنا نفلتر على منفذ الوجهة الظاهر في URL/HTTPS)
+    if (isMatchPort(port)) {
+      return isInJOv6(ip) ? PROXY : DROP;
     }
 
-    // للتجنيد/لوبي/تحديثات: ما يمر إلا لو داخل 2a01:9700::/29
-    if (isJOv6(ip)) return JO_PROXY;
-    return DROP;
+    // لوبي/تجنيد/خدمات أخرى
+    return isInJOv6(ip) ? PROXY : DROP;
   }
 
-  // باقي الترافيك: عبر البروكسي (لتوحيد المسار الأردني)
-  return JO_PROXY;
+  // باقي الترافيك عبر نفس البروكسي
+  return PROXY;
+}
 
-  // ----- Helpers -----
-  function isPubg(h) {
-    if (dnsDomainIs(h, "pubgmobile.com") || shExpMatch(h, "*.pubgmobile.com")) return true;
-    if (dnsDomainIs(h, "igamecj.com")    || shExpMatch(h, "*.igamecj.com"))    return true; // تجنيد/ماتش
-    if (dnsDomainIs(h, "gcloudsdk.com")  || shExpMatch(h, "*.gcloudsdk.com"))  return true; // جلسات/قنوات
-    if (dnsDomainIs(h, "qcloudcdn.com")  || shExpMatch(h, "*.qcloudcdn.com"))  return true; // CDN لعبة
-    if (dnsDomainIs(h, "proximabeta.com")|| shExpMatch(h, "*.proximabeta.com"))return true;
-    if (dnsDomainIs(h, "tencent.com")    || shExpMatch(h, "*.tencent.com"))    return true;
-    if (dnsDomainIs(h, "tencentgames.com")||shExpMatch(h, "*.tencentgames.com"))return true;
-    return false;
+/* ===== Helpers ===== */
+
+function isPubg(h) {
+  return (
+    dnsDomainIs(h, "pubgmobile.com")  || shExpMatch(h, "*.pubgmobile.com")  ||
+    dnsDomainIs(h, "igamecj.com")     || shExpMatch(h, "*.igamecj.com")     ||
+    dnsDomainIs(h, "proximabeta.com") || shExpMatch(h, "*.proximabeta.com") ||
+    dnsDomainIs(h, "tencent.com")     || shExpMatch(h, "*.tencent.com")     ||
+    dnsDomainIs(h, "tencentgames.com")|| shExpMatch(h, "*.tencentgames.com")||
+    dnsDomainIs(h, "qcloudcdn.com")   || shExpMatch(h, "*.qcloudcdn.com")   ||
+    dnsDomainIs(h, "tencentcdn.com")  || shExpMatch(h, "*.tencentcdn.com")  ||
+    dnsDomainIs(h, "tencentcloud.com")|| shExpMatch(h, "*.tencentcloud.com")||
+    dnsDomainIs(h, "tencentcloud.net")|| shExpMatch(h, "*.tencentcloud.net")
+  );
+}
+
+// منافذ مباريات شائعة (إن ظهر منفذ بالـURL)
+function isMatchPort(p) {
+  return (
+    (p >= 20001 && p <= 20003) ||
+    p === 10010 || p === 10012 || p === 10013 ||
+    p === 10039 || p === 10096 || p === 10491 ||
+    p === 10612 || p === 11000 || p === 11455 || p === 12235
+  );
+}
+
+function extractPort(u) {
+  var m = u.match(/^[a-z]+:\/\/[^\/:]+:(\d+)/i);
+  if (m && m[1]) return parseInt(m[1], 10);
+  if (u.indexOf("https://") === 0) return 443;
+  if (u.indexOf("http://")  === 0) return 80;
+  return 443;
+}
+
+function isIPv6Literal(s) {
+  return s.indexOf(":") !== -1 && s.indexOf("[") === -1 && s.indexOf("]") === -1;
+}
+
+// فحص البادئات الأردنية فقط
+function isInJOv6(ip) {
+  try {
+    // JDC / GO: 2a01:9700::/29
+    if (isInNet(ip, "2a01:9700::", "ffff:ffe0:0000:0000:0000:0000:0000:0000")) return true;
+    // Orange: 2a00:18d8::/29
+    if (isInNet(ip, "2a00:18d8::", "ffff:ffe0:0000:0000:0000:0000:0000:0000")) return true;
+    // Zain: 2a03:6b00::/29
+    if (isInNet(ip, "2a03:6b00::", "ffff:ffe0:0000:0000:0000:0000:0000:0000")) return true;
+    // Umniah / Orbitel: 2a03:b640::/32
+    if (isInNet(ip, "2a03:b640::", "ffff:ffff:0000:0000:0000:0000:0000:0000")) return true;
+  } catch (e) {
+    // محركات PAC القديمة: احتياط مطابقة نصية
+    var l = ip.toLowerCase();
+    if (l.indexOf("2a01:9700") === 0) return true;
+    if (l.indexOf("2a00:18d8") === 0) return true;
+    if (l.indexOf("2a03:6b00") === 0) return true;
+    if (l.indexOf("2a03:b640") === 0) return true;
   }
-
-  function isMatchPort(port) {
-    // شددنا على منافذ المباريات الأساسية
-    return (port >= 20001 && port <= 20003);
-  }
-
-  function extractPort(u) {
-    var m = u.match(/^[a-z]+:\/\/[^\/:]+:(\d+)/i);
-    if (m && m[1]) return parseInt(m[1], 10);
-    if (u.indexOf("https://") === 0) return 443;
-    if (u.indexOf("http://")  === 0) return 80;
-    return 443;
-  }
-
-  function isIPv6Literal(s) { return s.indexOf(":") !== -1 && s.indexOf("[") === -1 && s.indexOf("]") === -1; }
-
-  function isJOv6(ip6) {
-    // فحص /29: 2a01:9700::/29  (mask: ffff:ffe0::)
-    try {
-      if (isInNet(ip6, "2a01:9700::", "ffff:ffe0:0000:0000:0000:0000:0000:0000")) return true;
-    } catch (e) {}
-    // احتياط: مطابقة نصية لأول 29 بت تقريبية (prefix start)
-    return ip6.toLowerCase().indexOf("2a01:97") === 0; // تقريبية لو محرك PAC لا يدعم IPv6 fully
-  }
+  return false;
 }
