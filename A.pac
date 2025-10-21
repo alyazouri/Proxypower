@@ -116,10 +116,10 @@ function FindProxyForURL(url, host) {
         }
     }
 
-    // اختيار ثابت: بدون jitter للجيم، وJITTER بسيط للوبي
-    var baseHash = djb2(host + "|" + clientIP + "|" + STICKY_SALT);
+    // اختيار ثابت: إزالة clientIP من الهاش لاتساق المنافذ لجميع اللاعبين في JO
+    var baseHash = djb2(host + "|" + STICKY_SALT); // إزالة clientIP
     var jitter   = 0;
-    if (!inGame) {
+    if (!inGame && !inJO) { // تطبيق jitter فقط للوبي خارج الأردن
         var minuteBucket = Math.floor(new Date().getTime() / 60000);
         var span = (JITTER_WINDOW*2) + 1;
         jitter = (djb2(host + "|" + minuteBucket) % span) - JITTER_WINDOW;
