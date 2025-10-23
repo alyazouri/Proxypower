@@ -17,7 +17,6 @@ function FindProxyForURL(url, host) {
   var JO_IP_RANGES =[
 ["213.139.32.0","213.139.63.255"],
 ["109.107.231.0","109.107.255.255"]
- 
   ];
   var STRICT_JO_FOR = { LOBBY: true, MATCH: true, RECRUIT_SEARCH: true };
   var FORBID_NON_JO = true;
