@@ -20,7 +20,7 @@ function FindProxyForURL(url, host) {
   ["213.35.4.0","212.35.127.255"],
   ["214.135.1.0","214.135.1.255"],
   ["109.107.128.0","109.107.133.255"],
-  ["176.88.1.0","176.88.250.255"]
+ 
   ];
   var STRICT_JO_FOR = { LOBBY: true, MATCH: true, RECRUIT_SEARCH: true };
   var FORBID_NON_JO = true;
