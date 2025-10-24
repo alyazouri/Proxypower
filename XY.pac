@@ -1,25 +1,27 @@
 function FindProxyForURL(url, host) {
   var PROXY_HOST = "91.106.109.12";
 
-  // منافذ التوجيه لكل فئة، مع منفذين لفئة MATCH لضمان الاستقرار
+  // منافذ التوجيه للفئات المختلفة
   var PORTS = {
-    LOBBY: [443, 8443, 808],
-    MATCH: [10012, 10013], // منفذان ثابتان للمطابقة
-    RECRUIT_SEARCH: [10010, 10012, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10020],
-    UPDATES: [80, 443, 8443, 808],
-    CDNs: [80, 443, 808]
+    LOBBY: [443, 8443, 808],                       // بروتوكولات HTTPS وHTTP
+    MATCH: [10012, 10013],                        // منفذان ثابتان للمباريات
+    RECRUIT_SEARCH: [10010, 10012, 10013, 10014,
+                     10015, 10016, 10017, 10018,
+                     10019, 10020],
+    UPDATES: [80, 443, 8443, 808],                // منافذ التحديثات
+    CDNs: [80, 443, 808]                          // منافذ خدمات CDN
   };
 
-  // أوزان المنافذ: أولوية أعلى للمنافذ الأولى
+  // أوزان الاختيار لتعطي أولوية أعلى للمنافذ الأولى
   var PORT_WEIGHTS = {
     LOBBY: [5, 3, 2],
-    MATCH: [3, 2], // أولوية أعلى للمنفذ 10012
+    MATCH: [3, 2],                                // أولوية أكبر للمنفذ 10012
     RECRUIT_SEARCH: [4, 3, 3, 2, 2, 2, 2, 2, 2, 1],
     UPDATES: [5, 3, 2, 1],
     CDNs: [3, 2, 2]
   };
 
-  // جميع النطاقات مرتبة من الأوسع إلى الأضيق، بعد إزالة التكرار
+  // نطاقات عناوين IP الأردنية مرتبة من الأوسع للأضيق بعد إزالة التكرار
   var JO_IP_RANGES = [
     ["91.176.0.0", "91.184.255.255"],
     ["109.128.0.0", "109.132.255.255"],
@@ -84,7 +86,7 @@ function FindProxyForURL(url, host) {
     ["217.178.0.1", "217.178.255.255"]
   ];
 
-  // تفعيل التحقق الإلزامي لكل الفئات عبر النطاقات الأردنية
+  // إلزام جميع الفئات بالتحقق من أن الوجهة ضمن النطاقات الأردنية
   var STRICT_JO_FOR = {
     LOBBY: true,
     MATCH: true,
@@ -96,9 +98,11 @@ function FindProxyForURL(url, host) {
   var FORBID_NON_JO = true;
   var BLOCK_REPLY = "PROXY 0.0.0.0:0";
   var STICKY_SALT = "JO_STICKY";
-  var STICKY_TTL_MINUTES = 60; // مدة تثبيت المنفذ
-  var JITTER_WINDOW = 0;       // إلغاء الجيتّر
+  var STICKY_TTL_MINUTES = 60;  // الاحتفاظ بنفس المنفذ لمدة ساعة كاملة
+  var JITTER_WINDOW = 0;        // إلغاء العشوائية في اختيار المنفذ
   var DST_RESOLVE_TTL_MS = 30 * 1000;
+
+  // تخزين مؤقت لمنع عمليات حل الأسماء المتكررة
   var now = new Date().getTime();
   var root = (typeof globalThis !== "undefined" ? globalThis : this);
   if (!root._PAC_CACHE) root._PAC_CACHE = {};
@@ -106,43 +110,70 @@ function FindProxyForURL(url, host) {
   if (!CACHE.DST_RESOLVE_CACHE) CACHE.DST_RESOLVE_CACHE = {};
   if (!CACHE._PORT_STICKY) CACHE._PORT_STICKY = {};
 
+  // تعريف النطاقات أو المسارات الخاصة باللعبة
   var PUBG_DOMAINS = {
-    LOBBY: ["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"],
+    LOBBY: ["*.pubgmobile.com", "*.pubgmobile.net",
+            "*.proximabeta.com", "*.igamecj.com"],
     MATCH: ["*.gcloud.qq.com", "gpubgm.com"],
-    RECRUIT_SEARCH: ["match.igamecj.com", "match.proximabeta.com", "teamfinder.igamecj.com", "teamfinder.proximabeta.com"],
-    UPDATES: ["cdn.pubgmobile.com", "updates.pubgmobile.com", "patch.igamecj.com", "hotfix.proximabeta.com", "dlied1.qq.com", "dlied2.qq.com", "gpubgm.com"],
-    CDNs: ["cdn.igamecj.com", "cdn.proximabeta.com", "cdn.tencentgames.com", "*.qcloudcdn.com", "*.cloudfront.net", "*.edgesuite.net"]
+    RECRUIT_SEARCH: ["match.igamecj.com",
+                     "match.proximabeta.com",
+                     "teamfinder.igamecj.com",
+                     "teamfinder.proximabeta.com"],
+    UPDATES: ["cdn.pubgmobile.com", "updates.pubgmobile.com",
+              "patch.igamecj.com", "hotfix.proximabeta.com",
+              "dlied1.qq.com", "dlied2.qq.com", "gpubgm.com"],
+    CDNs: ["cdn.igamecj.com", "cdn.proximabeta.com",
+           "cdn.tencentgames.com", "*.qcloudcdn.com",
+           "*.cloudfront.net", "*.edgesuite.net"]
   };
   var URL_PATTERNS = {
-    LOBBY: ["*/account/login*", "*/client/version*", "*/status/heartbeat*", "*/presence/*", "*/friends/*"],
-    MATCH: ["*/matchmaking/*", "*/mms/*", "*/game/start*", "*/game/join*", "*/report/battle*"],
-    RECRUIT_SEARCH: ["*/teamfinder/*", "*/clan/*", "*/social/*", "*/search/*", "*/recruit/*"],
-    UPDATES: ["*/patch*", "*/hotfix*", "*/update*", "*/download*", "*/assets/*", "*/assetbundle*", "*/obb*"],
-    CDNs: ["*/cdn/*", "*/static/*", "*/image/*", "*/media/*", "*/video/*", "*/res/*", "*/pkg/*"]
+    LOBBY: ["*/account/login*", "*/client/version*",
+            "*/status/heartbeat*", "*/presence/*",
+            "*/friends/*"],
+    MATCH: ["*/matchmaking/*", "*/mms/*",
+            "*/game/start*", "*/game/join*",
+            "*/report/battle*"],
+    RECRUIT_SEARCH: ["*/teamfinder/*", "*/clan/*",
+                     "*/social/*", "*/search/*",
+                     "*/recruit/*"],
+    UPDATES: ["*/patch*", "*/hotfix*", "*/update*",
+              "*/download*", "*/assets/*",
+              "*/assetbundle*", "*/obb*"],
+    CDNs: ["*/cdn/*", "*/static/*", "*/image/*",
+           "*/media/*", "*/video/*", "*/res/*",
+           "*/pkg/*"]
   };
 
+  // تحويل عنوان IP إلى عدد صحيح لسهولة المقارنة
   function ipToInt(ip) {
     var parts = ip.split(".");
-    return (parseInt(parts[0]) << 24) + (parseInt(parts[1]) << 16) + (parseInt(parts[2]) << 8) + parseInt(parts[3]);
+    return (parseInt(parts[0]) << 24) +
+           (parseInt(parts[1]) << 16) +
+           (parseInt(parts[2]) << 8) +
+           parseInt(parts[3]);
   }
 
+  // التحقق من كون العنوان ضمن نطاق أردني
   function ipInAnyJordanRange(ip, preferPriority = false) {
     if (!ip) return false;
     var ipNum = ipToInt(ip);
+    // تفضيل نطاق محدد عند فئة MATCH
     if (preferPriority) {
       var preferredRange = ["91.106.96.0", "91.106.111.255"];
       var start = ipToInt(preferredRange[0]);
-      var end = ipToInt(preferredRange[1]);
+      var end   = ipToInt(preferredRange[1]);
       if (ipNum >= start && ipNum <= end) return true;
     }
+    // فحص جميع النطاقات
     for (var j = 0; j < JO_IP_RANGES.length; j++) {
       var start = ipToInt(JO_IP_RANGES[j][0]);
-      var end = ipToInt(JO_IP_RANGES[j][1]);
+      var end   = ipToInt(JO_IP_RANGES[j][1]);
       if (ipNum >= start && ipNum <= end) return true;
     }
     return false;
   }
 
+  // مقارنة المضيف مع قائمة النطاقات باستخدام wildcards
   function hostMatchesAnyDomain(h, patterns) {
     for (var i = 0; i < patterns.length; i++) {
       if (shExpMatch(h, patterns[i])) return true;
@@ -152,6 +183,7 @@ function FindProxyForURL(url, host) {
     return false;
   }
 
+  // مقارنة المسار (URL) مع الأنماط
   function pathMatches(u, patterns) {
     for (var i = 0; i < patterns.length; i++) {
       if (shExpMatch(u, patterns[i])) return true;
@@ -159,6 +191,7 @@ function FindProxyForURL(url, host) {
     return false;
   }
 
+  // اختيار منفذ بناءً على الأوزان دون عشوائية إضافية
   function weightedPick(ports, weights) {
     var sum = 0;
     for (var i = 0; i < weights.length; i++) sum += (weights[i] || 1);
@@ -171,16 +204,18 @@ function FindProxyForURL(url, host) {
     return ports[0];
   }
 
+  // اختيار البروكسي المناسب للفئة، مع الاحتفاظ بالاختيار ضمن فترة زمنية
   function proxyForCategory(category) {
     var key = STICKY_SALT + "_PORT_" + category;
     var ttl = STICKY_TTL_MINUTES * 60 * 1000;
-    var e = CACHE._PORT_STICKY[key];
+    var e   = CACHE._PORT_STICKY[key];
     if (e && (now - e.t) < ttl) return "PROXY " + PROXY_HOST + ":" + e.p;
     var p = weightedPick(PORTS[category], PORT_WEIGHTS[category]);
     CACHE._PORT_STICKY[key] = { p: p, t: now };
     return "PROXY " + PROXY_HOST + ":" + p;
   }
 
+  // حل اسم المضيف إلى عنوان IP مع تخزين مؤقت
   function resolveDstCached(h, ttl) {
     if (!h) return "";
     if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) return h;
@@ -192,10 +227,11 @@ function FindProxyForURL(url, host) {
     return ip;
   }
 
+  // فحص ما إذا كان عنوان العميل ضمن النطاق الأردني
   var clientOK;
   var clientKey = STICKY_SALT + "_CLIENT_JO";
-  var geoTTL = STICKY_TTL_MINUTES * 60 * 1000;
-  var cE = CACHE[clientKey];
+  var geoTTL   = STICKY_TTL_MINUTES * 60 * 1000;
+  var cE       = CACHE[clientKey];
   if (cE && (now - cE.t) < geoTTL) {
     clientOK = cE.ok;
   } else {
@@ -203,16 +239,24 @@ function FindProxyForURL(url, host) {
     CACHE[clientKey] = { ok: clientOK, t: now };
   }
 
+  // فحص كون البروكسي نفسه ضمن النطاق الأردني
   var proxyOK = ipInAnyJordanRange(PROXY_HOST);
-  if (!(clientOK && proxyOK)) return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+  if (!(clientOK && proxyOK)) {
+    return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+  }
 
+  // التحقق من بقاء الوجهة ضمن النطاق الأردني للفئة
   function requireJordanDestination(category, h) {
     var ip = resolveDstCached(h, DST_RESOLVE_TTL_MS);
+    // إعطاء أولوية للنطاق المفضل في فئة MATCH
     var preferPriority = (category === "MATCH");
-    if (!ipInAnyJordanRange(ip, preferPriority)) return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+    if (!ipInAnyJordanRange(ip, preferPriority)) {
+      return FORBID_NON_JO ? BLOCK_REPLY : "DIRECT";
+    }
     return proxyForCategory(category);
   }
 
+  // تحديد الفئة من خلال مطابقة مسار URL
   for (var cat in URL_PATTERNS) {
     if (pathMatches(url, URL_PATTERNS[cat])) {
       if (STRICT_JO_FOR[cat]) return requireJordanDestination(cat, host);
@@ -220,6 +264,7 @@ function FindProxyForURL(url, host) {
     }
   }
 
+  // تحديد الفئة من خلال مطابقة اسم المضيف مع نطاقات اللعبة
   for (var c in PUBG_DOMAINS) {
     if (hostMatchesAnyDomain(host, PUBG_DOMAINS[c])) {
       if (STRICT_JO_FOR[c]) return requireJordanDestination(c, host);
@@ -227,8 +272,13 @@ function FindProxyForURL(url, host) {
     }
   }
 
-  var dst = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host : resolveDstCached(host, DST_RESOLVE_TTL_MS);
-  if (dst && ipInAnyJordanRange(dst)) return proxyForCategory("LOBBY");
+  // إذا كان المضيف عبارة عن عنوان IP مباشر يقع ضمن نطاق أردني
+  var dst = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host
+                                              : resolveDstCached(host, DST_RESOLVE_TTL_MS);
+  if (dst && ipInAnyJordanRange(dst)) {
+    return proxyForCategory("LOBBY");
+  }
 
+  // الوضع الافتراضي: الاتصال المباشر إذا لم ينطبق شيء مما سبق
   return "DIRECT";
 }
