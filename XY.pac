@@ -1,30 +1,36 @@
 function FindProxyForURL(url, host) {
   var PROXY_HOST = "91.106.109.12";
-  // منافذ التوجيه حسب الفئات، باستخدام المنافذ المفتوحة
+
+  // منافذ التوجيه للفئات المختلفة
   var PORTS = {
-    LOBBY: [443, 8443, 808],  // HTTPS، HTTPS بديل، HTTP غير قياسي
-    MATCH: [2000, 2001, 2003], // منافذ مفتوحة من نطاق 2000
+    LOBBY: [443, 8443, 808],
+    MATCH: [10012, 7889, 17500, 18081, 13004, 14000, 17000],
     RECRUIT_SEARCH: [10010, 10012, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10020],
-    UPDATES: [80, 443, 8443, 808], // منافذ للتحديثات
-    CDNs: [80, 443, 808] // منافذ لخدمات CDN
+    UPDATES: [80, 443, 8443, 808],
+    CDNs: [80, 443, 808]
   };
+
   var PORT_WEIGHTS = {
     LOBBY: [5, 3, 2],
-    MATCH: [4, 2, 1],
+    MATCH: [5, 4, 3, 3, 2, 2, 1],
     RECRUIT_SEARCH: [4, 3, 3, 2, 2, 2, 2, 2, 2, 1],
     UPDATES: [5, 3, 2, 1],
     CDNs: [3, 2, 2]
   };
-  // نطاقات عناوين الأردن مرتبة من الأكبر إلى الأصغر حجمًا
+
+  // نطاقات عناوين IP الأردنية مضافة إليها النطاقات الجديدة، مرتبة من الأكبر إلى الأصغر
   var JO_IP_RANGES = [
     ["109.128.0.0", "109.132.255.255"],
     ["217.96.0.1", "217.99.255.255"],
+    ["91.93.0.0", "91.95.255.255"],
+    ["91.109.0.0", "91.111.255.255"],
     ["217.20.0.1", "217.22.255.255"],
     ["217.52.0.1", "217.54.255.255"],
     ["217.136.0.1", "217.138.255.255"],
     ["217.142.0.1", "217.144.255.255"],
     ["217.163.0.1", "217.165.255.255"],
     ["109.82.0.0", "109.83.255.255"],
+    ["91.86.0.0", "91.87.255.255"],
     ["217.12.0.1", "217.13.255.255"],
     ["217.30.0.1", "217.31.255.255"],
     ["217.72.0.1", "217.73.255.255"],
@@ -32,6 +38,11 @@ function FindProxyForURL(url, host) {
     ["109.86.0.0", "109.86.255.255"],
     ["109.104.0.0", "109.104.255.255"],
     ["109.125.0.0", "109.125.255.255"],
+    ["91.84.0.0", "91.84.255.255"],
+    ["91.104.0.0", "91.104.255.255"],
+    ["91.107.0.0", "91.107.255.255"],
+    ["91.120.0.0", "91.120.255.255"],
+    ["91.122.0.0", "91.122.255.255"],
     ["217.8.0.1", "217.8.255.255"],
     ["217.18.0.1", "217.18.255.255"],
     ["217.27.0.1", "217.27.255.255"],
@@ -50,7 +61,8 @@ function FindProxyForURL(url, host) {
     ["217.175.0.1", "217.175.255.255"],
     ["217.178.0.1", "217.178.255.255"]
   ];
-  // إلزام جميع الفئات بالتحقق من أن الوجهة ضمن النطاقات الأردنية
+
+  // تطبيق التحقق الإلزامي من النطاق الأردني لجميع الفئات
   var STRICT_JO_FOR = {
     LOBBY: true,
     MATCH: true,
@@ -58,11 +70,12 @@ function FindProxyForURL(url, host) {
     UPDATES: true,
     CDNs: true
   };
+
   var FORBID_NON_JO = true;
   var BLOCK_REPLY = "PROXY 0.0.0.0:0";
   var STICKY_SALT = "JO_STICKY";
-  var STICKY_TTL_MINUTES = 30;
-  var JITTER_WINDOW = 3;
+  var STICKY_TTL_MINUTES = 60;  // لتثبيت البورت لمدة أطول
+  var JITTER_WINDOW = 0;        // إلغاء الجيتّر لثبات الاختيار
   var DST_RESOLVE_TTL_MS = 30 * 1000;
   var now = new Date().getTime();
   var root = (typeof globalThis !== "undefined" ? globalThis : this);
@@ -127,8 +140,7 @@ function FindProxyForURL(url, host) {
   function weightedPick(ports, weights) {
     var sum = 0;
     for (var i = 0; i < weights.length; i++) sum += (weights[i] || 1);
-    var jitter = (JITTER_WINDOW > 0) ? Math.floor(Math.random() * JITTER_WINDOW) : 0;
-    var r = Math.floor(Math.random() * (sum + jitter)) + 1;
+    var r = Math.floor(Math.random() * sum) + 1;
     var acc = 0;
     for (var k = 0; k < ports.length; k++) {
       acc += (weights[k] || 1);
@@ -195,5 +207,6 @@ function FindProxyForURL(url, host) {
 
   var dst = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host : resolveDstCached(host, DST_RESOLVE_TTL_MS);
   if (dst && ipInAnyJordanRange(dst)) return proxyForCategory("LOBBY");
+
   return "DIRECT";
 }
