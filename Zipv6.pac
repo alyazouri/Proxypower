@@ -1,259 +1,207 @@
-// PAC ذكي: يختار أسرع بوابة أردنية تلقائياً عبر قياس dnsResolve (iOS friendly).
-// - LOBBY → 2a03:6b00::/29 (Zain)
-// - MATCH → 2a03:b640::/32 (Umniah/Orbitel)
-// - البروكسي الافتراضي (احتياطي): 91.106.109.12
-// - لكل فئة بورت ثابت (LOBBY=443, MATCH=20001)
-// ملاحظة: لإضافة بوابات أردنية أكثر، اضفها إلى PROXY_CANDIDATES (يمكن أن تكون أسماء أو عناوين IP).
+// PAC صارم للغاية – يرفع احتمال أن تكون المباريات واللاعبون أردنيين
+// متطلبات: جهاز يدعم IPv6، وبروكسي أردني ثابت يدعم IPv6 (ويُفضل UDP forwarding إذا الحاجة للماتش).
+// Proxy candidates - ضع هنا بوابات أردنية فعلية (IP أو hostname)
+var PROXY_CANDIDATES = ["91.106.109.12"]; // اتركها كما هي أو زد عناوين أردنية أخرى
 
-var PROXY_CANDIDATES = [
-  // يمكن إضافة المزيد مثل "proxy2.example.jo" أو "91.106.109.13"
-  "91.106.109.12"
-];
+// بورتات ثابتة لكل فئة
+var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
-// بورت لكل فئة
-var FIXED_PORT = {
-  LOBBY: 443,
-  MATCH: 20001,
-  RECRUIT_SEARCH: 443,
-  UPDATES: 80,
-  CDN: 80
+// بادئات IPv6 لكل فئة كما طلبت
+var JO_PREFIX = {
+  LOBBY: ["2a03:6b00"],   // زين 2a03:6b00::/29
+  MATCH: ["2a03:b640"]    // أمنية/Umniah 2a03:b640::/32
 };
 
-// التهيئة: وقت صلاحية الاختيار الأسرع (ms)
-var PROXY_STICKY_TTL_MS = 60 * 1000; // 60 ثانية (عدل إذا تحب أطول: 5*60*1000 = 5 دقائق)
+// cache & sticky
+var CACHE_ROOT = (typeof globalThis !== "undefined"? globalThis : this);
+if (!CACHE_ROOT._PAC_JO_CACHE) CACHE_ROOT._PAC_JO_CACHE = {};
+var CACHE = CACHE_ROOT._PAC_JO_CACHE;
+if (!CACHE.dns) CACHE.dns = {};
+if (!CACHE.proxyPick) CACHE.proxyPick = {host:null, t:0, latency:Infinity};
 
-// dnsResolve cache TTL عند التحقق من الوجهة
-var DST_RESOLVE_TTL_MS = 15 * 1000; // 15s
+// TTLs (قابل للتعديل)
+var DNS_TTL_MS = 15*1000;
+var PROXY_STICKY_TTL_MS = 60*1000; // sticky proxy لمدة 60 ثانية
+var GEO_TTL_MS = 60*60*1000;
 
-// الكاش العام داخل سياق PAC
-var root = (typeof globalThis !== "undefined" ? globalThis : this);
-if (!root._PAC_SMART_CACHE) root._PAC_SMART_CACHE = {};
-var CACHE = root._PAC_SMART_CACHE;
-if (!CACHE.dnsResCache) CACHE.dnsResCache = {};
-if (!CACHE.proxyPick) CACHE.proxyPick = {host: null, t: 0, latency: Infinity};
-
-// دومينات وباترنات ببجي (كما سبق)
+// دومينات و URL patterns لببجي كما في السكربتات السابقة
 var PUBG_DOMAINS = {
-  LOBBY: ["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
-  MATCH: ["*.gcloud.qq.com","gpubgm.com"],
-  RECRUIT_SEARCH: ["match.igamecj.com","match.proximabeta.com","teamfinder.igamecj.com","teamfinder.proximabeta.com"],
-  UPDATES: ["cdn.pubgmobile.com","updates.pubgmobile.com","patch.igamecj.com","hotfix.proximabeta.com","dlied1.qq.com","dlied2.qq.com","gpubgm.com"],
-  CDN: ["cdn.igamecj.com","cdn.proximabeta.com","cdn.tencentgames.com","*.qcloudcdn.com","*.cloudfront.net","*.edgesuite.net"]
+  LOBBY:["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
+  MATCH:["*.gcloud.qq.com","gpubgm.com"],
+  RECRUIT_SEARCH:["match.igamecj.com","match.proximabeta.com","teamfinder.igamecj.com","teamfinder.proximabeta.com"],
+  UPDATES:["cdn.pubgmobile.com","updates.pubgmobile.com","patch.igamecj.com","hotfix.proximabeta.com","dlied1.qq.com","dlied2.qq.com","gpubgm.com"],
+  CDN:["cdn.igamecj.com","cdn.proximabeta.com","cdn.tencentgames.com","*.qcloudcdn.com","*.cloudfront.net","*.edgesuite.net"]
 };
-
 var URL_PATTERNS = {
-  LOBBY: ["*/account/login*","*/client/version*","*/status/heartbeat*","*/presence/*","*/friends/*"],
-  MATCH: ["*/matchmaking/*","*/mms/*","*/game/start*","*/game/join*","*/report/battle*"],
-  RECRUIT_SEARCH: ["*/teamfinder/*","*/clan/*","*/social/*","*/search/*","*/recruit/*"],
-  UPDATES: ["*/patch*","*/hotfix*","*/update*","*/download*","*/assets/*","*/assetbundle*","*/obb*"],
-  CDN: ["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
+  LOBBY:["*/account/login*","*/client/version*","*/status/heartbeat*","*/presence/*","*/friends/*"],
+  MATCH:["*/matchmaking/*","*/mms/*","*/game/start*","*/game/join*","*/report/battle*"],
+  RECRUIT_SEARCH:["*/teamfinder/*","*/clan/*","*/social/*","*/search/*","*/recruit/*"],
+  UPDATES:["*/patch*","*/hotfix*","*/update*","*/download*","*/assets/*","*/assetbundle*","*/obb*"],
+  CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
 };
 
-// بادئات IPv6 لكل فئة
-var JO_V6_PREFIXES_PER_CAT = {
-  LOBBY: ["2a03:6b00"],
-  MATCH: ["2a03:b640"],
-  RECRUIT_SEARCH: ["2a03:6b00"],
-  UPDATES: ["2a03:6b00"],
-  CDN: ["2a03:6b00"]
-};
-
-// وظيفة مساعدة: shExpMatch variant + suffix check
-function hostMatches(h, patterns) {
-  if (!h) return false;
+// دوال مساعدة
+function hostMatches(h, patterns){
+  if(!h) return false;
   h = h.toLowerCase();
-  for (var i=0;i<patterns.length;i++) {
-    var p = patterns[i];
-    if (shExpMatch(h, p)) return true;
-    if (p.indexOf("*.")===0) {
-      var suf = p.substring(1);
-      if (h.length >= suf.length && h.substring(h.length-suf.length) === suf) return true;
+  for(var i=0;i<patterns.length;i++){
+    if(shExpMatch(h, patterns[i])) return true;
+    if(patterns[i].indexOf("*.")===0){
+      var suf = patterns[i].substring(1);
+      if(h.length >= suf.length && h.substring(h.length - suf.length) === suf) return true;
     }
   }
   return false;
 }
 
-// dnsResolve مع كاش بسيط
-function resolveDstCached(h, ttl) {
-  if (!h) return "";
+function resolveCached(h, ttl){
+  if(!h) return "";
   var now = (new Date()).getTime();
-  var c = CACHE.dnsResCache[h];
-  if (c && (now - c.t) < ttl) return c.ip;
+  var c = CACHE.dns[h];
+  if(c && (now - c.t) < ttl) return c.ip;
   var ip = "";
-  try {
-    ip = dnsResolve(h) || "";
-  } catch(e) {
-    ip = "";
-  }
-  CACHE.dnsResCache[h] = {ip: ip, t: now};
+  try { ip = dnsResolve(h) || ""; } catch(e){ ip = ""; }
+  CACHE.dns[h] = {ip: ip, t: now};
   return ip;
 }
 
-// expand IPv6 '::' تقريبياً لتحليل أول مقطعين (تكتيك بسيط)
-function normalizeIPv6(ip) {
-  if (!ip) return "";
-  if (ip.indexOf('::') === -1) return ip;
+// Expand IPv6 '::' (تقريب بسيط) للحصول على أول مقطعين
+function normalizeIPv6(ip){
+  if(!ip) return "";
+  if(ip.indexOf('::') === -1) return ip;
   var parts = ip.split(':');
-  // تعويض :: بصف من الأصفار للوصول إلى 8 مجموعات
-  var left = [], right = [];
-  var sepFound = false;
-  for (var i=0;i<parts.length;i++) {
-    if (parts[i]==='') { sepFound = true; continue; }
-    if (!sepFound) left.push(parts[i]); else right.push(parts[i]);
+  var left=[], right=[];
+  var sep=false;
+  for(var i=0;i<parts.length;i++){
+    if(parts[i]===''){ sep=true; continue; }
+    if(!sep) left.push(parts[i]); else right.push(parts[i]);
   }
   var missing = 8 - (left.length + right.length);
   var zeros = [];
-  for (var j=0;j<missing;j++) zeros.push('0');
+  for(var j=0;j<missing;j++) zeros.push('0');
   var combined = left.concat(zeros).concat(right);
   return combined.join(':');
 }
 
-// تحقق ما إذا كان الـIPv6 يبدأ بالبادئة المطلوبة
-function ipMatchesCategoryPrefixes(ip, cat) {
-  if (!ip) return false;
-  if (ip.indexOf(':') === -1) return false;
+function ipMatchesPrefix(ip, prefixes){
+  if(!ip || ip.indexOf(':')===-1) return false;
   var ipn = normalizeIPv6(ip.toLowerCase());
   var parts = ipn.split(':');
-  if (parts.length < 2) return false;
-  var firstSeg = parseInt(parts[0], 16);
-  var secondSeg = parseInt(parts[1], 16);
-  var prefs = JO_V6_PREFIXES_PER_CAT[cat];
-  if (!prefs) return false;
-  for (var i=0;i<prefs.length;i++) {
-    var pref = prefs[i].toLowerCase().replace(/:+$/,'');
-    // مطابقة مباشرة أو pref::
-    if (ip.toLowerCase() === pref) return true;
-    if (ip.toLowerCase().indexOf(pref + '::') === 0) return true;
-    if (ip.toLowerCase().indexOf(pref + ':') === 0) return true;
-    // بديل: تحقق ثنائي بتفسير ثنائي بسيط:
-    var prefParts = pref.split(':');
-    var p0 = parseInt(prefParts[0],16);
-    var p1 = prefParts.length>1? parseInt(prefParts[1],16) : null;
-    if (p0 === firstSeg && (p1===null || p1 === secondSeg)) return true;
+  if(parts.length < 2) return false;
+  var first = parseInt(parts[0],16);
+  var second = parseInt(parts[1],16);
+  for(var i=0;i<prefixes.length;i++){
+    var p = prefixes[i].toLowerCase().replace(/:+$/,'');
+    if(ip.toLowerCase() === p) return true;
+    if(ip.toLowerCase().indexOf(p + '::') === 0) return true;
+    if(ip.toLowerCase().indexOf(p + ':') === 0) return true;
+    // check basic segments (fast)
+    var pparts = p.split(':');
+    var p0 = parseInt(pparts[0],16);
+    var p1 = (pparts.length>1)? parseInt(pparts[1],16) : null;
+    if(p0 === first && (p1===null || p1 === second)) return true;
   }
   return false;
 }
 
-// قياس وقت dnsResolve لاسم البروكسي (ms). لو كانت القيمة IP literal نرجع 1ms (قيمة منخفضة).
-function measureDnsLatency(host) {
-  var now = (new Date()).getTime();
-  // لو هو IP literal (IPv4/IPv6) → اعتبره فوري تقريباً
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.indexOf(':') !== -1) {
-    return 1;
-  }
-  // تجنب استدعاء متكرر جداً لنفس الاسم (cache داخلي)
-  try {
-    var start = (new Date()).getTime();
+// measure dnsResolve time (بديل بنغ داخل PAC)
+function measureResolve(host){
+  if(/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.indexOf(':')!==-1) return 1;
+  try{
+    var s = (new Date()).getTime();
     var r = dnsResolve(host);
-    var delta = (new Date()).getTime() - start;
-    if (!r) return 10000; // unresolved -> كبير
-    return delta>0? delta : 1;
-  } catch(e) {
-    return 10000;
-  }
+    var d = (new Date()).getTime() - s;
+    if(!r) return 10000;
+    return d>0?d:1;
+  } catch(e){ return 10000; }
 }
 
-// اختيار أسرع بروكسي (مع Sticky cache)
-function pickBestProxy() {
+// pick best proxy (sticky)
+function pickProxy(){
   var now = (new Date()).getTime();
-  var slot = CACHE.proxyPick;
-  if (slot.host && (now - slot.t) < PROXY_STICKY_TTL_MS) {
-    return slot.host; // reuse sticky
+  if(CACHE.proxyPick.host && (now - CACHE.proxyPick.t) < PROXY_STICKY_TTL_MS) return CACHE.proxyPick.host;
+  var best = null; var bestLat = Infinity;
+  for(var i=0;i<PROXY_CANDIDATES.length;i++){
+    var c = PROXY_CANDIDATES[i];
+    var lat = measureResolve(c);
+    if(lat < bestLat){ bestLat = lat; best = c; }
   }
-  // نفحص كل المرشحين
-  var best = null;
-  var bestLatency = Infinity;
-  for (var i=0;i<PROXY_CANDIDATES.length;i++) {
-    var candidate = PROXY_CANDIDATES[i];
-    var lat = measureDnsLatency(candidate);
-    if (lat < bestLatency) {
-      bestLatency = lat;
-      best = candidate;
-    }
-  }
-  if (!best) best = PROXY_CANDIDATES[0]; // fallback
-  CACHE.proxyPick = {host: best, t: now, latency: bestLatency};
+  if(!best) best = PROXY_CANDIDATES[0];
+  CACHE.proxyPick = {host: best, t: now, latency: bestLat};
   return best;
 }
 
-// بناء استجابة البروكسي حسب الفئة
-function proxyForCategory(cat) {
-  var proxyHost = pickBestProxy();
+function proxyFor(cat){
+  var host = pickProxy();
   var port = FIXED_PORT[cat] || 443;
-  return "PROXY " + proxyHost + ":" + port;
+  return "PROXY " + host + ":" + port;
 }
 
-// دالة مساعدة للـURL pattern
-function urlMatches(url, patterns) {
-  if (!url) return false;
-  for (var i=0;i<patterns.length;i++) if (shExpMatch(url, patterns[i])) return true;
-  return false;
+// check client & proxy are "Jordan" (optional, لكن يحسن النتيجة)
+function clientIsJO(){
+  var now = (new Date()).getTime();
+  var c = CACHE.clientGeo;
+  if(c && (now - c.t) < GEO_TTL_MS) return c.ok;
+  var ip = "";
+  try { ip = myIpAddress(); } catch(e){ ip=""; }
+  var ok = ipMatchesPrefix(ip, JO_PREFIX.LOBBY) || ipMatchesPrefix(ip, JO_PREFIX.MATCH);
+  CACHE.clientGeo = {ok: ok, t: now};
+  return ok;
+}
+function proxyIsJO(){
+  var now = (new Date()).getTime();
+  var c = CACHE.proxyGeo;
+  if(c && (now - c.t) < GEO_TTL_MS) return c.ok;
+  var p = pickProxy();
+  var ok = ipMatchesPrefix(p, JO_PREFIX.LOBBY) || ipMatchesPrefix(p, JO_PREFIX.MATCH) || (/^\d+\.\d+\.\d+\.\d+$/.test(p) && false);
+  CACHE.proxyGeo = {ok: ok, t: now};
+  return ok;
 }
 
-// دالة مساعدة للـhost pattern
-function hostMatchesPatterns(h, patterns) {
-  if (!h) return false;
-  h = h.toLowerCase();
-  for (var i=0;i<patterns.length;i++) {
-    var p = patterns[i];
-    if (shExpMatch(h, p)) return true;
-    if (p.indexOf("*.")===0) {
-      var suf = p.substring(1);
-      if (h.length >= suf.length && h.substring(h.length-suf.length) === suf) return true;
-    }
-  }
-  return false;
+// Decision core: enforce category prefixes strictly
+function enforceCategory(cat, host){
+  var ip = resolveCached(host, DNS_TTL_MS);
+  if(!ip) return "PROXY 0.0.0.0:0";
+  if(!ipMatchesPrefix(ip, JO_PREFIX[cat])) return "PROXY 0.0.0.0:0";
+  return proxyFor(cat);
 }
 
-// القرار الرئيسي
+// final FindProxyForURL
 function FindProxyForURL(url, host) {
-  if (host && host.toLowerCase) host = host.toLowerCase();
+  if(host && host.toLowerCase) host = host.toLowerCase();
 
-  // منع IPv4 فورياً
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return "PROXY 0.0.0.0:0";
-
-  // URL patterns أولاً (قصر الشرط)
-  if (urlMatches(url, URL_PATTERNS.MATCH) || hostMatchesPatterns(host, PUBG_DOMAINS.MATCH)) {
-    var ip = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-    if (!ip) return "PROXY 0.0.0.0:0";
-    if (!ipMatchesCategoryPrefixes(ip, "MATCH")) return "PROXY 0.0.0.0:0";
-    return proxyForCategory("MATCH");
+  // preliminary: ensure client and proxy appear Jordanian
+  if(!clientIsJO() || !proxyIsJO()){
+    // بدل الحظر الكلي، نعطيك بلوك صارم
+    return "PROXY 0.0.0.0:0";
   }
 
-  if (urlMatches(url, URL_PATTERNS.LOBBY) || hostMatchesPatterns(host, PUBG_DOMAINS.LOBBY)) {
-    var ip2 = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-    if (!ip2) return "PROXY 0.0.0.0:0";
-    if (!ipMatchesCategoryPrefixes(ip2, "LOBBY")) return "PROXY 0.0.0.0:0";
-    return proxyForCategory("LOBBY");
+  // prioritize MATCH patterns
+  if(shExpMatch(url, "*/matchmaking/*") || hostMatches(host, PUBG_DOMAINS.MATCH) || shExpMatch(url,"*/game/join*")){
+    return enforceCategory("MATCH", host);
   }
 
-  if (urlMatches(url, URL_PATTERNS.RECRUIT_SEARCH) || hostMatchesPatterns(host, PUBG_DOMAINS.RECRUIT_SEARCH)) {
-    var ip3 = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-    if (!ip3) return "PROXY 0.0.0.0:0";
-    if (!ipMatchesCategoryPrefixes(ip3, "RECRUIT_SEARCH")) return "PROXY 0.0.0.0:0";
-    return proxyForCategory("RECRUIT_SEARCH");
+  // LOBBY / presence / login
+  if(shExpMatch(url,"*/account/login*") || hostMatches(host, PUBG_DOMAINS.LOBBY) || shExpMatch(url,"*/status/heartbeat*")){
+    return enforceCategory("LOBBY", host);
   }
 
-  if (urlMatches(url, URL_PATTERNS.UPDATES) || hostMatchesPatterns(host, PUBG_DOMAINS.UPDATES)) {
-    var ip4 = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-    if (!ip4) return "PROXY 0.0.0.0:0";
-    if (!ipMatchesCategoryPrefixes(ip4, "UPDATES")) return "PROXY 0.0.0.0:0";
-    return proxyForCategory("UPDATES");
+  // recruit search -> treat as LOBBY
+  if(hostMatches(host, PUBG_DOMAINS.RECRUIT_SEARCH) || shExpMatch(url,"*/teamfinder/*")){
+    return enforceCategory("RECRUIT_SEARCH", host);
   }
 
-  if (urlMatches(url, URL_PATTERNS.CDN) || hostMatchesPatterns(host, PUBG_DOMAINS.CDN)) {
-    var ip5 = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-    if (!ip5) return "PROXY 0.0.0.0:0";
-    if (!ipMatchesCategoryPrefixes(ip5, "CDN")) return "PROXY 0.0.0.0:0";
-    return proxyForCategory("CDN");
+  // updates / CDN -> require LOBBY prefix (أردني)
+  if(hostMatches(host, PUBG_DOMAINS.UPDATES) || hostMatches(host, PUBG_DOMAINS.CDN) || shExpMatch(url,"*/patch*")){
+    return enforceCategory("UPDATES", host);
   }
 
-  // فحص مباشر للـhost لو كان IPv6 literal
+  // direct literal
   var direct = host;
-  if (direct.indexOf(':') === -1) direct = resolveDstCached(host, DST_RESOLVE_TTL_MS);
-  if (ipMatchesCategoryPrefixes(direct, "MATCH")) return proxyForCategory("MATCH");
-  if (ipMatchesCategoryPrefixes(direct, "LOBBY")) return proxyForCategory("LOBBY");
+  if(direct.indexOf(':')===-1) direct = resolveCached(host, DNS_TTL_MS);
+  if(ipMatchesPrefix(direct, "MATCH")) return proxyFor("MATCH");
+  if(ipMatchesPrefix(direct, "LOBBY")) return proxyFor("LOBBY");
 
-  // باقي الاتصالات → بلوك صارم
+  // default: block
   return "PROXY 0.0.0.0:0";
 }
