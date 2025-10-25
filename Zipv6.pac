@@ -1,23 +1,19 @@
-// ===================================================
-// jo_pubg_ipv6_lock_balanced.pac
-// الإصدار: v6.3 balanced
-// ===================================================
+// jo_pubg_ipv6_lock_all_providers.pac
+// الإصدار: v7 (ALL ISPs ACTIVE)
 // السياسة:
-// - أي اتصال PUBG (LOBBY / TEAM / RECRUIT / MATCH / UPDATES)
-//   لازم يكون السيرفر IPv6 جوّا رينج أردني فايبر حقيقي.
-//   أردني؟ -> PROXY الأردن
-//   مش أردني؟ -> BLOCK_FAKE (يمنع الدخول)
-// - باقي الخدمات -> DIRECT
-// ===================================================
+// - أي ترافيك PUBG لازم يكون سيرفره IPv6 أردني (أي مزود: Orange / Zain / Umniah / GO)
+// - لو أردني -> PROXY_JO
+// - لو مش أردني -> BLOCK_FAKE
+// - الباقي DIRECT
 
 function FindProxyForURL(url, host) {
 
   // -------- CONFIG --------
-  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // بروكسي أردني
-  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // بلوك فعلي
+  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // بروكسي الأردن
+  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // بلوك (ممنوع يدخل قيم مش أردنية)
   var DIRECT     = "DIRECT";
 
-  // بورتات ببجي
+  // بورتات PUBG
   var PORTS = {
     LOBBY:          [443, 8080, 8443],
     TEAM:           [8013, 9000, 10000],
@@ -26,7 +22,7 @@ function FindProxyForURL(url, host) {
     UPDATES:        [80, 443, 8080, 8443]
   };
 
-  // ترافيك ما منلمسو
+  // دومينات ما بنقرب عليها
   var DIRECT_DOMAINS = [
     ".youtube.com", ".googlevideo.com", ".ytimg.com", ".yt3.ggpht.com", ".ytimg.l.google.com",
     ".shahid.net", ".shahid.mbc.net", ".mbc.net",
@@ -34,15 +30,28 @@ function FindProxyForURL(url, host) {
     ".snapchat.com", ".sc-cdn.net", ".snapkit.com"
   ];
 
-  // -------- IPv6 Jordan Ranges (balanced coverage) --------
-  // ملاحظة: كل عنصر هو [from, to]
-  // Orange Jordan: عدة /44 segments داخل 2a00:18d8::
-  // Zain Jordan:   كتلة متتابعة 2000..201f تحت 2a03:6b02::
-  // GO (JDC):      عائلات رئيسية مستخدمة فعلياً لخطوط فايبر سكنية
+  // -------- IPv6 Jordan Ranges --------
+  // من جهتين:
+  // 1) ranges ضيقة (FTTH residential segments) اللي شفناها فعلياً بالحيّز السكني
+  // 2) ranges واسعة لمزود كامل (fallback) عشان ما يفلت سيرفر أردني جديد بس لأنه من subnet ما أضفناه
+  //
+  // IMPORTANT:
+  // كل رينج بصيغة [from, to]
+  //
   var JO_V6_RANGES = [
-    ["2a01:9700:3420::", "2a01:9700:342f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a03:6b02:2000::", "2a03:6b02:201f:ffff:ffff:ffff:ffff:ffff"],
-    // ----- Orange Jordan (/44 chunks) -----
+
+    // ---- (A) تغطية عامة واسعة لكل ISP أردني معروف ----
+    // Orange Jordan (AS8697) كتلة عامة
+    ["2a00:18d8::",   "2a00:18d8:ffff:ffff:ffff:ffff:ffff:ffff"],
+    // Zain Jordan
+    ["2a03:6b00::",   "2a03:6b00:ffff:ffff:ffff:ffff:ffff:ffff"],
+    ["2a03:6b02::",   "2a03:6b02:ffff:ffff:ffff:ffff:ffff:ffff"],
+    // Umniah
+    ["2a03:b640::",   "2a03:b640:ffff:ffff:ffff:ffff:ffff:ffff"],
+    // GO / JDC
+    ["2a01:9700::",   "2a01:9700:ffff:ffff:ffff:ffff:ffff:ffff"],
+
+    // ---- (B) FTTH segments ضيقة (Orange) ----
     ["2a00:18d8:0040::", "2a00:18d8:004f:ffff:ffff:ffff:ffff:ffff"],
     ["2a00:18d8:0050::", "2a00:18d8:005f:ffff:ffff:ffff:ffff:ffff"],
     ["2a00:18d8:0060::", "2a00:18d8:006f:ffff:ffff:ffff:ffff:ffff"],
@@ -60,12 +69,11 @@ function FindProxyForURL(url, host) {
     ["2a00:18d8:0140::", "2a00:18d8:014f:ffff:ffff:ffff:ffff:ffff"],
     ["2a00:18d8:0150::", "2a00:18d8:015f:ffff:ffff:ffff:ffff:ffff"],
 
-    // ----- Zain Jordan -----
-    
+    // ---- (C) FTTH segments لضبط زين (2000..201f) ----
+    ["2a03:6b02:2000::", "2a03:6b02:201f:ffff:ffff:ffff:ffff:ffff"],
 
-    // ----- GO / JDC -----
-    // رينجات سكنية مكررة على خطوط فايبر من عائلات 342x/343x/344x/345x و 3c8x و 400x و 410x و 420x و 42ex و 480x
-
+    // ---- (D) FTTH segments من GO / JDC ----
+    ["2a01:9700:3420::", "2a01:9700:342f:ffff:ffff:ffff:ffff:ffff"],
     ["2a01:9700:3430::", "2a01:9700:343f:ffff:ffff:ffff:ffff:ffff"],
     ["2a01:9700:3440::", "2a01:9700:344f:ffff:ffff:ffff:ffff:ffff"],
     ["2a01:9700:3450::", "2a01:9700:345f:ffff:ffff:ffff:ffff:ffff"],
@@ -124,48 +132,68 @@ function FindProxyForURL(url, host) {
     return -1;
   }
 
-  // نفس فكرة dnsResolveEx: بعض أنظمة PAC (Chrome/Win/macOS) ممكن ترجع IPv6
-  // إحنا نحاول:
-  // - إذا host شكله IPv6 literal => خذه
-  // - إذا URL فيه [IPv6] => خذه
-  // - وإلا جرّب dnsResolveEx (لو مدعوم)، ولو مش موجود ممكن يرجع undefined عادي
-  function pickIPv6(url, host) {
-    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
-      return host;
-    }
-    var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
-    if (m6 && m6[1]) return m6[1];
+  // نجمع كل IPv6 المحتملة للسيرفر (مش بس أول وحدة)
+  function gatherIPv6Candidates(url, host) {
+    var candidates = [];
 
-    // بعض بيئات PAC تدعم dnsResolveEx (ipv6-aware). لو مش مدعوم، رح يرجع undefined.
+    // 1) لو host أصلاً IPv6 literal
+    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
+      candidates.push(host.replace(/^\[|\]$/g, ""));
+    }
+
+    // 2) IPv6 داخل أقواس في ال URL
+    var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
+    if (m6 && m6[1]) {
+      candidates.push(m6[1]);
+    }
+
+    // 3) dnsResolveEx (لو مدعوم بهالبيئة)
     if (typeof dnsResolveEx === "function") {
-      var r = dnsResolveEx(host);
-      if (r && r.indexOf(":") !== -1) {
-        return r;
+      try {
+        var res = dnsResolveEx(host);
+        if (res) {
+          var parts = res.split(/[\s,;]+/);
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (p && p.indexOf(":") !== -1) {
+              candidates.push(p);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 4) dnsResolve fallback: بعض الأنظمة بترجع IPv6 هون، حتى لو غالباً IPv4
+    try {
+      var r4 = dnsResolve(host);
+      if (r4 && r4.indexOf(":") !== -1) {
+        candidates.push(r4);
+      }
+    } catch (e2) {}
+
+    // remove duplicates
+    var uniq = [];
+    for (var j = 0; j < candidates.length; j++) {
+      var c = candidates[j].replace(/^\[|\]$/g, "");
+      if (c && uniq.indexOf(c) === -1) {
+        uniq.push(c);
       }
     }
-
-    // fallback (dnsResolve غالباً يرجع IPv4 فقط، بس ما يضر نحاول)
-    // لو رجع IPv4 فقط ما بهمنا، بنعاملها كأنه ما في IPv6
-    return null;
+    return uniq;
   }
 
-  // نحول IPv6 -> BigInt عشان نقدر نقارنه ضمن [from,to]
+  // IPv6 string -> BigInt للمقارنة
   function ipv6ToBigInt(ip6) {
     if (!ip6) return 0n;
-    // شيل [] لو موجودين
     ip6 = ip6.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
-
-    // split "::"
     var parts = ip6.split("::");
     var left = parts[0].length ? parts[0].split(":") : [];
     var right = (parts.length > 1 && parts[1].length) ? parts[1].split(":") : [];
-
     var fill = 8 - (left.length + right.length);
     var full = [];
     for (var i=0; i<left.length; i++)  full.push(left[i]);
     for (var j=0; j<fill; j++)         full.push("0");
     for (var k=0; k<right.length; k++) full.push(right[k]);
-
     var num = 0n;
     for (var h=0; h<8; h++) {
       var val = parseInt(full[h] || "0", 16);
@@ -175,10 +203,10 @@ function FindProxyForURL(url, host) {
     return num;
   }
 
-  function isIPv6InJordan(ip6) {
+  // فحص عنوان IPv6 واحد إذا داخل أردن
+  function inJordanSingle(ip6) {
     if (!ip6) return false;
     var n = ipv6ToBigInt(ip6);
-
     for (var i = 0; i < JO_V6_RANGES.length; i++) {
       var fromN = ipv6ToBigInt(JO_V6_RANGES[i][0]);
       var toN   = ipv6ToBigInt(JO_V6_RANGES[i][1]);
@@ -189,23 +217,32 @@ function FindProxyForURL(url, host) {
     return false;
   }
 
+  // فحص كل الـ IPv6 candidates
+  function anyJordanIPv6(cands) {
+    if (!cands || !cands.length) return false;
+    for (var i = 0; i < cands.length; i++) {
+      if (cands[i].indexOf(":") === -1) continue; // skip IPv4
+      if (inJordanSingle(cands[i])) return true;
+    }
+    return false;
+  }
+
   // -------- DECISION FLOW --------
 
-  // 0) خدمات معيّنة نخليها DIRECT دايم
+  // خدمات خاصة نخليها DIRECT على طول
   if (hostMatches(DIRECT_DOMAINS, host)) {
     return DIRECT;
   }
 
-  // 1) جبنا البورت
   var port = extractPort(url);
 
-  // 2) جبنا IPv6 للسيرفر
-  var ip6 = pickIPv6(url, host);
+  // كل IPv6 تبع السيرفر (مو بس أول واحد)
+  var ipv6List = gatherIPv6Candidates(url, host);
 
-  // 3) فحص: هل هذا السيرفر أردني فعلي (داخل رينجات فايبر الأردن)
-  var isJordan = isIPv6InJordan(ip6);
+  // هل أي واحد منهم أردني؟
+  var isJordan = anyJordanIPv6(ipv6List);
 
-  // 4) هل الاتصال يخص ببجي؟
+  // هل الاتصال تابع لـ PUBG؟
   var isLobbyLike =
     PORTS.LOBBY.indexOf(port) !== -1 ||
     PORTS.TEAM.indexOf(port) !== -1 ||
@@ -217,21 +254,18 @@ function FindProxyForURL(url, host) {
   var isUpdatesLike =
     PORTS.UPDATES.indexOf(port) !== -1;
 
-  var isPubgTraffic = (
-    isLobbyLike || isMatchLike || isUpdatesLike
-  );
+  var isPubgTraffic = isLobbyLike || isMatchLike || isUpdatesLike;
 
-  // 5) منطق السماح / المنع
   if (isPubgTraffic) {
     if (isJordan) {
-      // سيرفر أردني IPv6 → اسمح ومرره عبر البروكسي الأردني
+      // أردني (أي مزود أردني) -> استعمل بروكسي الأردن
       return PROXY_JO;
     } else {
-      // مش أردني → لا تلعب هناك
+      // مش أردني -> امنعه
       return BLOCK_FAKE;
     }
   }
 
-  // 6) أي شيء ثاني بالعالم
+  // مو PUBG -> اتصال طبيعي
   return DIRECT;
 }
