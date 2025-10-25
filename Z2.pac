@@ -1,11 +1,11 @@
 function FindProxyForURL(url, host) {
 
   // -------- CONFIG --------
-  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // البروكسي الأردني الرئيسي
-  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // منع الاتصال (سيرفر أجنبي)
+  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // بروكسي الأردن
+  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // منع الاتصال (يحجزك لو السيرفر مش أردني)
   var DIRECT     = "DIRECT";
 
-  // بورتات ببجي حسب الوظيفة
+  // بورتات ببجي بحسب المرحلة
   var PORTS = {
     LOBBY:          [443, 8080, 8443],
     TEAM:           [8013, 9000, 10000],
@@ -14,7 +14,7 @@ function FindProxyForURL(url, host) {
     UPDATES:        [80, 443, 8080, 8443]
   };
 
-  // دومينات تبقى DIRECT (مش من ضمن القفل)
+  // دومينات ما بدنا نقفلها ولا نلعب فيها
   var DIRECT_DOMAINS = [
     ".youtube.com", ".googlevideo.com", ".ytimg.com", ".yt3.ggpht.com", ".ytimg.l.google.com",
     ".shahid.net", ".shahid.mbc.net", ".mbc.net",
@@ -22,7 +22,7 @@ function FindProxyForURL(url, host) {
     ".snapchat.com", ".sc-cdn.net", ".snapkit.com"
   ];
 
-  // IPv4 ranges الأردنية (للمباريات)
+  // نطاقات IPv4 الأردنية (أردن فايبر\ثابت) للمباراة نفسها
   var JO_IP_RANGES = [
     ["176.29.0.0","176.29.255.255"],
     ["46.32.96.0","46.32.127.255"],
@@ -35,15 +35,14 @@ function FindProxyForURL(url, host) {
     ["94.249.84.0","94.249.87.255"]
   ];
 
-  // IPv6 prefixes الأردنية (لللوبي، التجنيد، الفريق)
+  // (مهم) IPv6 الأردني المسموح للّوبي/تجنيد/فريق فقط
+  // مصغّر الآن على هوب أردني محدد (Orange الأردن)
   var JO_V6_PREFIXES = [
-    "2a01:9700:", // JDC / GO
-    "2a00:18d8:", // Orange Jordan
-    "2a03:6b00:", // Zain Jordan
-    "2a03:b640:"  // Umniah / Orbitel
+    "2a00:18d8:" // Orange Jordan tight prefix
   ];
 
   // -------- HELPERS --------
+
   function hostMatches(list, h) {
     if (!h) return false;
     h = h.toLowerCase();
@@ -55,6 +54,7 @@ function FindProxyForURL(url, host) {
   }
 
   function extractPort(u) {
+    // http://IP:PORT/... أو https://host:PORT
     var m = u.match(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/\[?[^\/\]]+\]?:(\d+)/);
     if (m && m[1]) return parseInt(m[1], 10);
     if (u.indexOf("https://") === 0) return 443;
@@ -69,7 +69,11 @@ function FindProxyForURL(url, host) {
         b = parseInt(p[1],10),
         c = parseInt(p[2],10),
         d = parseInt(p[3],10);
-    return ((a << 24) >>> 0) + ((b << 16) >>> 0) + ((c << 8) >>> 0) + (d >>> 0);
+    if (isNaN(a)||isNaN(b)||isNaN(c)||isNaN(d)) return null;
+    return ((a << 24) >>> 0) +
+           ((b << 16) >>> 0) +
+           ((c <<  8) >>> 0) +
+            (d >>> 0);
   }
 
   function isIpv4InJordan(ip) {
@@ -86,45 +90,78 @@ function FindProxyForURL(url, host) {
   function isIpv6InJordan(ip6) {
     if (!ip6) return false;
     var x = ip6.toLowerCase();
-    if (x[0] === "[") x = x.slice(1, -1);
+    // لو شكل [2a00:18d8:...]
+    if (x[0] === "[") {
+      x = x.replace(/^\[/, "").replace(/\]$/, "");
+    }
     for (var i=0; i<JO_V6_PREFIXES.length; i++) {
-      if (x.indexOf(JO_V6_PREFIXES[i]) === 0) return true;
+      if (x.indexOf(JO_V6_PREFIXES[i]) === 0) {
+        return true;
+      }
     }
     return false;
   }
 
   function pickIPv6(url, host) {
-    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) return host;
+    // host IPv6 literal؟ (يحتوي ":" ومافيه ".")
+    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
+      return host;
+    }
+    // IPv6 داخل [ ] بالرابط
     var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
-    return (m6 && m6[1]) ? m6[1] : null;
+    if (m6 && m6[1]) {
+      return m6[1];
+    }
+    return null;
   }
 
-  // -------- MAIN LOGIC --------
-  if (hostMatches(DIRECT_DOMAINS, host)) return DIRECT;
+  // -------- DECISION FLOW --------
 
+  // 0. خدمات يومية = نحطها DIRECT وما ندخلها بالسياسة
+  if (hostMatches(DIRECT_DOMAINS, host)) {
+    return DIRECT;
+  }
+
+  // 1. جيب البورت -> نحدد نوع الحركة (لوبي/ماتش/الخ)
   var port = extractPort(url);
+
+  // 2. هات IPv4 للسيرفر
   var ip4 = dnsResolve(host);
-  var ipv6 = pickIPv6(url, host);
 
-  var isJOv4 = ip4 && isIpv4InJordan(ip4);
-  var isJOv6 = ipv6 && isIpv6InJordan(ipv6);
+  // 3. هات IPv6 للسيرفر
+  var ip6 = pickIPv6(url, host);
 
-  // LOBBY / TEAM / RECRUIT (IPv6 required)
+  var isJOv4 = (ip4 && isIpv4InJordan(ip4));
+  var isJOv6 = (ip6 && isIpv6InJordan(ip6));
+
+  // ---------- LOBBY / TEAM / RECRUIT ----------
+  // هون الشرط لازم يمرّ على IPv6 أردني فقط
   if (
     PORTS.LOBBY.indexOf(port) !== -1 ||
     PORTS.TEAM.indexOf(port) !== -1 ||
     PORTS.RECRUIT_SEARCH.indexOf(port) !== -1
   ) {
-    if (isJOv6) return PROXY_JO;
-    return BLOCK_FAKE;
+    if (isJOv6) {
+      // مسموح: لوبي/تيم/تجنيد أردني فعلي
+      return PROXY_JO;
+    } else {
+      // بلوك: ما بدنا لوبي/تيم/تجنيد لو السيرفر مش أردني IPv6
+      return BLOCK_FAKE;
+    }
   }
 
-  // MATCH (IPv4 required)
+  // ---------- MATCH ----------
+  // هون الشرط لازم يمرّ على IPv4 أردني فقط
   if (PORTS.MATCH.indexOf(port) !== -1) {
-    if (isJOv4) return PROXY_JO;
-    return BLOCK_FAKE;
+    if (isJOv4) {
+      // أوكي السيرفر أردني بالمباراة الفعلية
+      return PROXY_JO;
+    } else {
+      // ممنوع تدخل قيم برّا الأردن
+      return BLOCK_FAKE;
+    }
   }
 
-  // UPDATES أو أي شيء آخر → نتركه مباشر
+  // ---------- UPDATES / أي شيء ثاني ----------
   return DIRECT;
 }
