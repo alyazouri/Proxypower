@@ -1,24 +1,20 @@
 function FindProxyForURL(url, host) {
 
   // -------- CONFIG --------
-  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // بروكسي أردني
-  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // يوقف الاتصال (قفل أجنبي)
+  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // البروكسي الأردني الرئيسي
+  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // منع الاتصال (سيرفر أجنبي)
   var DIRECT     = "DIRECT";
 
-  // بورتات / رينجات ببجي
-  // ملاحظة: ضفنا رينج 20000-21000 عشان السيرفرات match أحياناً تستخدم بورت ثاني قريب
-  var FIXED_PORTS = {
+  // بورتات ببجي حسب الوظيفة
+  var PORTS = {
     LOBBY:          [443, 8080, 8443],
+    TEAM:           [8013, 9000, 10000],
     RECRUIT_SEARCH: [10010, 10012, 10013, 10039, 10096, 10491, 10612, 11000, 11455, 12235],
+    MATCH:          [20001, 20002, 20003],
     UPDATES:        [80, 443, 8080, 8443]
   };
 
-  // إذا البورت بين 20000 و 21000 نعتبره MATCH حتى لو مش بالقائمة
-  function isMatchLikePort(p) {
-    return (p >= 20000 && p <= 21000);
-  }
-
-  // دومينات دايماً DIRECT (عشان حياتك اليومية)
+  // دومينات تبقى DIRECT (مش من ضمن القفل)
   var DIRECT_DOMAINS = [
     ".youtube.com", ".googlevideo.com", ".ytimg.com", ".yt3.ggpht.com", ".ytimg.l.google.com",
     ".shahid.net", ".shahid.mbc.net", ".mbc.net",
@@ -26,48 +22,34 @@ function FindProxyForURL(url, host) {
     ".snapchat.com", ".sc-cdn.net", ".snapkit.com"
   ];
 
-  // IPv4 ranges أردنية
+  // IPv4 ranges الأردنية (للمباريات)
   var JO_IP_RANGES = [
-    ["176.28.128.0","176.28.255.255"],
-    ["212.34.0.0","212.34.31.255"],
-    ["213.139.32.0","213.139.63.255"],
-    ["37.202.64.0","37.202.127.255"],
-    ["46.185.128.0","46.185.255.255"],
-    ["94.249.84.0","94.249.87.255"],
     ["176.29.0.0","176.29.255.255"],
     ["46.32.96.0","46.32.127.255"],
-    ["94.142.32.0","94.142.63.255"],
-    ["188.247.64.0","188.247.95.255"],
-    ["77.245.0.0","77.245.15.255"],
-    ["80.90.160.0","80.90.175.255"],
-    ["46.248.192.0","46.248.223.255"],
-    ["95.172.192.0","95.172.223.255"],
     ["109.107.224.0","109.107.255.255"],
+    ["212.34.0.0","212.34.31.255"],
+    ["213.139.32.0","213.139.63.255"],
     ["92.241.32.0","92.241.63.255"],
-    ["212.35.64.0","212.35.79.255"],
-    ["212.35.80.0","212.35.95.255"],
-    ["212.118.0.0","212.118.15.255"],
-    ["5.45.128.0","5.45.143.255"]
+    ["95.172.192.0","95.172.223.255"],
+    ["46.248.192.0","46.248.223.255"],
+    ["94.249.84.0","94.249.87.255"]
   ];
 
-  // IPv6 prefixes أردنية
+  // IPv6 prefixes الأردنية (لللوبي، التجنيد، الفريق)
   var JO_V6_PREFIXES = [
-    "2a01:9700:",
-    "2a00:18d8:",
-    "2a03:6b00:",
-    "2a03:b640:"
+    "2a01:9700:", // JDC / GO
+    "2a00:18d8:", // Orange Jordan
+    "2a03:6b00:", // Zain Jordan
+    "2a03:b640:"  // Umniah / Orbitel
   ];
 
-  // -------- helpers --------
-
+  // -------- HELPERS --------
   function hostMatches(list, h) {
     if (!h) return false;
     h = h.toLowerCase();
     for (var i = 0; i < list.length; i++) {
       var suf = list[i].toLowerCase();
-      if (h === suf.slice(1) || h.endsWith(suf)) {
-        return true;
-      }
+      if (h === suf.slice(1) || h.endsWith(suf)) return true;
     }
     return false;
   }
@@ -80,21 +62,6 @@ function FindProxyForURL(url, host) {
     return -1;
   }
 
-  function isInFixedPubgPorts(p) {
-    if (p < 0) return false;
-    // لستات ثابتة: LOBBY / RECRUIT / UPDATES
-    var groups = ["LOBBY","RECRUIT_SEARCH","UPDATES"];
-    for (var g = 0; g < groups.length; g++) {
-      var arr = FIXED_PORTS[groups[g]];
-      for (var j = 0; j < arr.length; j++) {
-        if (p === arr[j]) return true;
-      }
-    }
-    // match-like dynamic range
-    if (isMatchLikePort(p)) return true;
-    return false;
-  }
-
   function ipv4ToLong(ip) {
     var p = ip.split(".");
     if (p.length !== 4) return null;
@@ -102,11 +69,7 @@ function FindProxyForURL(url, host) {
         b = parseInt(p[1],10),
         c = parseInt(p[2],10),
         d = parseInt(p[3],10);
-    if (isNaN(a)||isNaN(b)||isNaN(c)||isNaN(d)) return null;
-    return ((a << 24) >>> 0) +
-           ((b << 16) >>> 0) +
-           ((c <<  8) >>> 0) +
-            (d >>> 0);
+    return ((a << 24) >>> 0) + ((b << 16) >>> 0) + ((c << 8) >>> 0) + (d >>> 0);
   }
 
   function isIpv4InJordan(ip) {
@@ -115,9 +78,7 @@ function FindProxyForURL(url, host) {
     for (var i=0; i<JO_IP_RANGES.length; i++) {
       var start = ipv4ToLong(JO_IP_RANGES[i][0]);
       var end   = ipv4ToLong(JO_IP_RANGES[i][1]);
-      if (start !== null && end !== null && n >= start && n <= end) {
-        return true;
-      }
+      if (n >= start && n <= end) return true;
     }
     return false;
   }
@@ -125,75 +86,45 @@ function FindProxyForURL(url, host) {
   function isIpv6InJordan(ip6) {
     if (!ip6) return false;
     var x = ip6.toLowerCase();
-    if (x[0] === "[") {
-      x = x.replace(/^\[/, "").replace(/\]$/, "");
-    }
+    if (x[0] === "[") x = x.slice(1, -1);
     for (var i=0; i<JO_V6_PREFIXES.length; i++) {
-      if (x.indexOf(JO_V6_PREFIXES[i]) === 0) {
-        return true;
-      }
+      if (x.indexOf(JO_V6_PREFIXES[i]) === 0) return true;
     }
     return false;
   }
 
-  // إذا host أصلاً IPv4 جاهز (زي "176.29.10.5") نقدر نفحصه مباشرة بدون dnsResolve
-  function parseIfLiteralIPv4(h) {
-    // quick check: أربع أجزاء أرقام مفصولة بنقطة
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
-      return h;
-    }
-    return null;
-  }
-
-  // رجّع IPv6 من host أو [IPv6] داخل url
   function pickIPv6(url, host) {
-    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
-      return host;
-    }
+    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) return host;
     var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
-    if (m6 && m6[1]) return m6[1];
-    return null;
+    return (m6 && m6[1]) ? m6[1] : null;
   }
 
-  // -------- decision flow --------
+  // -------- MAIN LOGIC --------
+  if (hostMatches(DIRECT_DOMAINS, host)) return DIRECT;
 
-  // 0) خدمات دايمًا DIRECT
-  if (hostMatches(DIRECT_DOMAINS, host)) {
-    return DIRECT;
-  }
-
-  // 1) حدّد البورت، وحدد هل هو ترافيك ببجي
-  var port     = extractPort(url);
-  var isPUBG   = isInFixedPubgPorts(port);
-
-  // 2) جيب IPv4:
-  //   - جرّب dnsResolve(host)
-  //   - لو فاضية، لكن host نفسه شكل IPv4، استخدمه
+  var port = extractPort(url);
   var ip4 = dnsResolve(host);
-  if (!ip4) {
-    var lit4 = parseIfLiteralIPv4(host);
-    if (lit4) {
-      ip4 = lit4;
-    }
-  }
-  var isJOv4 = (ip4 && isIpv4InJordan(ip4));
+  var ipv6 = pickIPv6(url, host);
 
-  // 3) جيب IPv6
-  var ip6 = pickIPv6(url, host);
-  var isJOv6 = (ip6 && isIpv6InJordan(ip6));
+  var isJOv4 = ip4 && isIpv4InJordan(ip4);
+  var isJOv6 = ipv6 && isIpv6InJordan(ipv6);
 
-  // ------------ قفل ببجي -------------
-  // لو هذا ترافيك PUBG (حسب البورت):
-  if (isPUBG) {
-    // إذا السيرفر أردني → اسمح والعب من خلال بروكسي الأردن
-    if (isJOv4 || isJOv6) {
-      return PROXY_JO;
-    }
-    // إذا السيرفر مش أردني → اقفل (بروكسي ميت)
+  // LOBBY / TEAM / RECRUIT (IPv6 required)
+  if (
+    PORTS.LOBBY.indexOf(port) !== -1 ||
+    PORTS.TEAM.indexOf(port) !== -1 ||
+    PORTS.RECRUIT_SEARCH.indexOf(port) !== -1
+  ) {
+    if (isJOv6) return PROXY_JO;
     return BLOCK_FAKE;
   }
 
-  // ------------ الترافيك العادي -------------
-  // مش PUBG => ما نتدخل. خليه يعيش طبيعي
+  // MATCH (IPv4 required)
+  if (PORTS.MATCH.indexOf(port) !== -1) {
+    if (isJOv4) return PROXY_JO;
+    return BLOCK_FAKE;
+  }
+
+  // UPDATES أو أي شيء آخر → نتركه مباشر
   return DIRECT;
 }
