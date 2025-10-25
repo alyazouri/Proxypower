@@ -1,271 +1,339 @@
-// jo_pubg_ipv6_lock_all_providers.pac
-// الإصدار: v7 (ALL ISPs ACTIVE)
-// السياسة:
-// - أي ترافيك PUBG لازم يكون سيرفره IPv6 أردني (أي مزود: Orange / Zain / Umniah / GO)
-// - لو أردني -> PROXY_JO
-// - لو مش أردني -> BLOCK_FAKE
-// - الباقي DIRECT
-
 function FindProxyForURL(url, host) {
+  // -------- إعدادات أساسية --------
+  // بروكسي أردني للخروج (TCP/SOCKS5H المفروض يكون أردني فعلياً)
+  var PROXY_HOST = "91.106.109.12";
 
-  // -------- CONFIG --------
-  var PROXY_JO   = "PROXY 91.106.109.12:1080"; // بروكسي الأردن
-  var BLOCK_FAKE = "PROXY 0.0.0.0:0";          // بلوك (ممنوع يدخل قيم مش أردنية)
-  var DIRECT     = "DIRECT";
-
-  // بورتات PUBG
-  var PORTS = {
-    LOBBY:          [443, 8080, 8443],
-    TEAM:           [8013, 9000, 10000],
-    RECRUIT_SEARCH: [10010, 10012, 10013, 10039, 10096, 10491, 10612, 11000, 11455, 12235],
-    MATCH:          [20001, 20002, 20003],
-    UPDATES:        [80, 443, 8080, 8443]
+  // بورت ثابت لكل فئة (بدون عشوائية)
+  // الهدف: استقرار الهوية و المسار
+  var FIXED_PORT = {
+    LOBBY:            443,     // تسجيل دخول / حضور / أصدقاء
+    MATCH:            20001,   // بدء الماتش / الماتش فعلي
+    RECRUIT_SEARCH:   10012,   // البحث عن فريق / تجنيد
+    UPDATES:          80,      // تنزيل التحديثات / موارد
+    CDN:              80       // CDN أصول اللعبة
   };
 
-  // دومينات ما بنقرب عليها
-  var DIRECT_DOMAINS = [
-    ".youtube.com", ".googlevideo.com", ".ytimg.com", ".yt3.ggpht.com", ".ytimg.l.google.com",
-    ".shahid.net", ".shahid.mbc.net", ".mbc.net",
-    ".whatsapp.com", ".whatsapp.net", ".cdn.whatsapp.net",
-    ".snapchat.com", ".sc-cdn.net", ".snapkit.com"
+  // هذا البلوك يجبر كل شيء يخص ببجي يمر عبر أردن فقط
+  // لو الوجهة مش أردنية: نمنع
+  var FORBID_IF_NOT_JORDAN = true;
+
+  // البادئة الأردنية الوحيدة (IPv6) اللي بدنا نعتمدها
+  // يعني فعلياً معاملة هذا كـ "هذا أردن وهذا اللي بسمحله"
+  var JO_V6_PREFIXES = [
+    "2a01:9700:1"   // يغطي 2a01:9700:1::/?? (مطابقة بادئة)
   ];
 
-  // -------- IPv6 Jordan Ranges --------
-  // من جهتين:
-  // 1) ranges ضيقة (FTTH residential segments) اللي شفناها فعلياً بالحيّز السكني
-  // 2) ranges واسعة لمزود كامل (fallback) عشان ما يفلت سيرفر أردني جديد بس لأنه من subnet ما أضفناه
-  //
-  // IMPORTANT:
-  // كل رينج بصيغة [from, to]
-  //
-  var JO_V6_RANGES = [
+  // TTL لكاش الـ DNS
+  var DST_RESOLVE_TTL_MS = 15 * 1000;
 
-    // ---- (A) تغطية عامة واسعة لكل ISP أردني معروف ----
-    // Orange Jordan (AS8697) كتلة عامة
-    ["2a00:18d8::",   "2a00:18d8:ffff:ffff:ffff:ffff:ffff:ffff"],
-    // Zain Jordan
-    ["2a03:6b00::",   "2a03:6b00:ffff:ffff:ffff:ffff:ffff:ffff"],
-    ["2a03:6b02::",   "2a03:6b02:ffff:ffff:ffff:ffff:ffff:ffff"],
-    // Umniah
-    ["2a03:b640::",   "2a03:b640:ffff:ffff:ffff:ffff:ffff:ffff"],
-    // GO / JDC
-    ["2a01:9700::",   "2a01:9700:ffff:ffff:ffff:ffff:ffff:ffff"],
+  // TTL لكاش "هل أنا أردني" و "هل البروكسي أردني"
+  var GEO_TTL_MS = 60 * 60 * 1000; // ساعة
 
-    // ---- (B) FTTH segments ضيقة (Orange) ----
-    ["2a00:18d8:0040::", "2a00:18d8:004f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0050::", "2a00:18d8:005f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0060::", "2a00:18d8:006f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0070::", "2a00:18d8:007f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0080::", "2a00:18d8:008f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0090::", "2a00:18d8:009f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:00c0::", "2a00:18d8:00cf:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:00d0::", "2a00:18d8:00df:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:00e0::", "2a00:18d8:00ef:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:00f0::", "2a00:18d8:00ff:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0100::", "2a00:18d8:010f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0110::", "2a00:18d8:011f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0120::", "2a00:18d8:012f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0130::", "2a00:18d8:013f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0140::", "2a00:18d8:014f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a00:18d8:0150::", "2a00:18d8:015f:ffff:ffff:ffff:ffff:ffff"],
+  // كاش مشترك على مستوى الجلوبال
+  var root = (typeof globalThis !== "undefined" ? globalThis : this);
+  if (!root._PAC_CACHE) root._PAC_CACHE = {};
+  var CACHE = root._PAC_CACHE;
 
-    // ---- (C) FTTH segments لضبط زين (2000..201f) ----
-    ["2a03:6b02:2000::", "2a03:6b02:201f:ffff:ffff:ffff:ffff:ffff"],
+  if (!CACHE.DST_RESOLVE_CACHE) CACHE.DST_RESOLVE_CACHE = {};
+  if (!CACHE.GEO_CACHE) CACHE.GEO_CACHE = {};
 
-    // ---- (D) FTTH segments من GO / JDC ----
-    ["2a01:9700:3420::", "2a01:9700:342f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3430::", "2a01:9700:343f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3440::", "2a01:9700:344f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3450::", "2a01:9700:345f:ffff:ffff:ffff:ffff:ffff"],
+  // -------- قوائم الدومينات / المسارات الخاصة بببجي --------
 
-    ["2a01:9700:3520::", "2a01:9700:352f:ffff:ffff:ffff:ffff:ffff"],
+  var PUBG_DOMAINS = {
+    LOBBY: [
+      "*.pubgmobile.com",
+      "*.pubgmobile.net",
+      "*.proximabeta.com",
+      "*.igamecj.com"
+    ],
+    MATCH: [
+      "*.gcloud.qq.com",
+      "gpubgm.com"
+    ],
+    RECRUIT_SEARCH: [
+      "match.igamecj.com",
+      "match.proximabeta.com",
+      "teamfinder.igamecj.com",
+      "teamfinder.proximabeta.com"
+    ],
+    UPDATES: [
+      "cdn.pubgmobile.com",
+      "updates.pubgmobile.com",
+      "patch.igamecj.com",
+      "hotfix.proximabeta.com",
+      "dlied1.qq.com",
+      "dlied2.qq.com",
+      "gpubgm.com"
+    ],
+    CDN: [
+      "cdn.igamecj.com",
+      "cdn.proximabeta.com",
+      "cdn.tencentgames.com",
+      "*.qcloudcdn.com",
+      "*.cloudfront.net",
+      "*.edgesuite.net"
+    ]
+  };
 
-    ["2a01:9700:3820::", "2a01:9700:382f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3830::", "2a01:9700:383f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3840::", "2a01:9700:384f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3850::", "2a01:9700:385f:ffff:ffff:ffff:ffff:ffff"],
+  var URL_PATTERNS = {
+    LOBBY: [
+      "*/account/login*",
+      "*/client/version*",
+      "*/status/heartbeat*",
+      "*/presence/*",
+      "*/friends/*"
+    ],
+    MATCH: [
+      "*/matchmaking/*",
+      "*/mms/*",
+      "*/game/start*",
+      "*/game/join*",
+      "*/report/battle*"
+    ],
+    RECRUIT_SEARCH: [
+      "*/teamfinder/*",
+      "*/clan/*",
+      "*/social/*",
+      "*/search/*",
+      "*/recruit/*"
+    ],
+    UPDATES: [
+      "*/patch*",
+      "*/hotfix*",
+      "*/update*",
+      "*/download*",
+      "*/assets/*",
+      "*/assetbundle*",
+      "*/obb*"
+    ],
+    CDN: [
+      "*/cdn/*",
+      "*/static/*",
+      "*/image/*",
+      "*/media/*",
+      "*/video/*",
+      "*/res/*",
+      "*/pkg/*"
+    ]
+  };
 
-    ["2a01:9700:3c80::", "2a01:9700:3c8f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3c90::", "2a01:9700:3c9f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3ca0::", "2a01:9700:3caf:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:3cb0::", "2a01:9700:3cbf:ffff:ffff:ffff:ffff:ffff"],
+  // -------- أدوات صغيرة --------
 
-    ["2a01:9700:4000::", "2a01:9700:400f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4010::", "2a01:9700:401f:ffff:ffff:ffff:ffff:ffff"],
+  // نخلي host lowercase
+  if (host && host.toLowerCase) {
+    host = host.toLowerCase();
+  }
 
-    ["2a01:9700:4100::", "2a01:9700:410f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4110::", "2a01:9700:411f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4120::", "2a01:9700:412f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4130::", "2a01:9700:413f:ffff:ffff:ffff:ffff:ffff"],
-
-    ["2a01:9700:4200::", "2a01:9700:420f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4210::", "2a01:9700:421f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4220::", "2a01:9700:422f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4230::", "2a01:9700:423f:ffff:ffff:ffff:ffff:ffff"],
-
-    ["2a01:9700:42e0::", "2a01:9700:42ef:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:42f0::", "2a01:9700:42ff:ffff:ffff:ffff:ffff:ffff"],
-
-    ["2a01:9700:4800::", "2a01:9700:480f:ffff:ffff:ffff:ffff:ffff"],
-    ["2a01:9700:4810::", "2a01:9700:481f:ffff:ffff:ffff:ffff:ffff"]
-  ];
-
-  // -------- HELPERS --------
-
-  function hostMatches(list, h) {
+  function shHostMatch(h, patterns) {
     if (!h) return false;
-    h = h.toLowerCase();
-    for (var i = 0; i < list.length; i++) {
-      var suf = list[i].toLowerCase();
-      if (h === suf.slice(1) || h.endsWith(suf)) {
-        return true;
-      }
-    }
-    return false;
-  }
+    for (var i = 0; i < patterns.length; i++) {
+      var pat = patterns[i];
+      if (shExpMatch(h, pat)) return true;
 
-  function extractPort(u) {
-    var m = u.match(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/\[?[^\/\]]+\]?:(\d+)/);
-    if (m && m[1]) return parseInt(m[1], 10);
-    if (u.indexOf("https://") === 0) return 443;
-    if (u.indexOf("http://")  === 0) return 80;
-    return -1;
-  }
-
-  // نجمع كل IPv6 المحتملة للسيرفر (مش بس أول وحدة)
-  function gatherIPv6Candidates(url, host) {
-    var candidates = [];
-
-    // 1) لو host أصلاً IPv6 literal
-    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
-      candidates.push(host.replace(/^\[|\]$/g, ""));
-    }
-
-    // 2) IPv6 داخل أقواس في ال URL
-    var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
-    if (m6 && m6[1]) {
-      candidates.push(m6[1]);
-    }
-
-    // 3) dnsResolveEx (لو مدعوم بهالبيئة)
-    if (typeof dnsResolveEx === "function") {
-      try {
-        var res = dnsResolveEx(host);
-        if (res) {
-          var parts = res.split(/[\s,;]+/);
-          for (var i = 0; i < parts.length; i++) {
-            var p = parts[i].trim();
-            if (p && p.indexOf(":") !== -1) {
-              candidates.push(p);
-            }
-          }
+      // دعم نمط "*.example.com" كـ suffix match
+      if (pat.indexOf("*.") === 0) {
+        var suf = pat.substring(1); // ".example.com"
+        if (h.length >= suf.length && h.substring(h.length - suf.length) === suf) {
+          return true;
         }
-      } catch (e) {}
+      }
+    }
+    return false;
+  }
+
+  function shURLMatch(u, patterns) {
+    if (!u) return false;
+    for (var i = 0; i < patterns.length; i++) {
+      if (shExpMatch(u, patterns[i])) return true;
+    }
+    return false;
+  }
+
+  // كاش dnsResolve() لتخفيف الضغط (أفضل ممارسة بحسب توصيات PAC لأن dnsResolve ممكن يعلّق لو DNS مش يرد)
+  // المصدر يحذر من الإفراط في dnsResolve و isInNet لأنه يسبب بطء وتعليق إذا DNS ما برد، فلازم نعمل كاش ونعيد استخدامه بدل تكرار الطلب كل مرة. هذا أسلوب موصى فيه لتحسين أداء PAC وتخفيف التأخير في التصفح/الاتصال [oai_citation:0‡localhost](http://localhost:8451/https://help.forcepoint.com/websec/en-us/on-prem/85/pac_file_best_practices/wsop_85x_pacfbp_en-us.pdf) [oai_citation:1‡localhost](http://localhost:8451/https://help.forcepoint.com/websec/en-us/on-prem/85/pac_file_best_practices/wsop_85x_pacfbp_en-us.pdf).
+  function resolveDstCached(h, ttl_ms) {
+    if (!h) return "";
+
+    // إذا h شكله IPv6 جاهز (يحتوي :)
+    // ملاحظة خفيفة: ما نحاول نعمل parsing كامل، بس نرفض الأسماء اللي فيها حروف a-f و : لأنه طبيعي لـIPv6
+    // وبنفس الوقت ما نروح لdnsResolve على الفاضي.
+    if (h.indexOf(":") !== -1 && h.indexOf(".") === -1) {
+      // شكله IPv6 literal
+      return h;
     }
 
-    // 4) dnsResolve fallback: بعض الأنظمة بترجع IPv6 هون، حتى لو غالباً IPv4
+    var now = (new Date()).getTime();
+    var hit = CACHE.DST_RESOLVE_CACHE[h];
+    if (hit && (now - hit.t) < ttl_ms) {
+      return hit.ip;
+    }
+
+    var ip = "";
     try {
-      var r4 = dnsResolve(host);
-      if (r4 && r4.indexOf(":") !== -1) {
-        candidates.push(r4);
+      var r = dnsResolve(h);
+      if (r && r !== "0.0.0.0") {
+        ip = r;
       }
-    } catch (e2) {}
-
-    // remove duplicates
-    var uniq = [];
-    for (var j = 0; j < candidates.length; j++) {
-      var c = candidates[j].replace(/^\[|\]$/g, "");
-      if (c && uniq.indexOf(c) === -1) {
-        uniq.push(c);
-      }
+    } catch (e) {
+      // نخلي ip فاضي
     }
-    return uniq;
+
+    CACHE.DST_RESOLVE_CACHE[h] = {ip: ip, t: now};
+    return ip;
   }
 
-  // IPv6 string -> BigInt للمقارنة
-  function ipv6ToBigInt(ip6) {
-    if (!ip6) return 0n;
-    ip6 = ip6.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
-    var parts = ip6.split("::");
-    var left = parts[0].length ? parts[0].split(":") : [];
-    var right = (parts.length > 1 && parts[1].length) ? parts[1].split(":") : [];
-    var fill = 8 - (left.length + right.length);
-    var full = [];
-    for (var i=0; i<left.length; i++)  full.push(left[i]);
-    for (var j=0; j<fill; j++)         full.push("0");
-    for (var k=0; k<right.length; k++) full.push(right[k]);
-    var num = 0n;
-    for (var h=0; h<8; h++) {
-      var val = parseInt(full[h] || "0", 16);
-      if (isNaN(val)) val = 0;
-      num = (num << 16n) + BigInt(val);
-    }
-    return num;
-  }
+  // هل IP هذا (IPv6) داخل البادئة الأردنية؟
+  // منطق المطابقة: إذا العنوان يبدأ بـ "2a01:9700:1" أو "2a01:9700:1::"
+  // نخفّض للحروف الصغيرة لتجنب مشاكل الشكل.
+  function ipIsInAnyJordanV6(ip) {
+    if (!ip) return false;
+    var lower = ip.toLowerCase();
 
-  // فحص عنوان IPv6 واحد إذا داخل أردن
-  function inJordanSingle(ip6) {
-    if (!ip6) return false;
-    var n = ipv6ToBigInt(ip6);
-    for (var i = 0; i < JO_V6_RANGES.length; i++) {
-      var fromN = ipv6ToBigInt(JO_V6_RANGES[i][0]);
-      var toN   = ipv6ToBigInt(JO_V6_RANGES[i][1]);
-      if (n >= fromN && n <= toN) {
-        return true;
-      }
+    // لازم يكون IPv6 (يعني يحتوي :)
+    if (lower.indexOf(":") === -1) return false;
+
+    for (var i = 0; i < JO_V6_PREFIXES.length; i++) {
+      var pref = JO_V6_PREFIXES[i].toLowerCase().replace(/:+$/, "");
+      // نسمح:
+      // - يبدأ بالبادئة + "::"
+      // - يبدأ بالبادئة + ":"
+      // - يساويها بالضبط
+      if (lower === pref) return true;
+      if (lower.indexOf(pref + "::") === 0) return true;
+      if (lower.indexOf(pref + ":") === 0) return true;
     }
     return false;
   }
 
-  // فحص كل الـ IPv6 candidates
-  function anyJordanIPv6(cands) {
-    if (!cands || !cands.length) return false;
-    for (var i = 0; i < cands.length; i++) {
-      if (cands[i].indexOf(":") === -1) continue; // skip IPv4
-      if (inJordanSingle(cands[i])) return true;
+  // يبني ستـرنج البروكسي لفئة معيّنة ببورتها الثابت
+  function proxyFor(cat) {
+    var p = FIXED_PORT[cat];
+    if (!p) {
+      // fallback احتياطي لو صار نقص تعريف
+      p = 443;
     }
-    return false;
+    return "PROXY " + PROXY_HOST + ":" + p;
   }
 
-  // -------- DECISION FLOW --------
+  // قرار "اسمح أو امنع" حسب إذا المسار أردني ولا لا.
+  // إذا الوجهة مش أردنية و FORBID_IF_NOT_JORDAN = true → رجّع بلوك.
+  // البلوك هنا: "PROXY 0.0.0.0:0" (يعني ممنوع عملياً)
+  function requireJordan(cat, h) {
+    var ip = resolveDstCached(h, DST_RESOLVE_TTL_MS);
+    var ok = ipIsInAnyJordanV6(ip);
 
-  // خدمات خاصة نخليها DIRECT على طول
-  if (hostMatches(DIRECT_DOMAINS, host)) {
-    return DIRECT;
-  }
-
-  var port = extractPort(url);
-
-  // كل IPv6 تبع السيرفر (مو بس أول واحد)
-  var ipv6List = gatherIPv6Candidates(url, host);
-
-  // هل أي واحد منهم أردني؟
-  var isJordan = anyJordanIPv6(ipv6List);
-
-  // هل الاتصال تابع لـ PUBG؟
-  var isLobbyLike =
-    PORTS.LOBBY.indexOf(port) !== -1 ||
-    PORTS.TEAM.indexOf(port) !== -1 ||
-    PORTS.RECRUIT_SEARCH.indexOf(port) !== -1;
-
-  var isMatchLike =
-    PORTS.MATCH.indexOf(port) !== -1;
-
-  var isUpdatesLike =
-    PORTS.UPDATES.indexOf(port) !== -1;
-
-  var isPubgTraffic = isLobbyLike || isMatchLike || isUpdatesLike;
-
-  if (isPubgTraffic) {
-    if (isJordan) {
-      // أردني (أي مزود أردني) -> استعمل بروكسي الأردن
-      return PROXY_JO;
-    } else {
-      // مش أردني -> امنعه
-      return BLOCK_FAKE;
+    if (!ok && FORBID_IF_NOT_JORDAN) {
+      return "PROXY 0.0.0.0:0";
     }
+
+    return proxyFor(cat);
   }
 
-  // مو PUBG -> اتصال طبيعي
-  return DIRECT;
+  // -------- فحص هوية الطرفين (جهازك والبروكسي) أنها أردنية --------
+  // الهدف: لو جهازك نفسه مش ظاهر كأردني أو البروكسي مش أردني، نوقف كل شيء.
+  // هاد السلوك يخلي اللعبة تشوفك دايم أردني، ومش تسمحلك تبني سيشن عالمسار الخطأ بالغلط.
+
+  function getClientIPv6Cached() {
+    var now = (new Date()).getTime();
+    var hit = CACHE.GEO_CACHE["CLIENT"];
+    if (hit && (now - hit.t) < GEO_TTL_MS) {
+      return hit.isJO;
+    }
+
+    // myIpAddress() ممكن يرجّع IPv4 ببعض الأنظمة
+    // نحاول نحصل عليه ونشوف إذا IPv6 وبنفس البادئة
+    var myip = "";
+    try {
+      myip = myIpAddress(); // ملاحظة: بعض الـPAC على iOS/Android ممكن يرجع v4
+    } catch(e) {
+      myip = "";
+    }
+    var isJO = ipIsInAnyJordanV6(myip);
+    CACHE.GEO_CACHE["CLIENT"] = {isJO: isJO, t: now};
+    return isJO;
+  }
+
+  function getProxyIPv6Cached() {
+    var now = (new Date()).getTime();
+    var hit = CACHE.GEO_CACHE["PROXY"];
+    if (hit && (now - hit.t) < GEO_TTL_MS) {
+      return hit.isJO;
+    }
+
+    // البروكسي معرف كـ IP/اسم. إذا كان IPv6 أردني من نفس البادئة رح ينقبل.
+    // لو كان IPv4 رح يطلع false، يعني بنمنع (صارم جدًا).
+    var isJO = ipIsInAnyJordanV6(PROXY_HOST);
+    CACHE.GEO_CACHE["PROXY"] = {isJO: isJO, t: now};
+    return isJO;
+  }
+
+  // لو أي واحد (الجهاز أو البروكسي) مش أردني حسب تعريفنا → بلوك كامل
+  var clientOK = getClientIPv6Cached();
+  var proxyOK  = getProxyIPv6Cached();
+  if (!(clientOK && proxyOK)) {
+    return "PROXY 0.0.0.0:0";
+  }
+
+  // -------- منطق القرار الحقيقي --------
+
+  // 1) أولاً: لو الـURL نفسه يطابق أحد الأنماط
+  //    (زي heartbeat, matchmaking, teamfinder...)
+  //    → نوجّه حسب الفئة
+  //    مع requireJordan() عشان الفئة ما تروح إلا لو السيرفر أردني
+  if (shURLMatch(url, URL_PATTERNS.LOBBY)) {
+    return requireJordan("LOBBY", host);
+  }
+  if (shURLMatch(url, URL_PATTERNS.MATCH)) {
+    return requireJordan("MATCH", host);
+  }
+  if (shURLMatch(url, URL_PATTERNS.RECRUIT_SEARCH)) {
+    return requireJordan("RECRUIT_SEARCH", host);
+  }
+  if (shURLMatch(url, URL_PATTERNS.UPDATES)) {
+    return requireJordan("UPDATES", host);
+  }
+  if (shURLMatch(url, URL_PATTERNS.CDN)) {
+    return requireJordan("CDN", host);
+  }
+
+  // 2) إذا الـhost (الدومين) يقع ضمن دومينات ببجي
+  //    (pubgmobile.com, proximabeta.com, gcloud.qq.com, ...)
+  //    نفس القصة: نستخدم الفئة المناسبة
+  if (shHostMatch(host, PUBG_DOMAINS.LOBBY)) {
+    return requireJordan("LOBBY", host);
+  }
+  if (shHostMatch(host, PUBG_DOMAINS.MATCH)) {
+    return requireJordan("MATCH", host);
+  }
+  if (shHostMatch(host, PUBG_DOMAINS.RECRUIT_SEARCH)) {
+    return requireJordan("RECRUIT_SEARCH", host);
+  }
+  if (shHostMatch(host, PUBG_DOMAINS.UPDATES)) {
+    return requireJordan("UPDATES", host);
+  }
+  if (shHostMatch(host, PUBG_DOMAINS.CDN)) {
+    return requireJordan("CDN", host);
+  }
+
+  // 3) حالة استثنائية:
+  //    لو الـhost نفسه عنوان IP (مش دومين)، وطلع أردني بالـIPv6
+  //    → اعتبره لَبّي (LOBBY) وامشي عليه.
+  //    هذا بيغطي اتصالات مباشرة على IP بدون دومين.
+  var directIP = host;
+  // لو host مش IPv6 literal (يعني دومين), resolve
+  if (directIP.indexOf(":") === -1 && directIP.indexOf(".") !== -1) {
+    // host شكله IPv4 → ما يعنينا، ما رح نعتبره أردني، راح ينمنع لاحقاً لو دخل بالفئة
+  } else if (directIP.indexOf(":") === -1 && directIP.indexOf(".") === -1) {
+    // host شكل دومين عادي، نحاول نجيب IP الفعلي
+    directIP = resolveDstCached(host, DST_RESOLVE_TTL_MS);
+  }
+
+  if (ipIsInAnyJordanV6(directIP)) {
+    return requireJordan("LOBBY", host);
+  }
+
+  // 4) أي شيء مش PUBG أو مش أردني → بلوك صارم.
+  //    هذا يمنع إنه اللعبة تفتح سيشن matchmaking على مسار غير أردني بالغلط،
+  //    ويقلل احتمال يرميك سيرفر مش أردني.
+  return "PROXY 0.0.0.0:0";
 }
