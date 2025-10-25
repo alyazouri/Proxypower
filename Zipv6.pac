@@ -40,7 +40,7 @@ function FindProxyForURL(url, host) {
   // Zain Jordan:   كتلة متتابعة 2000..201f تحت 2a03:6b02::
   // GO (JDC):      عائلات رئيسية مستخدمة فعلياً لخطوط فايبر سكنية
   var JO_V6_RANGES = [
-
+    ["2a03:6b02:2000::", "2a03:6b02:201f:ffff:ffff:ffff:ffff:ffff"],
     // ----- Orange Jordan (/44 chunks) -----
     ["2a00:18d8:0040::", "2a00:18d8:004f:ffff:ffff:ffff:ffff:ffff"],
     ["2a00:18d8:0050::", "2a00:18d8:005f:ffff:ffff:ffff:ffff:ffff"],
@@ -60,8 +60,7 @@ function FindProxyForURL(url, host) {
     ["2a00:18d8:0150::", "2a00:18d8:015f:ffff:ffff:ffff:ffff:ffff"],
 
     // ----- Zain Jordan -----
-    // نغطي 2000..201f بشكل مضغوط (هاي تشمل /48 و/47 و/46 و/45 و/44)
-    ["2a03:6b02:2000::", "2a03:6b02:201f:ffff:ffff:ffff:ffff:ffff"],
+    
 
     // ----- GO / JDC -----
     // رينجات سكنية مكررة على خطوط فايبر من عائلات 342x/343x/344x/345x و 3c8x و 400x و 410x و 420x و 42ex و 480x
