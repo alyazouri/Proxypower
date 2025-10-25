@@ -1,178 +1,194 @@
-/*
- * سكربت PAC محدث لضمان أن جميع اتصالات ببجي تمر عبر عنوان أردني فقط،
- * وبالتالي تزيد احتمالات مطابقة اللاعبين داخل الأردن.  تم التخلص من
- * العشوائية في اختيار المنفذ بحيث يستخدم دائماً المنفذ الأول المعلن لكل
- * فئة (مثلاً 443 أو 20001)، لأن بعض مزودي الخدمة قد يفضلون اتصالاً
- * متسقاً.  كما لا يتم التلاعب بأي عناوين، فجميع النطاقات في
- * JO_RANGES هي كما في الكود الأصلي.
- */
-
 function FindProxyForURL(url, host) {
-  host = host.toLowerCase();
-  var PROXY_HOST = "91.106.109.12";
+
+  // ---------- CONFIG ----------
+  var PROXY_JO    = "PROXY 91.106.109.12:1080"; // بروكسي أردني تبعك
+  var BLOCK_FAKE  = "PROXY 0.0.0.0:0";          // بروكسي ميت = منع الاتصال
+  var DIRECT      = "DIRECT";
+
+  // بورتات PUBG الحساسة
   var PORTS = {
-    LOBBY:   [443, 8443],
-    MATCH:   [20001, 20003],
-    RECRUIT: [10012, 10013],
-    UPDATES: [80, 443, 8443],
-    CDN:     [80, 443]
+    LOBBY:          [443, 8080, 8443],
+    MATCH:          [20001, 20002, 20003],
+    RECRUIT_SEARCH: [10010, 10012, 10013, 10039, 10096, 10491, 10612, 11000, 11455, 12235],
+    UPDATES:        [80, 443, 8080, 8443]
   };
-  /* نفس النطاقات كما في الكود الأصلي؛ تم ترميزها إلى أعداد صحيحة. */
-  var JO_RANGES = [
-    [ipToInt("176.16.0.0"), ipToInt("176.23.255.255")],
-    [ipToInt("94.64.0.0"),  ipToInt("94.72.255.255")],
-    [ipToInt("91.176.0.0"), ipToInt("91.184.255.255")],
-    [ipToInt("176.97.0.0"), ipToInt("176.99.255.255")],
-    [ipToInt("176.47.0.0"), ipToInt("176.52.255.255")],
-    [ipToInt("94.104.0.0"), ipToInt("94.111.255.255")],
-    [ipToInt("109.128.0.0"), ipToInt("109.132.255.255")],
-    [ipToInt("176.40.0.0"), ipToInt("176.43.255.255")],
-    [ipToInt("217.96.0.1"), ipToInt("217.99.255.255")],
-    [ipToInt("94.56.0.0"),  ipToInt("94.59.255.255")],
-    [ipToInt("91.93.0.0"),  ipToInt("91.95.255.255")],
-    [ipToInt("91.109.0.0"), ipToInt("91.111.255.255")],
-    [ipToInt("91.191.0.0"), ipToInt("91.193.255.255")],
-    [ipToInt("217.20.0.1"), ipToInt("217.22.255.255")],
-    [ipToInt("217.52.0.1"), ipToInt("217.54.255.255")],
-    [ipToInt("217.136.0.1"), ipToInt("217.138.255.255")],
-    [ipToInt("217.142.0.1"), ipToInt("217.144.255.255")],
-    [ipToInt("217.163.0.1"), ipToInt("217.165.255.255")],
-    [ipToInt("109.82.0.0"), ipToInt("109.83.255.255")],
-    [ipToInt("91.86.0.0"), ipToInt("91.87.255.255")],
-    [ipToInt("91.132.0.0"), ipToInt("91.133.255.255")],
-    [ipToInt("91.198.0.0"), ipToInt("91.199.255.255")],
-    [ipToInt("91.227.0.0"), ipToInt("91.228.255.255")],
-    [ipToInt("91.230.0.0"), ipToInt("91.231.255.255")],
-    [ipToInt("91.244.0.0"), ipToInt("91.245.255.255")],
-    [ipToInt("176.12.0.0"), ipToInt("176.13.255.255")],
-    [ipToInt("176.54.0.0"), ipToInt("176.55.255.255")],
-    [ipToInt("217.12.0.1"), ipToInt("217.13.255.255")],
-    [ipToInt("217.30.0.1"), ipToInt("217.31.255.255")],
-    [ipToInt("217.72.0.1"), ipToInt("217.73.255.255")],
-    [ipToInt("217.156.0.1"), ipToInt("217.157.255.255")],
-    [ipToInt("94.50.0.0"),  ipToInt("94.51.255.255")],
-    [ipToInt("94.128.0.0"), ipToInt("94.129.255.255")],
-    [ipToInt("94.134.0.0"), ipToInt("94.135.255.255")],
-    [ipToInt("91.84.0.0"),  ipToInt("91.84.255.255")],
-    [ipToInt("91.104.0.0"), ipToInt("91.104.255.255")],
-    [ipToInt("91.107.0.0"), ipToInt("91.107.255.255")],
-    [ipToInt("91.120.0.0"), ipToInt("91.120.255.255")],
-    [ipToInt("91.122.0.0"), ipToInt("91.122.255.255")],
-    [ipToInt("91.126.0.0"), ipToInt("91.126.255.255")],
-    [ipToInt("91.135.0.0"), ipToInt("91.135.255.255")],
-    [ipToInt("91.143.0.0"), ipToInt("91.143.255.255")],
-    [ipToInt("91.147.0.0"), ipToInt("91.147.255.255")],
-    [ipToInt("91.149.0.0"), ipToInt("91.149.255.255")],
-    [ipToInt("91.186.0.0"), ipToInt("91.186.255.255")],
-    [ipToInt("91.189.0.0"), ipToInt("91.189.255.255")],
-    [ipToInt("91.204.0.0"), ipToInt("91.204.255.255")],
-    [ipToInt("91.206.0.0"), ipToInt("91.206.255.255")],
-    [ipToInt("91.209.0.0"), ipToInt("91.209.255.255")],
-    [ipToInt("91.225.0.0"), ipToInt("91.225.255.255")],
-    [ipToInt("91.235.0.0"), ipToInt("91.235.255.255")],
-    [ipToInt("91.238.0.0"), ipToInt("91.238.255.255")],
-    [ipToInt("91.252.0.0"), ipToInt("91.252.255.255")],
-    [ipToInt("109.86.0.0"), ipToInt("109.86.255.255")],
-    [ipToInt("109.104.0.0"), ipToInt("109.104.255.255")],
-    [ipToInt("109.125.0.0"), ipToInt("109.125.255.255")],
-    [ipToInt("176.8.0.0"),  ipToInt("176.8.255.255")],
-    [ipToInt("176.33.0.0"), ipToInt("176.33.255.255")],
-    [ipToInt("176.58.0.0"), ipToInt("176.58.255.255")],
-    [ipToInt("176.65.0.0"), ipToInt("176.65.255.255")],
-    [ipToInt("176.67.0.0"), ipToInt("176.67.255.255")],
-    [ipToInt("176.72.0.0"), ipToInt("176.72.255.255")],
-    [ipToInt("176.81.0.0"), ipToInt("176.81.255.255")],
-    [ipToInt("176.88.0.0"), ipToInt("176.88.255.255")],
-    [ipToInt("176.93.0.0"), ipToInt("176.93.255.255")],
-    [ipToInt("176.115.0.0"), ipToInt("176.115.255.255")],
-    [ipToInt("217.8.0.1"), ipToInt("217.8.255.255")],
-    [ipToInt("217.18.0.1"), ipToInt("217.18.255.255")],
-    [ipToInt("217.27.0.1"), ipToInt("217.27.255.255")],
-    [ipToInt("217.61.0.1"), ipToInt("217.61.255.255")],
-    [ipToInt("217.64.0.1"), ipToInt("217.64.255.255")],
-    [ipToInt("217.70.0.1"), ipToInt("217.70.255.255")],
-    [ipToInt("217.79.0.1"), ipToInt("217.79.255.255")],
-    [ipToInt("217.119.0.1"), ipToInt("217.119.255.255")],
-    [ipToInt("217.129.0.1"), ipToInt("217.129.255.255")],
-    [ipToInt("217.132.0.1"), ipToInt("217.132.255.255")],
-    [ipToInt("217.147.0.1"), ipToInt("217.147.255.255")],
-    [ipToInt("217.154.0.1"), ipToInt("217.154.255.255")],
-    [ipToInt("217.160.0.1"), ipToInt("217.160.255.255")],
-    [ipToInt("217.168.0.1"), ipToInt("217.168.255.255")],
-    [ipToInt("217.170.0.1"), ipToInt("217.170.255.255")],
-    [ipToInt("217.175.0.1"), ipToInt("217.175.255.255")],
-    [ipToInt("217.178.0.1"), ipToInt("217.178.255.255")],
-    [ipToInt("94.16.0.0"), ipToInt("94.16.255.255")],
-    [ipToInt("94.20.0.0"), ipToInt("94.20.255.255")],
-    [ipToInt("94.25.0.0"), ipToInt("94.25.255.255")],
-    [ipToInt("94.27.0.0"), ipToInt("94.27.255.255")],
-    [ipToInt("94.77.0.0"), ipToInt("94.77.255.255")],
-    [ipToInt("94.102.0.0"), ipToInt("94.102.255.255")],
-    [ipToInt("94.119.0.0"), ipToInt("94.119.255.255")]
+
+  // دومينات لازم تبقى DIRECT وما تتأثر (عشان حياتك العادية ما تتخرب)
+  var DIRECT_DOMAINS = [
+    ".youtube.com", ".googlevideo.com", ".ytimg.com", ".yt3.ggpht.com", ".ytimg.l.google.com",
+    ".shahid.net", ".shahid.mbc.net", ".mbc.net",
+    ".whatsapp.com", ".whatsapp.net", ".cdn.whatsapp.net",
+    ".snapchat.com", ".sc-cdn.net", ".snapkit.com"
   ];
-  // دالة تعيين IP أردني
-  function ipInJordan(ip) {
-    if (!ip) return false;
-    var n = ipToInt(ip);
-    for (var i = 0; i < JO_RANGES.length; i++) {
-      var r = JO_RANGES[i];
-      if (n < r[0]) break;
-      if (n >= r[0] && n <= r[1]) return true;
+
+  // IPv4 ranges أردنية (من-إلى)
+  var JO_IP_RANGES = [
+    // Orange
+    ["212.34.0.0","212.34.31.255"],
+    ["213.139.32.0","213.139.63.255"],
+    ["37.202.64.0","37.202.127.255"],
+    ["46.185.128.0","46.185.255.255"],
+    ["94.249.84.0","94.249.87.255"],
+
+    // Zain
+    ["176.29.0.0","176.29.255.255"],
+    ["176.28.128.0","176.28.255.255"],
+    ["46.32.96.0","46.32.127.255"],
+    ["94.142.32.0","94.142.63.255"],
+    ["188.247.64.0","188.247.95.255"],
+    ["77.245.0.0","77.245.15.255"],
+    ["80.90.160.0","80.90.175.255"],
+
+    // Umniah
+    ["46.248.192.0","46.248.223.255"],
+    ["95.172.192.0","95.172.223.255"],
+    ["109.107.224.0","109.107.255.255"],
+    ["92.241.32.0","92.241.63.255"],
+    ["212.35.64.0","212.35.79.255"],
+    ["212.35.80.0","212.35.95.255"],
+    ["212.118.0.0","212.118.15.255"],
+    ["5.45.128.0","5.45.143.255"]
+  ];
+
+  // IPv6 prefixes أردنية
+  var JO_V6_PREFIXES = [
+    "2a01:9700:", // JDC / GO
+    "2a00:18d8:", // Orange Jordan
+    "2a03:6b00:", // Zain Jordan
+    "2a03:b640:"  // Umniah / Orbitel
+  ];
+
+  // ---------- helpers ----------
+
+  // هل host من خدمات لازم تبقى DIRECT دايمًا؟
+  function hostMatches(list, h) {
+    if (!h) return false;
+    h = h.toLowerCase();
+    for (var i = 0; i < list.length; i++) {
+      var suf = list[i].toLowerCase();
+      if (h === suf.slice(1) || h.endsWith(suf)) {
+        return true;
+      }
     }
     return false;
   }
-  function ipToInt(ip) {
+
+  // استخرج البورت من الرابط:
+  // - http://1.2.3.4:8080/... -> 8080
+  // - https://abc.com/...     -> 443
+  // - http://abc.com/...      -> 80
+  function extractPort(u) {
+    var m = u.match(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/\[?[^\/\]]+\]?:(\d+)/);
+    if (m && m[1]) {
+      return parseInt(m[1], 10);
+    }
+    if (u.indexOf("https://") === 0) return 443;
+    if (u.indexOf("http://")  === 0) return 80;
+    return -1;
+  }
+
+  // هل البورت تبع ببجي؟
+  function isPubgPort(p) {
+    if (p < 0) return false;
+    var keys = ["LOBBY","MATCH","RECRUIT_SEARCH","UPDATES"];
+    for (var i = 0; i < keys.length; i++) {
+      var arr = PORTS[keys[i]];
+      for (var j = 0; j < arr.length; j++) {
+        if (p === arr[j]) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // حول IPv4 لنمبر 32بت علشان نقارن رينجات
+  function ipv4ToLong(ip) {
     var p = ip.split(".");
-    return ((p[0] & 0xFF) << 24) + ((p[1] & 0xFF) << 16) + ((p[2] & 0xFF) << 8) + (p[3] & 0xFF);
+    if (p.length !== 4) return null;
+    var a = parseInt(p[0],10),
+        b = parseInt(p[1],10),
+        c = parseInt(p[2],10),
+        d = parseInt(p[3],10);
+    if (isNaN(a)||isNaN(b)||isNaN(c)||isNaN(d)) return null;
+    return ((a << 24) >>> 0) +
+           ((b << 16) >>> 0) +
+           ((c <<  8) >>> 0) +
+            (d >>> 0);
   }
-  // دالة بسيطة لإرجاع المنفذ الأول لكل فئة؛ هذا يلغي العشوائية.
-  function proxyFor(cat) {
-    var port = PORTS[cat][0];
-    return "PROXY " + PROXY_HOST + ":" + port;
-  }
-  var CATEGORIES = {
-    LOBBY: {
-      domains: ["*.pubgmobile.com", "*.pubgmobile.net", "*.proximabeta.com", "*.igamecj.com"],
-      urls:    ["*/account/login*", "*/client/version*", "*/status/heartbeat*", "*/presence/*", "*/friends/*"]
-    },
-    MATCH: {
-      domains: ["*.gcloud.qq.com", "gpubgm.com"],
-      urls:    ["*/matchmaking/*", "*/mms/*", "*/game/start*", "*/game/join*", "*/report/battle*"]
-    },
-    RECRUIT: {
-      domains: ["match.igamecj.com", "match.proximabeta.com", "teamfinder.igamecj.com", "teamfinder.proximabeta.com"],
-      urls:    ["*/teamfinder/*", "*/clan/*", "*/social/*", "*/search/*", "*/recruit/*"]
-    },
-    UPDATES: {
-      domains: ["cdn.pubgmobile.com", "updates.pubgmobile.com", "patch.igamecj.com", "hotfix.proximabeta.com", "dlied1.qq.com", "dlied2.qq.com", "gpubgm.com"],
-      urls:    ["*/patch*", "*/hotfix*", "*/update*", "*/download*", "*/assets/*", "*/assetbundle*", "*/obb*"]
-    },
-    CDN: {
-      domains: ["cdn.igamecj.com", "cdn.proximabeta.com", "cdn.tencentgames.com", "*.qcloudcdn.com", "*.cloudfront.net", "*.edgesuite.net"],
-      urls:    ["*/cdn/*", "*/static/*", "*/image/*", "*/media/*", "*/video/*", "*/res/*", "*/pkg/*"]
-    }
-  };
-  // ننفذ قواعدنا: نحظر أي وجهة خارج الأردن.
-  for (var cat in CATEGORIES) {
-    var defs = CATEGORIES[cat];
-    for (var i = 0; i < defs.urls.length; i++) {
-      if (shExpMatch(url, defs.urls[i])) {
-        var ip = dnsResolve(host);
-        if (!ipInJordan(ip)) return "DIRECT";
-        return proxyFor(cat);
+
+  // IPv4 داخل الأردن؟
+  function isIpv4InJordan(ip) {
+    var n = ipv4ToLong(ip);
+    if (n === null) return false;
+    for (var i=0; i<JO_IP_RANGES.length; i++) {
+      var start = ipv4ToLong(JO_IP_RANGES[i][0]);
+      var end   = ipv4ToLong(JO_IP_RANGES[i][1]);
+      if (start !== null && end !== null && n >= start && n <= end) {
+        return true;
       }
     }
-    for (var i = 0; i < defs.domains.length; i++) {
-      if (shExpMatch(host, defs.domains[i])) {
-        var ip = dnsResolve(host);
-        if (!ipInJordan(ip)) return "DIRECT";
-        return proxyFor(cat);
+    return false;
+  }
+
+  // IPv6 أردني؟
+  function isIpv6InJordan(ip6) {
+    if (!ip6) return false;
+    var x = ip6.toLowerCase();
+    if (x[0] === "[") {
+      x = x.replace(/^\[/, "").replace(/\]$/, "");
+    }
+    for (var i=0; i<JO_V6_PREFIXES.length; i++) {
+      if (x.indexOf(JO_V6_PREFIXES[i]) === 0) {
+        return true;
       }
     }
+    return false;
   }
-  var dst = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? host : dnsResolve(host);
-  if (dst && ipInJordan(dst)) {
-    return proxyFor("LOBBY");
+
+  // حدد IPv6 لو موجود (يا إما host IPv6 literal، أو داخل ال URL بين [])
+  function pickIPv6(url, host) {
+    if (host.indexOf(":") !== -1 && host.indexOf(".") === -1) {
+      return host;
+    }
+    var m6 = url.match(/\[([0-9a-fA-F:]+)\]/);
+    if (m6 && m6[1]) {
+      return m6[1];
+    }
+    return null;
   }
-  return "DIRECT";
+
+  // ---------- decision flow ----------
+
+  // (0) خدمات زي يوتيوب/واتساب/شاهد/سناب دايمًا DIRECT وما إلها علاقة بالقفل
+  if (hostMatches(DIRECT_DOMAINS, host)) {
+    return DIRECT;
+  }
+
+  // (1) شوف البورت وحدد إذا هذا ترافيك PUBG (LOBBY/MATCH/...)
+  var port = extractPort(url);
+  var pubgTraffic = isPubgPort(port);
+
+  // (2) حدد إذا السيرفر أردني ولا لا
+  var ip4 = dnsResolve(host); // عادة يرجع IPv4 فقط
+  var isJOv4 = (ip4 && isIpv4InJordan(ip4));
+
+  var ipv6Candidate = pickIPv6(url, host);
+  var isJOv6 = (ipv6Candidate && isIpv6InJordan(ipv6Candidate));
+
+  // ------------ منطق PUBG (القفل القاسي) ------------
+  if (pubgTraffic) {
+    // سيرفر أردني حقيقي؟ -> اسمح واتركه يمر عبر بروكسي الأردن
+    if (isJOv4 || isJOv6) {
+      return PROXY_JO;
+    }
+    // مش سيرفر أردني؟ -> اقفله بالقوة
+    // يعني ما في DIRECT fallback، ما في محاولة عادية
+    // اللعبة بتضل تحاول ومش تدخل ماتش خارجي
+    return BLOCK_FAKE;
+  }
+
+  // ------------ باقي الترافيك (مش PUBG) ------------
+  // ما بدنا نكسر الانترنت كله. خليه شغّال طبيعي.
+  return DIRECT;
 }
