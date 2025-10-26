@@ -25,9 +25,9 @@ var FIXED_PORT = {
 var JO_V6_PREFIX = {
   LOBBY: ["2a01:9700:"],   // زين الأردن (/29)
   MATCH: ["2a03:b640:"],   // أمنية الأردن (/32)
-  RECRUIT_SEARCH: ["2a03:6b00"],
-  UPDATES: ["2a03:6b00"],
-  CDN: ["2a03:6b00"]
+  RECRUIT_SEARCH: ["2a03:6b00:"],
+  UPDATES: ["2a03:6b00:"],
+  CDN: ["2a03:6b00:"]
 };
 
 // IPv4 ranges أردنية (أساس من نطاقاتك السابقة). ما غيرتها ولا وسّعتها برّا الأردن.
