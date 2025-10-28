@@ -22,12 +22,12 @@ function FindProxyForURL(url, host) {
     // نطاقات "سكنية قوية" أردنية IPv4
     const JO_RESIDENTIAL_V4 = [
 
-  ["213.139.32.0","213.139.63.255"]
+  "213.139.32.0","213.139.63.255"
     ];
 
     // نطاقات "سكنية قوية" أردنية IPv6
     const JO_RESIDENTIAL_V6 = [
-        ["2a01:9700:0000:0000::","2a01:9700:ffff:ffff:ffff:ffff:ffff:ffff"]
+            "2a01:6e40::", "2a02:2788::"
     ];
 
     // دوال مساعدة
