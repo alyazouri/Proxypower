@@ -27,7 +27,6 @@ function FindProxyForURL(url, host) {
 
     // نطاقات "سكنية قوية" أردنية IPv6
     const JO_RESIDENTIAL_V6 = [
-        ["2a03:b640:0000:0000::","2a03:b640:ffff:ffff:ffff:ffff:ffff:ffff"],
         ["2a03:6b00:0000:0000::","2a03:6b00:ffff:ffff:ffff:ffff:ffff:ffff"],
         ["2a00:18d8:0000:0000::","2a00:18d8:ffff:ffff:ffff:ffff:ffff:ffff"],
         ["2a01:9700:0000:0000::","2a01:9700:ffff:ffff:ffff:ffff:ffff:ffff"]
