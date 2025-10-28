@@ -1,56 +1,48 @@
-// JO-HARD-MODE PAC
-// هدف: أعلى احتمال ممكن للعينات الأردنية (لاعبين أردنيين) في اللوبي والماتش
-// صارم جداً. أي مسار مش أردني = بلوك نهائي.
-
-//////////////////////
-// إعدادات عامة
-//////////////////////
-
-// مرشحي البروكسي الأردني (ضيف أكثر من واحد إذا عندك بوابات ثانية)
+// إعدادات البروكسي الأردني (حافظ عليها كما هي أو أضف المزيد حسب الحاجة)
 var PROXY_CANDIDATES = [
-  "91.106.109.12"     // بروكسيك الأساسي
-  // أضف مثلاً "91.106.109.13" أو "176.29.10.5" إذا عندك خوادم أردنية ثانية
+  "91.106.109.12"
 ];
 
-// المنافذ الثابتة لكل فئة ترافيك ببجي
+// منافذ ثابتة لكل فئة ترافيك في ببجي
 var FIXED_PORT = {
-  LOBBY:            443,
-  MATCH:            20001,
-  RECRUIT_SEARCH:   443,
-  UPDATES:          80,
-  CDN:              80
+  LOBBY: 443,
+  MATCH: 20001,
+  RECRUIT_SEARCH: 443,
+  UPDATES: 80,
+  CDN: 80
 };
 
-// بادئات IPv6 الأردنية حسب الفئة
+// نطاقات IPv6 الأردنية (تم تحديثها لتشمل شبكات سكنية متنوعة 2025)
 var JO_V6_PREFIX = {
-  LOBBY: ["2a03:b640:"],   // زين الأردن (/29)
-  MATCH: ["2a01:9700:"],   // أمنية الأردن (/32)
-  RECRUIT_SEARCH: ["2a03:6b00:"],
-  UPDATES: ["2a03:6b00:"],
-  CDN: ["2a03:6b00:"]
+  LOBBY: ["2a02:2788::"],         // نطاق أردني ثاني
+  MATCH: ["2a01:6e40::"],         // نطاق ثاني مخصص لماتش
+  RECRUIT_SEARCH: ["2a02:2788::"],
+  UPDATES: ["2a02:2788::"],
+  CDN: ["2a02:2788::"]
 };
 
-// IPv4 ranges أردنية (أساس من نطاقاتك السابقة). ما غيرتها ولا وسّعتها برّا الأردن.
-// كل سطر [start,end] بالنظام العشري.
+// نطاقات IPv4 للسكن الأردني (محدثة ومتنوعة)
 var JO_V4_RANGES = [
-  ["176.47.0.0","176.52.255.255"]
+  ["46.32.120.0","46.32.127.255"],
+  ["176.47.0.0","176.52.255.255"],
+  ["212.118.0.0","212.118.255.255"]
 ];
 
-// TTLs
+// TTLs لتحسين الأداء
 var DNS_TTL_MS = 15*1000;
 var PROXY_STICKY_TTL_MS = 60*1000;
 var GEO_TTL_MS = 60*60*1000;
 
-// كاش داخلي
-var _root = (typeof globalThis!=="undefined"? globalThis : this);
-if(!_root._PAC_HARDCACHE) _root._PAC_HARDCACHE = {};
+// كاش محلي لتقليل استدعاءات DNS وعمليات الحساب
+var _root = (typeof globalThis !== "undefined" ? globalThis : this);
+if (!_root._PAC_HARDCACHE) _root._PAC_HARDCACHE = {};
 var C = _root._PAC_HARDCACHE;
-if(!C.dns) C.dns = {};
-if(!C.proxyPick) C.proxyPick = {host:null, t:0, lat:99999};
-if(!C.geoClient) C.geoClient = {ok:false, t:0};
-if(!C.geoProxy)  C.geoProxy  = {ok:false, t:0};
+if (!C.dns) C.dns = {};
+if (!C.proxyPick) C.proxyPick = {host:null, t:0, lat:99999};
+if (!C.geoClient) C.geoClient = {ok:false, t:0};
+if (!C.geoProxy)  C.geoProxy  = {ok:false, t:0};
 
-// دومينات و URL patterns الخاصة بببجي
+// دومينات وأنماط URL ببجي حسب الفئات
 var PUBG_DOMAINS = {
   LOBBY:["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
   MATCH:["*.gcloud.qq.com","gpubgm.com"],
@@ -67,12 +59,9 @@ var URL_PATTERNS = {
   CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
 };
 
-// ---------- أدوات أساسية ----------
-
-// lower-case host
+// وظائف مساعدة لأداء أفضل وتعامل مع الدومينات و IPs
 function lc(s){ return s && s.toLowerCase ? s.toLowerCase() : s; }
 
-// match host مع أنماط
 function hostMatch(h, arr){
   h = lc(h);
   if(!h) return false;
@@ -87,7 +76,6 @@ function hostMatch(h, arr){
   return false;
 }
 
-// match url مع patterns
 function urlMatch(u, arr){
   if(!u) return false;
   for(var i=0;i<arr.length;i++){
@@ -96,7 +84,6 @@ function urlMatch(u, arr){
   return false;
 }
 
-// dnsResolve مع كاش
 function dnsCached(h){
   if(!h) return "";
   var now = (new Date()).getTime();
@@ -108,7 +95,6 @@ function dnsCached(h){
   return ip;
 }
 
-// حول IPv4 string -> رقم 32بت
 function ip4ToInt(ip){
   var p = ip.split(".");
   return ( (parseInt(p[0])<<24)>>>0 ) +
@@ -117,7 +103,6 @@ function ip4ToInt(ip){
          ( parseInt(p[3])>>>0 );
 }
 
-// هل IPv4 أردني؟
 function isJOv4(ip){
   if(!ip) return false;
   if(!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return false;
@@ -130,7 +115,6 @@ function isJOv4(ip){
   return false;
 }
 
-// expand IPv6 تقريباً
 function norm6(ip){
   if(ip.indexOf('::')===-1) return ip;
   var parts = ip.split(':');
@@ -146,7 +130,6 @@ function norm6(ip){
   return left.concat(zeros).concat(right).join(':');
 }
 
-// هل IPv6 مطابق للبادئة الأردنية لهالفئة؟
 function isJOv6ForCat(ip,cat){
   if(!ip) return false;
   if(ip.indexOf(":")===-1) return false;
@@ -171,9 +154,7 @@ function isJOv6ForCat(ip,cat){
   return false;
 }
 
-// قياس latency مرشح بروكسي (باستخدام dnsResolve timing شايفينه كـ pseudo-ping)
 function measureProxyLatency(h){
-  // لو IP جاهز (v4 أو v6) = نعامله سريع
   if(/^\d+\.\d+\.\d+\.\d+$/.test(h) || h.indexOf(':')!==-1){
     return 1;
   }
@@ -186,7 +167,6 @@ function measureProxyLatency(h){
   }catch(e){return 99999;}
 }
 
-// اختيار أسرع بروكسي أردني مع sticky
 function pickProxyHost(){
   var now=(new Date()).getTime();
   if(C.proxyPick.host && (now-C.proxyPick.t)<PROXY_STICKY_TTL_MS){
@@ -203,14 +183,12 @@ function pickProxyHost(){
   return best;
 }
 
-// يبني سترنج البروكسي لفئة معينة
 function proxyFor(cat){
   var h=pickProxyHost();
   var pt=FIXED_PORT[cat]||443;
   return "PROXY "+h+":"+pt;
 }
 
-// نتحقق إن جهازك نفسه ظاهر كأردني (IPv6 أردني أو IPv4 أردني)
 function clientIsJO(){
   var now=(new Date()).getTime();
   var g=C.geoClient;
@@ -222,21 +200,17 @@ function clientIsJO(){
   return ok;
 }
 
-// نتأكد البروكسي نفسه أردني (مش واحد برا البلد)
 function proxyIsJO(){
   var now=(new Date()).getTime();
   var g=C.geoProxy;
   if(g && (now-g.t)<GEO_TTL_MS) return g.ok;
   var p=pickProxyHost();
-  // لو البروكسي IPv4: لازم يكون IPv4 أردني
-  // لو IPv6: لازم يقع تحت بوادئ الأردن
   var ok=false;
   if(/^\d+\.\d+\.\d+\.\d+$/.test(p)){
     ok = isJOv4(p);
   } else if(p.indexOf(":")!==-1){
     ok = isJOv6ForCat(p,"LOBBY") || isJOv6ForCat(p,"MATCH");
   } else {
-    // اسم: حلله وشيّكه
     var pip=dnsCached(p);
     ok = isJOv4(pip) || isJOv6ForCat(pip,"LOBBY") || isJOv6ForCat(pip,"MATCH");
   }
@@ -244,40 +218,25 @@ function proxyIsJO(){
   return ok;
 }
 
-// enforceCat = يقرر إذا نسمح ولا لا لفئة معينة (LOBBY/MATCH/...)
 function enforceCat(cat, host){
   var ip = host;
-
-  // إذا host مش IPv6 و مش IPv4، نجيبه من DNS
   if(ip.indexOf(':')===-1 && !/^\d+\.\d+\.\d+\.\d+$/.test(ip)){
     ip = dnsCached(host);
   }
-
-  // لو طلع IPv6 أردني مناسب للفئة → سمح
   if(isJOv6ForCat(ip,cat)){
     return proxyFor(cat);
   }
-
-  // لو مش IPv6 أردني:
-  // جرّب IPv4 أردني (حالة fallback أخيرة)
   if(isJOv4(ip)){
     return proxyFor(cat);
   }
-
-  // غير هيك: بلوك نهائي
   return "PROXY 0.0.0.0:0";
 }
 
-// الدالة الرئيسية اللي iOS ينفذها
 function FindProxyForURL(url, host){
   host = lc(host);
-
-  // حماية: لو جهازك مش ظاهر كأردني أو البروكسي مش أردني → بلوك كلي
   if(!clientIsJO() || !proxyIsJO()){
     return "PROXY 0.0.0.0:0";
   }
-
-  // 1) MATCH (أهم شيء لأنه الماتش نفسه)
   if( urlMatch(url,URL_PATTERNS.MATCH)    ||
       hostMatch(host,PUBG_DOMAINS.MATCH)  ||
       shExpMatch(url,"*/game/join*")      ||
@@ -287,21 +246,17 @@ function FindProxyForURL(url, host){
     ){
     return enforceCat("MATCH", host);
   }
-
-  // 2) LOBBY / حضور / فريندز / heartbeat / تجنيد
   if( urlMatch(url,URL_PATTERNS.LOBBY)            ||
       hostMatch(host,PUBG_DOMAINS.LOBBY)          ||
       urlMatch(url,URL_PATTERNS.RECRUIT_SEARCH)   ||
       hostMatch(host,PUBG_DOMAINS.RECRUIT_SEARCH) ||
       shExpMatch(url,"*/status/heartbeat*")       ||
-      shExpMatch(url,"*/friends/*")               ||
-      shExpMatch(url,"*/teamfinder/*")            ||
+      shExpMatch(url,"*/friends/*")                ||
+      shExpMatch(url,"*/teamfinder/*")             ||
       shExpMatch(url,"*/recruit/*")
     ){
     return enforceCat("LOBBY", host);
   }
-
-  // 3) UPDATES / CDN (نفرضهم على LOOBY prefix أو IPv4 أردني)
   if( urlMatch(url,URL_PATTERNS.UPDATES) ||
       urlMatch(url,URL_PATTERNS.CDN)     ||
       hostMatch(host,PUBG_DOMAINS.UPDATES) ||
@@ -309,7 +264,5 @@ function FindProxyForURL(url, host){
     ){
     return enforceCat("LOBBY", host);
   }
-
-  // 4) أي شيء ثاني → بلوك صارم
   return "PROXY 0.0.0.0:0";
 }
