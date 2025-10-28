@@ -21,7 +21,8 @@ function FindProxyForURL(url, host) {
 
     // نطاقات "سكنية قوية" أردنية IPv4
     const JO_RESIDENTIAL_V4 = [
-        ["176.47.0.0", "176.52.255.255"]
+
+
     ];
 
     // نطاقات "سكنية قوية" أردنية IPv6
