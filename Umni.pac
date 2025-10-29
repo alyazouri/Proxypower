@@ -1,41 +1,16 @@
-// pubg_jo_hop6.pac
-// PAC script — تطبيق "حيلة 3": تقريب hop-6 عبر CIDR قائمة (HOP6_PREFIXES).
-// سياسة:
-//  - استثناءات محددة (YouTube/Shahid/Facebook/Messenger/WhatsApp) => DIRECT
-//  - إذا الوجهة داخل HOP6_PREFIXES (شبكات تمثل hop-6) => DIRECT
-//  - بقية PUBG (دومينات/منافذ) => PROXY 91.106.109.12
-//  - أي حركة أخرى => PROXY 91.106.109.12
+// pubg_lobby_match_logic.pac
+// منطق:
+// - LOBBY الأردني فقط يمر DIRECT
+// - MATCH الأجنبي فقط يمر عبر البروكسي 91.106.109.12
+// - كل شيء آخر DIRECT
 
-var PROXY = "PROXY 91.106.109.12"; // بدون بورت
-var DIRECT = "DIRECT"; // نستخدمه فقط للحالات المستثناة أو hop6
+// بروكسي للمباريات الأجنبية
+var PROXY = "PROXY 91.106.109.12";
+var DIRECT = "DIRECT";
 
-// --- منافذ PUBG ---
-var PORTS = {
-  LOBBY:           [443, 8443],
-  MATCH:           [20001, 20003],
-  RECRUIT_SEARCH:  [10012, 10013],
-  UPDATES:         [80, 443, 8443],
-  CDNs:            [80, 443]
-};
-
-// --- دومينات PUBG ---
-var PUBG_DOMAINS = {
-  LOBBY:           ["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
-  MATCH:           ["*.gcloud.qq.com","gpubgm.com"],
-  RECRUIT_SEARCH:  ["match.igamecj.com","match.proximabeta.com","teamfinder.igamecj.com","teamfinder.proximabeta.com"],
-  UPDATES:         ["cdn.pubgmobile.com","updates.pubgmobile.com","patch.igamecj.com","hotfix.proximabeta.com","dlied1.qq.com","dlied2.qq.com","gpubgm.com"],
-  CDNs:            ["cdn.igamecj.com","cdn.proximabeta.com","cdn.tencentgames.com","*.qcloudcdn.com","*.cloudfront.net","*.edgesuite.net"]
-};
-
-// --- استثناءات لا تمر عبر البروكسي إطلاقاً ---
-var EXCLUDED_DOMAINS = [
-  "*.youtube.com","*.ytimg.com","*.googlevideo.com",
-  "*.shahid.net","*.mbc.net",
-  "*.facebook.com","*.fbcdn.net","*.messenger.com","*.whatsapp.net"
-];
-
-// --- نطاقات أردنية (كما عندك) ---
+// نطاقات أردنية
 var JO_CIDRS = [
+["176.16.0.0","176.23.255.255"],
   "109.107.32.0/20",
   "109.107.48.0/21",
   "109.107.64.0/21",
@@ -44,17 +19,26 @@ var JO_CIDRS = [
   "109.107.130.0/24"
 ];
 
-// --- HOP6_PREFIXES: مجموعات CIDR نعتبرها مؤشرًا لوجود "hop-6" محلي/مزوّد وسيط
-// (هي قائمة تقريبية — إن عندك CIDR محدد للـ hop6 الي تريده ضيفه هنا)
-var HOP6_PREFIXES = [
-  "94.249.0.0/16",     // مثال: شبكات backbone محلية معروفة (أدخل أي CIDR آخر تعرفه)
-  "109.107.224.0/19",  // مثال آخر (إذا عندك CIDR hop6 محدد ضيفه)
-  "109.107.32.0/20"    // مكرر من JO_CIDRS إن أردت، لا يؤذي (تمثيل hop-6 محلي)
-];
+// بورتات PUBG
+var PORTS = {
+  LOBBY:           [443, 8443],
+  MATCH:           [20001, 20003],
+  RECRUIT_SEARCH:  [10012, 10013],
+  UPDATES:         [80, 443, 8443],
+  CDNs:            [80, 443]
+};
 
-// =====================
-// دوال مساعدة قياسية
-// =====================
+// دومينات PUBG (تُساعدنا نعرف نوع الخدمة)
+var PUBG_DOMAINS = {
+  LOBBY:           ["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
+  MATCH:           ["*.gcloud.qq.com","gpubgm.com"],
+  RECRUIT_SEARCH:  ["match.igamecj.com","match.proximabeta.com","teamfinder.igamecj.com","teamfinder.proximabeta.com"],
+  UPDATES:         ["cdn.pubgmobile.com","updates.pubgmobile.com","patch.igamecj.com","hotfix.proximabeta.com","dlied1.qq.com","dlied2.qq.com","gpubgm.com"],
+  CDNs:            ["cdn.igamecj.com","cdn.proximabeta.com","cdn.tencentgames.com","*.qcloudcdn.com","*.cloudfront.net","*.edgesuite.net"]
+};
+
+// ----------------- دوال مساعدة -----------------
+
 function ipToLong(ip) {
   var p = ip.split('.');
   if (p.length != 4) return null;
@@ -64,40 +48,40 @@ function ipToLong(ip) {
          (parseInt(p[3],10) >>> 0);
 }
 
-function parseCidrs(list){
+// حضّر شبكات الأردن للـ bitwise match
+var JO_PARSED = (function(){
   var out = [];
-  for (var i=0;i<list.length;i++){
-    var c = list[i].trim();
-    if (!c) continue;
-    var parts = c.split('/');
-    if (parts.length !== 2) continue;
-    var base = ipToLong(parts[0]);
-    if (base === null) continue;
+  for (var i=0;i<JO_CIDRS.length;i++){
+    var parts = JO_CIDRS[i].split('/');
+    var baseLong = ipToLong(parts[0]);
+    if (baseLong === null) continue;
     var prefix = parseInt(parts[1],10);
-    var mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
-    var net = (base & mask) >>> 0;
-    out.push({net: net, mask: mask});
+    var maskLong = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    var net = (baseLong & maskLong) >>> 0;
+    out.push({ net: net, mask: maskLong });
   }
   return out;
-}
+})();
 
-var JO_PARSED   = parseCidrs(JO_CIDRS);
-var HOP6_PARSED = parseCidrs(HOP6_PREFIXES);
-
-function ipInList(ip, parsedList){
+// هل IP داخل نطاق أردني؟
+function isJordanIP(ip){
   var ipL = ipToLong(ip);
   if (ipL === null) return false;
-  for (var i=0;i<parsedList.length;i++){
-    var e = parsedList[i];
-    if ((ipL & e.mask) >>> 0 === e.net) return true;
+  for (var i=0;i<JO_PARSED.length;i++){
+    var e = JO_PARSED[i];
+    if ( (ipL & e.mask) >>> 0 === e.net ) {
+      return true;
+    }
   }
   return false;
 }
 
+// host شكله IPv4 جاهز؟
 function isIPv4Literal(h){
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(h);
 }
 
+// تطابق دومين مع لستة دومينات بنمط wildcards
 function matchDomainList(host, list){
   for (var i=0;i<list.length;i++){
     if (shExpMatch(host, list[i])) return true;
@@ -105,51 +89,66 @@ function matchDomainList(host, list){
   return false;
 }
 
-// =====================
-// المنطق الرئيسي
-// =====================
+// استخراج المنفذ من الURL
+function extractPort(url){
+  // أمثلة: http://host:20001/  https://host/ (443 ضمني)
+  var m = url.match(/^[a-z]+:\/\/[^\/:]+:(\d+)/i);
+  if (m && m.length > 1) {
+    var pr = parseInt(m[1],10);
+    if (!isNaN(pr)) return pr;
+  }
+  return 0;
+}
+
+// ----------------- المنطق الرئيسي -----------------
+
 function FindProxyForURL(url, host) {
 
-  // 1) استثناءات (YouTube / Shahid / Facebook / Messenger / WhatsApp)
-  if (matchDomainList(host, EXCLUDED_DOMAINS)) {
+  // أسماء محلية بدون نقطة (مثلاً intranet) -> DIRECT
+  if (isPlainHostName(host)) {
     return DIRECT;
   }
 
-  // 2) نحاول حل الـ host إلى IP (إن أمكن)
+  // حل الـ IP
   var ip = null;
   if (isIPv4Literal(host)) {
     ip = host;
   } else {
-    try { ip = dnsResolve(host); } catch(e){ ip = null; }
+    try { ip = dnsResolve(host); } catch(e) { ip = null; }
   }
 
-  // 3) إذا الـ IP داخل HOP6_PREFIXES => نعتبرها محلية/قريبة => DIRECT
-  if (ip && ipInList(ip, HOP6_PARSED)) {
-    return DIRECT;
+  // نحدد المنفذ
+  var port = extractPort(url);
+
+  // --------- حالة LOBBY ---------
+  // if host looks like lobby domains OR port matches lobby ports
+  var isLobbyDomain = matchDomainList(host, PUBG_DOMAINS.LOBBY);
+  var isLobbyPort   = (PORTS.LOBBY.indexOf(port) !== -1);
+
+  if (isLobbyDomain || isLobbyPort) {
+    // اللوبـي الأردني فقط يمر DIRECT
+    if (ip && isJordanIP(ip)) {
+      return DIRECT; // لُوبي محلي أردني
+    } else {
+      return DIRECT; // لُوبي غير أردني: حسب طلبك، إحنا ما بنوجهه بروكسي، يعني عادي DIRECT
+    }
   }
 
-  // 4) قواعد PUBG (الدومينات)
-  for (var cat in PUBG_DOMAINS){
-    if (matchDomainList(host, PUBG_DOMAINS[cat])) return PROXY;
+  // --------- حالة MATCH ---------
+  // if host looks like match domains OR port matches match ports
+  var isMatchDomain = matchDomainList(host, PUBG_DOMAINS.MATCH);
+  var isMatchPort   = (PORTS.MATCH.indexOf(port) !== -1);
+
+  if (isMatchDomain || isMatchPort) {
+    // مباريات من برا الأردن فقط تتوجّه عبر البروكسي
+    if (ip && !isJordanIP(ip)) {
+      return PROXY; // سيرفر أجنبي -> استخدم البروكسي
+    } else {
+      return DIRECT; // سيرفر أردني (لو حصل) -> بدون بروكسي
+    }
   }
 
-  // 5) فحص المنافذ في URL (محاولة استخراج آمنة)
-  var port = 0;
-  try {
-    // نحاول استخراج البورت من URL إن وُجد
-    var m = url.match(/^[a-z]+:\/\/[^\/:]+:(\d+)/i);
-    if (m && m.length > 1) port = parseInt(m[1],10);
-  } catch(e){ port = 0; }
-
-  for (var key in PORTS){
-    if (PORTS[key].indexOf(port) !== -1) return PROXY;
-  }
-
-  // 6) إذا الوجهة ضمن JO_CIDRS (شبكات أردنية معروفة) -> PROXY (المنطق الأسبق لديك)
-  if (ip && ipInList(ip, JO_PARSED)) {
-    return PROXY;
-  }
-
-  // 7) افتراضيًا: مرر عبر البروكسي (لا يوجد DIRECT افتراضي)
-  return PROXY;
+  // --------- باقي الأشياء ---------
+  // انت ما قلت تبغى يمروا على البروكسي، فبنخليهم DIRECT
+  return DIRECT;
 }
