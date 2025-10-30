@@ -1,138 +1,162 @@
-// PAC: Jordan-only matchmaking hard mode
-// الفكرة: أي PUBG MATCH/SEARCH لو مش على IP أردني -> نحظره (blackhole)
-// كل الترافيك (حتى غير PUBG) عبر بروكسيات أردنية؛ ما في DIRECT نهائياً.
+// ===========================================
+// 🟢 PUBG Mobile Jordan-only PAC Script v4.0
+// كل وظيفة داخل اللعبة لها دومينات وبورتات منفصلة
+// ===========================================
 
-// بروكسيات أردنية (أضف فالباكز)
-var JO_PROXIES = [
-  "PROXY 91.106.109.12:443"
-];
+// --- 🧭 بروكسيات أردنية حسب المزود (مرتبة بالأولوية) ---
+var JO_PROXIES = {
+  ORANGE:  ["PROXY 91.106.109.12:443", "PROXY 94.249.0.12:443"],
+  ZAIN:    ["PROXY 89.187.57.10:443", "PROXY 89.187.57.12:443"],
+  UMNIAH:  ["PROXY 109.107.225.10:443", "PROXY 109.107.225.11:443"],
+  GO:      ["PROXY 37.17.200.10:443", "PROXY 37.17.200.12:443"]
+};
 
-// بلاك-هول سريع (منفذ discard)
-var BLACKHOLE = "PROXY 127.0.0.1:9";
-
-// كاش DNS بسيط
-var DNS_CACHE_TTL = 60;
-var dnsCache = {};
-
-function nowS(){return Math.floor(new Date().getTime()/1000);}
-function cachePut(h,ip){dnsCache[h]={ip:ip,ts:nowS()};}
-function cacheGet(h){var e=dnsCache[h]; if(!e) return null; if(nowS()-e.ts>DNS_CACHE_TTL){delete dnsCache[h]; return null;} return e.ip;}
-function safeDnsResolve(host, attempts){
-  var c = cacheGet(host); if(c) return c;
-  attempts = attempts||2;
-  for (var i=0;i<attempts;i++){ try{ var ip=dnsResolve(host); if(ip){cachePut(host,ip); return ip;} }catch(e){} }
-  return null;
-}
-
-// نطاقات أردنية (وسعّها لاحقاً)
-var JO_IP_RANGES = [
-  "196.52.0.0/16","91.106.0.0/16","89.187.0.0/16","41.222.0.0/16",
-  "2.17.24.0/22","5.45.128.0/20","37.17.192.0/20","46.185.128.0/18",
-  "94.249.0.0/16","109.107.224.0/19"
-];
+// --- 🌍 نطاقات IPv4/IPv6 أردنية ---
+var JO_RANGES = {
+  ORANGE: ["91.106.0.0/16","94.249.0.0/16","196.52.0.0/16","212.34.0.0/19"],
+  ZAIN:   ["89.187.0.0/16","37.17.192.0/20","213.139.32.0/19"],
+  UMNIAH: ["109.107.224.0/19","46.185.128.0/18"],
+  GO:     ["5.45.128.0/20","41.222.0.0/16"]
+};
 var JO_V6_PREFIXES = ["2a00:18d8::/29","2a03:6b00::/29","2a03:b640::/32"];
 
-// بورتات حرجة للماتش/السيرش
-var PORTS = {
-  LOBBY:[443,8443],
-  MATCH:[20001,20002,20003,20004,20005],
-  RECRUIT_SEARCH:[10010,10011,10012,10013],
-  UPDATES:[80,443,8443],
-  CDN:[80,443]
+// ================================
+// 🧩 تقسيم الوظائف داخل اللعبة
+// ================================
+
+// 🎯 1. LOBBY / LOGIN / TOKEN AUTH
+var LOBBY = {
+  DOMAINS: [
+    "lobby.igamecj.com", "lite-ios.igamecj.com", "mgl.lobby.igamecj.com",
+    "mtw.lobby.igamecj.com", "mkn.lobby.igamecj.com",
+    "account.pubgmobile.com", "auth.igamecj.com"
+  ],
+  PORTS: [443,8443]
 };
 
-// دومينات PUBG/Tencent
-var KNOWN_PUBG_DOMAINS = [
-  ".pubgmobile.com",".pubg.com",".tencent.com",".tencentgames.net",".ueapk.com","igamecj.com"
-];
-var DOMAINS = {
-  LOBBY:["lobby.igamecj.com","lite-ios.igamecj.com","mgl.lobby.igamecj.com","mtw.lobby.igamecj.com","mkn.lobby.igamecj.com"],
-  MATCH:["match.igamecj.com","mvn.lobby.igamecj.com","mkr.lobby.igamecj.com"],
-  RECRUIT_SEARCH:["recruit-search.igamecj.com","search.igamecj.com"],
-  UPDATES:["updates.pubg.com","update.igamecj.com","filegcp.igamecj.com"],
-  CDN:["cdn.pubg.com","cdn.igamecj.com","gcpcdntest.igamecj.com","appdl.pubg.com"]
+// ⚔️ 2. MATCH / GAMEPLAY (UDP-heavy)
+var MATCH = {
+  DOMAINS: [
+    "match.igamecj.com","mkr.lobby.igamecj.com","mvn.lobby.igamecj.com",
+    "msl.match.igamecj.com","mgw.match.igamecj.com"
+  ],
+  PORTS: [20001,20002,20003,20004,20005]
 };
 
-// أدوات IP/CIDR
-function ipv4ToInt(ip){var a=ip.split('.'); if(a.length!==4) return null;
-  return ((parseInt(a[0],10)&255)<<24)|((parseInt(a[1],10)&255)<<16)|((parseInt(a[2],10)&255)<<8)|(parseInt(a[3],10)&255);}
-function isIpv4InCidr(ip,cidr){
-  var p=cidr.split('/'),base=ipv4ToInt(p[0]),mask=parseInt(p[1],10),ipn=ipv4ToInt(ip);
-  if(base===null||ipn===null) return false;
-  if(mask===32) return ipn===base;
-  var netmask = mask===0?0:(~((1<<(32-mask))-1))>>>0;
-  return ((ipn&netmask)>>>0)===((base&netmask)>>>0);
-}
-function normV6(v){ if(v.indexOf("::")===-1) return v.toLowerCase();
-  var parts=v.split("::"),L=parts[0]?parts[0].split(":"):[],R=parts[1]?parts[1].split(":"):[];
-  var miss=8-(L.length+R.length),fill=[]; for(var i=0;i<miss;i++) fill.push("0");
-  return L.concat(fill).concat(R).map(function(h){return h||"0";}).join(":").toLowerCase();
-}
-function isV6InPref(ip,prefix){
-  try{
-    var x=prefix.split('/'),base=normV6(x[0]).split(':'),mask=parseInt(x[1],10),ipH=normV6(ip).split(':');
-    if(base.length!==8||ipH.length!==8) return false;
-    var left=mask;
-    for(var i=0;i<8&&left>0;i++){
-      var b=parseInt(base[i],16), a=parseInt(ipH[i],16);
-      var bits=Math.min(16,left), m=bits===16?0xFFFF:(~((1<<(16-bits))-1))&0xFFFF;
-      if((b&m)!==(a&m)) return false; left-=bits;
-    }
-    return true;
-  }catch(e){return false;}
-}
+// 🕹️ 3. RECRUIT / TEAM / SEARCH
+var RECRUIT = {
+  DOMAINS: [
+    "recruit-search.igamecj.com","search.igamecj.com","team.igamecj.com"
+  ],
+  PORTS: [10010,10011,10012,10013]
+};
 
-function isJordanIP(ip){
-  if(ip.indexOf(":")===-1){
-    for(var i=0;i<JO_IP_RANGES.length;i++) if(isIpv4InCidr(ip,JO_IP_RANGES[i])) return true;
-    return false;
-  }else{
-    for(var j=0;j<JO_V6_PREFIXES.length;j++) if(isV6InPref(ip,JO_V6_PREFIXES[j])) return true;
-    return false;
-  }
+// 📦 4. UPDATES / PATCHES / RESOURCES
+var UPDATES = {
+  DOMAINS: [
+    "update.igamecj.com","updates.pubg.com","filegcp.igamecj.com","patch.igamecj.com"
+  ],
+  PORTS: [80,443,8443]
+};
+
+// 🌐 5. CDN / DOWNLOAD / ASSETS
+var CDN = {
+  DOMAINS: [
+    "cdn.pubg.com","cdn.igamecj.com","gcpcdntest.igamecj.com","appdl.pubg.com",
+    "cdn.tensafe.com"
+  ],
+  PORTS: [80,443]
+};
+
+// 🧑‍🤝‍🧑 6. FRIENDS / CHAT / SOCIAL
+var FRIENDS = {
+  DOMAINS: [
+    "friend.igamecj.com","chat.igamecj.com","msg.igamecj.com"
+  ],
+  PORTS: [443,8080,8443]
+};
+
+// 📊 7. TELEMETRY / ANALYTICS / ANTI-CHEAT
+var ANALYTICS = {
+  DOMAINS: [
+    "log.igamecj.com","metric.igamecj.com","tss.pubgmobile.com",
+    "anti-cheat.pubgmobile.com","report.pubgmobile.com"
+  ],
+  PORTS: [443,8443]
+};
+
+// ==========================================
+// 🧠 دوال المساعدة
+// ==========================================
+function ipv4ToInt(ip){var p=ip.split('.');return((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0;}
+function isIpv4InCidr(ip,cidr){var parts=cidr.split('/');var base=ipv4ToInt(parts[0]);var bits=parseInt(parts[1],10);var mask=bits===0?0:(~((1<<(32-bits))-1))>>>0;var num=ipv4ToInt(ip);return((num&mask)>>>0)===((base&mask)>>>0);}
+function whichISP(ip){
+  if(!ip || ip.indexOf(":")!==-1)return null;
+  for(var isp in JO_RANGES){var arr=JO_RANGES[isp];
+    for(var i=0;i<arr.length;i++){if(isIpv4InCidr(ip,arr[i]))return isp;}
+  }return null;
 }
-
-function hostContainsAny(host, arr){ for(var i=0;i<arr.length;i++) if(host.indexOf(arr[i])!==-1) return true; return false; }
-
-// sticky اختيار بروكسي
-var stickyMap={};
-function pickProxy(key){
-  if(JO_PROXIES.length===0) return BLACKHOLE;
-  if(stickyMap.hasOwnProperty(key)) return JO_PROXIES[stickyMap[key]];
-  var h=0; for(var i=0;i<key.length;i++) h=(h*31+key.charCodeAt(i))>>>0;
-  var idx=h%JO_PROXIES.length; stickyMap[key]=idx; return JO_PROXIES[idx];
+function pickProxy(isp){
+  if(!isp) isp="ORANGE";
+  var list=JO_PROXIES[isp];
+  return list[Math.floor(Math.random()*list.length)];
 }
-
-function portFromURL(url){ var m=url.match(/:(\d+)(\/|$)/); return m?parseInt(m[1],10):80; }
-function roleOfPort(port){
-  for (var k in PORTS){ if(PORTS.hasOwnProperty(k)){ var L=PORTS[k]; for(var i=0;i<L.length;i++) if(L[i]===port) return k; } }
-  return null;
+function isInList(host,list){
+  for(var i=0;i<list.length;i++){if(shExpMatch(host,"*"+list[i]+"*"))return true;}
+  return false;
 }
+function extractPort(url){var m=url.match(/:(\d+)(\/|$)/);return m?parseInt(m[1]):80;}
 
+// ==========================================
+// 🕹️ الدالة الرئيسية
+// ==========================================
 function FindProxyForURL(url, host){
-  // لا DIRECT أبداً
-  var port = portFromURL(url);
-  var ip = safeDnsResolve(host,2);
-  var key = host+":"+port;
+  var ip = dnsResolve(host);
+  var port = extractPort(url);
+  var isp = whichISP(ip);
 
-  // لو فشل DNS، نوجّه عبر بروكسي أردني (عشان يطلع بجنسية أردنية)
-  if(!ip) return pickProxy(key);
-
-  var isJO = isJordanIP(ip);
-  var isPUBG = hostContainsAny(host, KNOWN_PUBG_DOMAINS);
-  var role = roleOfPort(port);
-
-  // 1) لو الدومين PUBG والدور MATCH/RECRUIT_SEARCH
-  if(isPUBG && (role==="MATCH" || role==="RECRUIT_SEARCH")){
-    // الأردن فقط: لو الـIP ليس أردني -> حظر
-    if(!isJO) return BLACKHOLE;
-    // أردني -> عبر بروكسي أردني (لـ sticky)
-    return pickProxy(key);
+  // 1. MATCH — أردني فقط
+  if(isInList(host, MATCH.DOMAINS) && MATCH.PORTS.indexOf(port)!==-1){
+    if(isp) return pickProxy(isp);
+    return "PROXY 127.0.0.1:9"; // block non-JO
   }
 
-  // 2) باقي دومينات PUBG (LOBBY/CDN/UPDATES): دائماً عبر بروكسي أردني
-  if(isPUBG) return pickProxy(key);
+  // 2. RECRUIT — أردني فقط
+  if(isInList(host, RECRUIT.DOMAINS) && RECRUIT.PORTS.indexOf(port)!==-1){
+    if(isp) return pickProxy(isp);
+    return "PROXY 127.0.0.1:9";
+  }
 
-  // 3) أي وجهة أخرى: أيضاً عبر بروكسي أردني (طلبك بدون DIRECT)
-  return pickProxy(key);
+  // 3. LOBBY / LOGIN
+  if(isInList(host, LOBBY.DOMAINS) && LOBBY.PORTS.indexOf(port)!==-1){
+    return pickProxy(isp || "ORANGE");
+  }
+
+  // 4. UPDATES
+  if(isInList(host, UPDATES.DOMAINS)){
+    return pickProxy(isp || "ORANGE");
+  }
+
+  // 5. CDN
+  if(isInList(host, CDN.DOMAINS)){
+    return pickProxy(isp || "ORANGE");
+  }
+
+  // 6. FRIENDS / CHAT
+  if(isInList(host, FRIENDS.DOMAINS)){
+    return pickProxy(isp || "ZAIN"); // غالبًا chat يستخدم بنى zain/umniah
+  }
+
+  // 7. ANALYTICS / ANTI-CHEAT
+  if(isInList(host, ANALYTICS.DOMAINS)){
+    return pickProxy(isp || "UMNIAH");
+  }
+
+  // 8. نطاق أردني غير PUBG
+  if(isp){
+    return pickProxy(isp);
+  }
+
+  // 9. أي شيء غير معروف — يبقى أردني (ORANGE افتراضي)
+  return pickProxy("ORANGE");
 }
