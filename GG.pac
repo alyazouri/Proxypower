@@ -1,30 +1,30 @@
-/* ==== PAC: PUBG Jordan Hybrid (IPv6 + IPv4 Residential) — Final ====
-   الهدف: رفع نسبة اللاعبين الأردنيين
-   - MATCH/RECRUIT: IPv4 أردني (سكني) فقط → بروكسي IPv4
-   - LOBBY/UPDATES/CDN: IPv6 أردني مفضل → بروكسي IPv6 (وإلا IPv4 أردني)
+/* ==== PAC: PUBG Jordan — Both IPv6 & IPv4 Residential Only (Final) ====
+   الهدف: الفريق والخصم يكونوا من ضمن نطاقات الأردن (IPv6 أو IPv4)
+   - أي فئة من فئات PUBG لا تُمرَّر إلا إذا كانت الوجهة أردنية (v6 أو v4)
+   - اختيار بروكسي v6 إذا الوجهة IPv6 أردنية، أو بروكسي v4 إذا الوجهة IPv4 أردنية
    - Sticky 10m
    - غير PUBG => DIRECT (يمكن تغييره لحظر كامل)
 */
 
-/* بروكسياتك الأردنية */
+/* بروكسيات أردنية */
 var PROXY_V6 = [
-  "2a03:6b01::1",   // مثال Zain IPv6 (بدّله لعنوانك الفعلي)
-  "2a03:b640::1"    // مثال Umniah IPv6
+  "2a03:6b01::1",   // مثال: Zain IPv6 (بدّله لعنوانك الفعلي داخل الأردن)
+  "2a03:b640::1"    // مثال: Umniah IPv6
 ];
 var PROXY_V4 = [
-  "91.106.109.12"   // مثال IPv4 أردني (Zain/Umniah/Orange سكني/محلي)
+  "91.106.109.12"   // مثال: IPv4 أردني سكني (زَيّن/أمنية/أورنج) — عدّل لما لديك
 ];
 
 /* بورتات PUBG */
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
-/* نطاقات IPv6 الأردنية (ضيّقة لتعزيز الهوية: Zain + Umniah) */
+/* نطاقات IPv6 الأردنية (مركّزة للسكني: Zain & Umniah) */
 var JO_V6_PREFIXES = [
   "2a03:6b01::/34", // Zain
   "2a03:b640::/32"  // Umniah/Batelco
 ];
 
-/* نطاقات IPv4 الأردنية السكنية الرئيسية */
+/* نطاقات IPv4 الأردنية السكنية الرئيسية (مختصرة ومركّزة) */
 var JO_V4_RANGES = [
   /* Orange */
   ["94.249.0.0","94.249.255.255"], ["80.90.160.0","80.90.175.255"],
@@ -38,10 +38,10 @@ var JO_V4_RANGES = [
   /* Umniah/Batelco */
   ["188.247.64.0","188.247.95.255"], ["185.109.120.0","185.109.123.255"],
   ["185.139.220.0","185.139.223.255"], ["185.175.248.0","185.175.251.255"],
-  /* JDC/GO / VTEL */
+  /* JDC/GO / VTEL (محلي مستخدم سكنياً) */
   ["212.118.0.0","212.118.31.255"], ["84.18.64.0","84.18.95.255"],
   ["212.35.64.0","212.35.95.255"],
-  /* أخرى محلية مُستخدمة سكنياً */
+  /* أخرى سكنية شائعة */
   ["37.17.192.0","37.17.207.255"], ["37.123.64.0","37.123.95.255"]
 ];
 
@@ -146,7 +146,7 @@ function proxyV6(cat){var p=FIXED_PORT[cat]||443; return "PROXY "+bracketIfV6(pi
 function hostMatch(h,arr){h=lc(h);if(!h)return false;for(var i=0;i<arr.length;i++){var p=lc(arr[i]);if(shExpMatch(h,p))return true;if(p.indexOf("*.")===0){var suf=p.substring(1);if(h.length>=suf.length && h.substring(h.length-suf.length)===suf)return true;}}return false;}
 function urlMatch(u,arr){if(!u)return false;for(var i=0;i<arr.length;i++) if(shExpMatch(u,arr[i])) return true;return false;}
 
-/* تصنيف الوجهة */
+/* تصنيف الوجهة: نمرر فقط لو الوجهة أردنية (v6 أو v4) ونختار البروكسي المطابق */
 function resolveAndDetect(host){
   if(isIPv4(host)) return {ver:4, ip:host, v4jo:isJOv4(host), v6jo:false};
   if(isIPv6(host)) return {ver:6, ip:host, v4jo:false, v6jo:isJOv6(host)};
@@ -156,17 +156,11 @@ function resolveAndDetect(host){
   return {ver:0, ip:"", v4jo:false, v6jo:false};
 }
 
-/* سياسات الفئات */
-function enforceMatchRecruit(cat, host){
+/* سياسة موحدة لكل فئات PUBG: لازم الوجهة أردنية (v6 أو v4) */
+function enforceJordan(cat, host){
   var r=resolveAndDetect(host);
-  if( (r.ver===4 && r.v4jo) ) return proxyV4(cat);             // IPv4 أردني فقط
-  // لو رجع IPv6 أو ما رجع شيء: نحظر (نمنع هروب دولي)
-  return "PROXY 0.0.0.0:0";
-}
-function enforceLobbyLike(cat, host){
-  var r=resolveAndDetect(host);
-  if( (r.ver===6 && r.v6jo) ) return proxyV6(cat);              // IPv6 أردني مفضل
-  if( (r.ver===4 && r.v4jo) ) return proxyV4(cat);              // fallback IPv4 أردني
+  if(r.v6jo) return proxyV6(cat);
+  if(r.v4jo) return proxyV4(cat);
   return "PROXY 0.0.0.0:0";
 }
 
@@ -174,26 +168,22 @@ function enforceLobbyLike(cat, host){
 function FindProxyForURL(url,host){
   host=lc(host);
 
-  // MATCH
   if(urlMatch(url,URL_PATTERNS.MATCH)||hostMatch(host,PUBG_DOMAINS.MATCH))
-    return enforceMatchRecruit("MATCH",host);
+    return enforceJordan("MATCH",host);
 
-  // LOBBY
   if(urlMatch(url,URL_PATTERNS.LOBBY)||hostMatch(host,PUBG_DOMAINS.LOBBY))
-    return enforceLobbyLike("LOBBY",host);
+    return enforceJordan("LOBBY",host);
 
-  // RECRUIT
   if(urlMatch(url,URL_PATTERNS.RECRUIT_SEARCH)||hostMatch(host,PUBG_DOMAINS.RECRUIT_SEARCH))
-    return enforceMatchRecruit("RECRUIT_SEARCH",host);
+    return enforceJordan("RECRUIT_SEARCH",host);
 
-  // UPDATES
   if(urlMatch(url,URL_PATTERNS.UPDATES)||hostMatch(host,PUBG_DOMAINS.UPDATES))
-    return enforceLobbyLike("UPDATES",host);
+    return enforceJordan("UPDATES",host);
 
-  // CDN
   if(urlMatch(url,URL_PATTERNS.CDN)||hostMatch(host,PUBG_DOMAINS.CDN))
-    return enforceLobbyLike("CDN",host);
+    return enforceJordan("CDN",host);
 
-  // غير PUBG: خلّيه DIRECT (لو بدك حظر كامل: بدّلها بـ "PROXY 0.0.0.0:0")
+  // غير PUBG: DIRECT (لو بدك حظر كامل لغير الأردن/غير PUBG، بدّل السطر التالي):
   return "DIRECT";
+  // return "PROXY 0.0.0.0:0"; // ← هذا يخلي كل شيء غير PUBG محظور
 }
