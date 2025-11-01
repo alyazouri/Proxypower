@@ -1,101 +1,139 @@
-/**** PAC: PUBG JO PROXY-ONLY (v5) ****/
-/* سياسة مختصرة:
-   - كل فئات PUBG (LOBBY/MATCH/RECRUIT/CDN/UPDATES) = PROXY أردني إلزامي فقط (لا يوجد DIRECT).
-   - سلسلة فشل تلقائية عبر عدة بروكسيات أردنية (residential/CGNAT أفضل).
-   - بقية المواقع = DIRECT (عشان ما يأثر على تصفحك العام).
-   - لا نعتمد على أي كشف Geo/IP: مجرد إجبار مرور PUBG عبر بروكسيات داخل JO.
+/**** PAC: Single-Proxy + Hop-Heuristic (v1) ****/
+/* وصف:
+   - يستخدم بروكسي واحد فقط لجميع اتصالات PUBG غير الأردنية حسب "الهوب-هيوريستيك".
+   - يحاول تقليد فحص hop عبر: CIDR (هوب/شبكات JO) + كلمات مفتاحية في الاسم (rDNS/CNAME).
+   - ملاحظة: PAC لا يمكن عمل traceroute داخلياً؛ هذا أفضل تقريب عملي داخل PAC.
 */
 
-/* ========= بروكسيات أردنية =========
-   نصيحة: حط عناوين سكنية/4G/5G داخل الأردن لنتيجة أقوى. */
-var PROXY_POOL = [
-  {ip:"91.106.109.12", label:"Zain-JO"},
-  // أضف المزيد لثبات أعلى (أوصي 3+):
-  // {ip:"94.249.xx.xx", label:"Orange-JO"},
-  // {ip:"109.107.xx.xx", label:"Umniah-JO"},
-  // {ip:"212.35.xx.xx", label:"Batelco-JO"},
+/* ======== إعدادات المستخدم (غيّر هذه) ======== */
+var PROXY_SINGLE = { ip: "91.106.109.12", label: "Zain-JO", port: 443 }; // ضع بروكسي سكني أردني هنا
+var PROXY_STR = "PROXY " + PROXY_SINGLE.ip + ":" + PROXY_SINGLE.port;
+
+/* إذا أردت حظر تام بدل البروكسي ضع: "PROXY 0.0.0.0:0" في مكان PROXY_STR أو أغير المنطق أدناه */
+
+/* ======== قوائم CIDR/Hop-ish (مُركّزة لهوب/شبكات JO) ======== */
+/* هذه شبكات تُستخدم عادة في الأردن (هوم/هوب). أضف أو حدّث حسب لوجاتك. */
+var JO_HOP_V4 = [
+  ["94.249.0.0","94.249.255.255"],["86.111.0.0","86.111.255.255"],["62.240.0.0","62.240.255.255"],
+  ["91.106.96.0","91.106.111.255"],["109.107.224.0","109.107.255.255"],["212.35.64.0","212.35.127.255"],
+  ["95.172.192.0","95.172.223.255"],["46.248.192.0","46.248.223.255"]
+];
+var JO_HOP_V6 = [
+  "2a00:18d8::/29","2a03:b640::/32","2a03:6b00::/29","2a01:9700::/29"
 ];
 
-/* منافذ ثابتة لكل فئة (MATCH يفضل 20001) */
-var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
+/* كلمات مفتاحية في اسم المضيف تشير لهوب/ISP أردني */
+var JO_HOST_KEYWORDS = ["zain","orange","umniah","batelco","jo","jordan","jordanian","jo-"];
 
-/* ========= نطاقات/أنماط PUBG ========= */
-var PUBG_DOMAINS = {
-  LOBBY:[
-    "*.pubgmobile.com","*.pubgmobile.net","*.igamecj.com","*.proximabeta.com"
-  ],
-  MATCH:[
-    "*.gcloud.qq.com","gpubgm.com"
-  ],
-  RECRUIT_SEARCH:[
-    "match.igamecj.com","match.proximabeta.com",
-    "teamfinder.igamecj.com","teamfinder.proximabeta.com"
-  ],
-  UPDATES:[
-    "cdn.pubgmobile.com","updates.pubgmobile.com","patch.igamecj.com","hotfix.proximabeta.com",
-    "dlied1.qq.com","dlied2.qq.com","gpubgm.com"
-  ],
-  CDN:[
-    "cdn.igamecj.com","cdn.proximabeta.com","cdn.tencentgames.com",
-    "*.qcloudcdn.com","*.cloudfront.net","*.edgesuite.net"
-  ]
-};
+/* ======== أنماط PUBG (نقاط الالتقاط) ======== */
+var PUBG_DOMAINS = [
+  "*.pubgmobile.com","*.pubgmobile.net","*.igamecj.com","*.proximabeta.com",
+  "*.gcloud.qq.com","gpubgm.com","cdn.pubgmobile.com","updates.pubgmobile.com",
+  "match.igamecj.com","teamfinder.igamecj.com"
+];
+var PUBG_URL_PATTERNS = [
+  "*/matchmaking/*","*/mms/*","*/game/start*","*/game/join*","*/teamfinder/*",
+  "*/recruit/*","*/account/login*","*/client/version*","*/patch*","*/download*"
+];
 
-/* أنماط URLs محسّنة (احتياط) */
-var URL_PATTERNS = {
-  LOBBY:["*/account/login*","*/client/version*","*/status/heartbeat*","*/presence/*","*/friends/*"],
-  MATCH:["*/matchmaking/*","*/mms/*","*/game/start*","*/game/join*","*/report/battle*"],
-  RECRUIT_SEARCH:["*/teamfinder/*","*/clan/*","*/social/*","*/search/*","*/recruit/*"],
-  UPDATES:["*/patch*","*/hotfix/*","*/update*","*/download*","*/assets/*","*/assetbundle*","*/obb*"],
-  CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
-};
+/* ======== أدوات مساعدة ======== */
+function lc(s){ return s && s.toLowerCase ? s.toLowerCase() : ""; }
+function nowMs(){ return (new Date()).getTime(); }
 
-/* ========= أدوات أساسية ========= */
-function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
-function hostMatch(h,arr){h=lc(h||""); if(!h)return false; for(var i=0;i<arr.length;i++){var p=arr[i]; if(shExpMatch(h,p))return true; if(p.indexOf("*.")===0){var suf=p.substring(1); if(h.length>=suf.length && h.substring(h.length-suf.length)===suf) return true;}} return false;}
-function urlMatch(u,arr){if(!u)return false; for(var i=0;i<arr.length;i++){ if(shExpMatch(u,arr[i])) return true; } return false;}
-
-/* تصنيف سريع */
-function getCategoryFor(url,host){
-  host=lc(host||"");
-  if(urlMatch(url,URL_PATTERNS.MATCH) || hostMatch(host,PUBG_DOMAINS.MATCH) || shExpMatch(url,"*/game/join*") || shExpMatch(url,"*/game/start*") || shExpMatch(url,"*/matchmaking/*") || shExpMatch(url,"*/mms/*")) return "MATCH";
-  if(urlMatch(url,URL_PATTERNS.RECRUIT_SEARCH) || hostMatch(host,PUBG_DOMAINS.RECRUIT_SEARCH) || shExpMatch(url,"*/teamfinder/*") || shExpMatch(url,"*/recruit/*")) return "RECRUIT_SEARCH";
-  if(urlMatch(url,URL_PATTERNS.UPDATES) || hostMatch(host,PUBG_DOMAINS.UPDATES)) return "UPDATES";
-  if(urlMatch(url,URL_PATTERNS.CDN) || hostMatch(host,PUBG_DOMAINS.CDN)) return "CDN";
-  if(hostMatch(host,PUBG_DOMAINS.LOBBY) || urlMatch(url,URL_PATTERNS.LOBBY)) return "LOBBY";
-  return ""; // غير PUBG
-}
-
-/* توزيع ثابت بسيط للمنافذ (MATCH ثابت) */
-function portFor(cat, host){
-  var base = FIXED_PORT[cat] || 443;
-  if(cat==="MATCH") return base;
-  var h=0, s=(host||""); for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i); h|=0;}
-  return base + (Math.abs(h)%3); // تنويع خفيف: 0..2
-}
-
-/* سلسلة بروكسيات (Failover) للفئة */
-function proxyChain(cat, host){
-  if(!PROXY_POOL.length) return "PROXY 0.0.0.0:0";
-  var key = (cat||"")+"|"+(host||"");
-  var h=0; for(var i=0;i<key.length;i++){h=((h<<5)-h)+key.charCodeAt(i); h|=0;}
-  var start = Math.abs(h) % PROXY_POOL.length;
-  var port = portFor(cat||"LOBBY", host||"");
-  var chain = [];
-  for(var k=0;k<PROXY_POOL.length;k++){
-    var idx = (start+k) % PROXY_POOL.length;
-    chain.push("PROXY "+PROXY_POOL[idx].ip+":"+port);
+/* DNS resolution helper (prefer v4) */
+function dnsResolveExPreferV4(host){
+  var ip="", ip6="";
+  if(typeof dnsResolveEx==="function"){
+    var list = dnsResolveEx(host) || [];
+    for(var i=0;i<list.length;i++){
+      var a=list[i]||"";
+      if(!a) continue;
+      if(a.indexOf(":")!==-1){ if(!ip6) ip6=a; }
+      else { if(!ip) ip=a; }
+    }
+  } else {
+    try{ ip = dnsResolve(host) || ""; }catch(e){}
   }
-  chain.push("PROXY 0.0.0.0:0"); // لا DIRECT أبداً لفئات PUBG
-  return chain.join("; ");
+  return {ip:ip, ip6:ip6};
 }
 
-/* القرار النهائي */
+/* IPv4 helpers */
+function ip4ToInt(ip){
+  var p=ip.split("."); return ((((parseInt(p[0])<<24)>>>0) + ((parseInt(p[1])<<16)>>>0) + ((parseInt(p[2])<<8)>>>0) + (parseInt(p[3])>>>0))>>>0);
+}
+function inRangeV4(ip, rng){
+  try{
+    var n=ip4ToInt(ip);
+    var s=ip4ToInt(rng[0]), e=ip4ToInt(rng[1]);
+    return n >= s && n <= e;
+  }catch(e){ return false; }
+}
+
+/* IPv6 CIDR match (basic) */
+function expand6(ip){
+  if(ip.indexOf("::")===-1){ var parts=ip.split(":"); while(parts.length<8) parts.push("0"); return parts; }
+  var a=ip.split("::"), L=a[0]?a[0].split(":"):[], R=(a.length>1&&a[1])?a[1].split(":"):[]; while(L.length+R.length<8) R.unshift("0"); return L.concat(R);
+}
+function parse6(ip){
+  var parts = expand6(ip.toLowerCase()); var out=[]; for(var i=0;i<8;i++){ var v = parts[i].length ? parseInt(parts[i],16) : 0; if(isNaN(v)) v=0; out.push(v&0xffff); } return out;
+}
+function matchV6CIDR(ip,cidr){
+  try{
+    var spl=cidr.split("/"); var pre=spl[0], bits=parseInt(spl[1],10);
+    var a=parse6(ip), b=parse6(pre); var full=Math.floor(bits/16), rem=bits%16;
+    for(var i=0;i<full;i++){ if(a[i]!==b[i]) return false; }
+    if(rem===0) return true;
+    var mask = 0xffff << (16-rem);
+    return ((a[full] & mask) === (b[full] & mask));
+  }catch(e){ return false; }
+}
+
+/* هل الـIP ضمن هوب JO حسب القوائم؟ */
+function isHopJOFromIPs(ip, ip6){
+  if(ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip)){
+    for(var i=0;i<JO_HOP_V4.length;i++){ if(inRangeV4(ip, JO_HOP_V4[i])) return true; }
+  }
+  if(ip6 && ip6.indexOf(":")!==-1){
+    for(var j=0;j<JO_HOP_V6.length;j++){ if(matchV6CIDR(ip6, JO_HOP_V6[j])) return true; }
+  }
+  return false;
+}
+
+/* اسم المضيف يحتوي كلمات JO؟ */
+function hostHasJOKeywords(host){
+  host = lc(host||"");
+  if(!host) return false;
+  for(var i=0;i<JO_HOST_KEYWORDS.length;i++){
+    if(host.indexOf(JO_HOST_KEYWORDS[i])!==-1) return true;
+  }
+  return false;
+}
+
+/* هل هو PUBG؟ */
+function isLikelyPUBG(url, host){
+  host = lc(host||""); url = url||"";
+  for(var i=0;i<PUBG_DOMAINS.length;i++){ if(shExpMatch(host, PUBG_DOMAINS[i])) return true; }
+  for(var j=0;j<PUBG_URL_PATTERNS.length;j++){ if(shExpMatch(url, PUBG_URL_PATTERNS[j])) return true; }
+  return false;
+}
+
+/* ======== القرار: single-proxy + hop-heuristic ======== */
 function FindProxyForURL(url, host){
-  var cat = getCategoryFor(url, host||"");
-  if(cat){ // أي فئة PUBG
-    return proxyChain(cat, host||"");
-  }
-  // غير PUBG: خليه مباشر
-  return "DIRECT";
+  host = host || "";
+  // non-PUBG -> DIRECT
+  if(!isLikelyPUBG(url, host)) return "DIRECT";
+
+  // محاولة أخذ A/AAAA و"تقريب الهوب"
+  var rr = dnsResolveExPreferV4(host || "");
+  var ip = rr.ip || "";
+  var ip6 = rr.ip6 || "";
+
+  // heuristic1: عنوان الوجهة داخل قوائم هوب أردنية => اعتباره محلي/hop داخل JO => DIRECT
+  if(isHopJOFromIPs(ip, ip6)) return "DIRECT";
+
+  // heuristic2: اسم المضيف يشير لمزوّد أردني أو rDNS يحتوي كلمة JO => DIRECT
+  if(hostHasJOKeywords(host)) return "DIRECT";
+
+  // heuristic3: لو لم نؤكد، نرسل عبر بروكسي الأردني الوحيد (fail-over غير مطلوب لأن بروكسي واحد)
+  return PROXY_STR;
 }
