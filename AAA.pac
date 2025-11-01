@@ -1,129 +1,150 @@
-/**** PAC: System-Wide JO Proxy + JO-Residential IPv4 Exceptions (v10-R) ****/
-/* سياسة:
-   - إذا الوجهة داخل نطاقات سكنية أردنية (Zain / Umniah / Orange) => DIRECT
-   - كل شيء آخر (خارج اللائحة) => PROXY واحد (system-wide)
-   - استثناءات LAN/localhost محفوظة
-   - عدّل PROXY_SINGLE.ip/port أو أضف/انقص نطاقات حسب لوج عندك
+/**** PAC: JO Lockdown (v11.3) — Single Proxy, No Leaks, Full Forced Hosts ****/
+/* - كل ما يخص PUBG / Tencent / QCloud / CDNs / DoH / telemetry يُجبر عبر بروكسي أردني واحد.
+   - يمنع تسريبات DIRECT قدر الإمكان (BLOCK_IF_PROXY_DOWN=true).
+   - يستثني LAN/localhost فقط لحماية الشبكة المحلية.
+   - أُضيفت نطاقات إضافية: euspeed, cloud.gsdk, k.gjacky, fbcdn, akamai, TikTok CDNs, Unity analytics, Facebook Graph.
+   - عدّل PROXY_SINGLE.ip / port تحت فقط.
 */
 
-/* === بروكسيك الأردني الوحيد (عدّل IP/PORT إن احتجت) === */
-var PROXY_SINGLE = { ip: "91.106.109.12", port: 443, label: "JO-Proxy" };
-var PROXY = "PROXY " + PROXY_SINGLE.ip + ":" + PROXY_SINGLE.port;
+var PROXY_SINGLE = { ip:"91.106.109.12", port:443, label:"JO-Proxy" };  // ← غيّر هذا إلى بروكسيك
+var PROXY     = "PROXY " + PROXY_SINGLE.ip + ":" + PROXY_SINGLE.port;
+var PROXY_BLC = "PROXY 0.0.0.0:0"; // بلوك إن البروكسي تعطل
 
-/* === قوائم IPv4 سكنية مبدأية (فايبر/منزلية) - Zain / Umniah / Orange ===
-   يمكنك إضافة/تعديل أي نطاق تملكه من لوجاتك هنا. */
-var ZAIN_V4 = [
-  ["91.106.96.0","91.106.111.255"],
-  ["185.80.24.0","185.80.27.255"],
-  ["37.44.32.0","37.44.47.255"]
-];
+var BLOCK_IF_PROXY_DOWN = true;   // لا تسمح بتسريب DIRECT عند سقوط البروكسي
+var BYPASS_LAN = true;            // استثناء LAN/localhost
+var FORCE_ALL  = true;            // إجبار كل شيء عبر البروكسي (موصى به لحالتك)
 
-var UMNIAH_V4 = [
-  ["109.107.224.0","109.107.255.255"],
-  ["188.247.64.0","188.247.127.255"]
-];
-
-var ORANGE_V4 = [
-  ["94.249.0.0","94.249.255.255"],
-  ["86.111.0.0","86.111.255.255"],
-  ["62.240.0.0","62.240.255.255"],
-  ["212.118.0.0","212.118.127.255"]
-];
-
-/* تجمع سريع لكل النطاقات الأردنية السكنية اللي نستخدمها كـEXCEPTIONS */
-var JO_RESIDENTIAL_V4 = [].concat(ZAIN_V4, UMNIAH_V4, ORANGE_V4);
-
-/* === استثناءات اتصال محلي === */
-function isPlainHostName(host){ return (host && host.indexOf('.') == -1); }
-function dnsDomainIs(host, domain){ return (host.length >= domain.length && host.substring(host.length - domain.length) == domain); }
-function shExp(s,p){ return shExpMatch(s,p); }
-
-/* helper: resolve and safe */
-function safeDnsResolve(host){
-  try { return dnsResolve(host); } catch(e) { return null; }
-}
-
-/* IPv4 utilities */
-function ip4ToInt(ip){
-  var p = ip.split('.');
-  return ((((parseInt(p[0])<<24)>>>0) + ((parseInt(p[1])<<16)>>>0) + ((parseInt(p[2])<<8)>>>0) + (parseInt(p[3])>>>0))>>>0);
-}
-function inRangeV4(ip, range){
-  try{
-    if(!ip || ip.indexOf(".")===-1) return false;
-    var n = ip4ToInt(ip);
-    var s = ip4ToInt(range[0]);
-    var e = ip4ToInt(range[1]);
-    return n >= s && n <= e;
-  }catch(err){
-    return false;
-  }
-}
-
-/* تحقق إذا IP ضمن أي نطاق سكني JO */
-function isInJoResidential(ip){
-  if(!ip || ip.indexOf(".")===-1) return false;
-  for(var i=0;i<JO_RESIDENTIAL_V4.length;i++){
-    if(inRangeV4(ip, JO_RESIDENTIAL_V4[i])) return true;
-  }
-  return false;
-}
-
-/* تحقق استثناءات LAN / localhost / الراوتر / البروكسي نفسه */
-function isBypassHost(host){
-  if(!host) return true;
-  host = host.toLowerCase();
-
-  if(isPlainHostName(host)) return true;
-  if (dnsDomainIs(host, ".local") || dnsDomainIs(host, ".lan")) return true;
-  if (shExp(host, "localhost") || shExp(host, "localhost.*")) return true;
-
-  // RFC1918
-  try{
-    var ip = dnsResolve(host);
-    if(ip){
-      if (isInNet(ip, "10.0.0.0", "255.0.0.0")) return true;
-      if (isInNet(ip, "172.16.0.0", "255.240.0.0")) return true;
-      if (isInNet(ip, "192.168.0.0", "255.255.0.0")) return true;
-      if (isInNet(ip, "169.254.0.0", "255.255.0.0")) return true;
-    }
-  }catch(e){ /* ignore */ }
-
-  // لا نعيد توجيه البروكسي لنفسه (تفادي loop) — غيّر إذا بدلت PROXY_SINGLE
-  if(host.indexOf(PROXY_SINGLE.ip)!==-1) return true;
-
-  return false;
-}
-
-/* تصنيف سريع إن كان الطلب PUBG (احتياطي) — لو بدك تخصص استثناءات لنطاقات معينة */
-var PUBG_PATTERNS = [
+/* === قوائم مُجَمَّعة (PUBG/Tencent/CDN/DoH/Telemetry/TikTok/Unity/Facebook) === */
+var PUBG_HOSTS = [
   "*.pubgmobile.com","*.pubgmobile.net","*.igamecj.com","*.proximabeta.com",
-  "*.gcloud.qq.com","gpubgm.com","cdn.pubgmobile.com","updates.pubgmobile.com","match.igamecj.com"
+  "*.gcloud.qq.com","gpubgm.com","*.qcloudcdn.com","*.tencentcloudapi.com","*.tencent.com","*.qq.com",
+  "euspeed.igamecj.com","cloud.gsdk.proximabeta.com","k.gjacky.com"
 ];
-function isLikelyPUBG(host, url){
-  if(!host) return false;
-  var h = host.toLowerCase();
-  for(var i=0;i<PUBG_PATTERNS.length;i++){ if(shExpMatch(h, PUBG_PATTERNS[i])) return true; }
-  if(url && (shExpMatch(url,"*/matchmaking/*") || shExpMatch(url,"*/game/join*") || shExpMatch(url,"*/teamfinder/*"))) return true;
+
+var PUBG_URLS = [
+  "*/matchmaking/*","*/mms/*","*/game/start*","*/game/join*","*/report/battle*",
+  "*/teamfinder/*","*/recruit/*","*/account/login*","*/client/version*"
+];
+
+/* DNS-over-HTTPS الشائعة (لمنع DoH الهروب) */
+var DOH_HOSTS = [
+  "dns.google","*.dns.google","cloudflare-dns.com","*.cloudflare-dns.com",
+  "security.cloudflare-dns.com","one.one.one.one",
+  "dns.quad9.net","*.quad9.net",
+  "dns.nextdns.io","*.nextdns.io",
+  "dns.adguard.com","*.adguard-dns.com","*.adguard.com",
+  "doh.opendns.com","*.opendns.com",
+  "doh.cleanbrowsing.org","*.cleanbrowsing.org"
+];
+
+/* سحابات CDN عامة + إضافات صريحة */
+var CDN_HOSTS = [
+  "*.akamai.net","*.akamaiedge.net","*.edgesuite.net",
+  "*.cloudfront.net","*.fastly.net","*.llnwd.net","*.edg.io","*.limelight.com",
+  "*.azurefd.net","*.azureedge.net","*.trafficmanager.net",
+  "*.googleusercontent.com","*.gvt1.com","*.gstatic.com",
+  "*.alicdn.com","*.alibabausercontent.com",
+  "*.qiniu.com","*.qcloudcdn.com","*.qiniudn.com",
+  "euspeed.igamecj.com","cloud.gsdk.proximabeta.com",
+  "scontent.fallback.xx.fbcdn.net","a1951.v.akamai.net",
+  "k.gjacky.com"
+];
+
+/* TikTok / ByteDance CDNs (شائعة في بعض build/launcher telemetry) */
+var TIKTOK_HOSTS = [
+  "*.snssdk.com", "*.pstatp.com", "*.bytecdn.cn", "*.tiktokcdn.com", "*.tikcdn.net"
+];
+
+/* Unity / Analytics / Ads */
+var UNITY_HOSTS = [
+  "analytics.unity.com","telemetry.unity3d.com","builds-api.cloud.unity3d.com",
+  "unityads.unity3d.com","*.unity3d.com","*.unityads.com"
+];
+
+/* Facebook Graph / CDN (بعض الموارد تظهر ضمن اللعبة) */
+var FACEBOOK_HOSTS = [
+  "graph.facebook.com","connect.facebook.net","*.fbcdn.net","scontent.fallback.xx.fbcdn.net"
+];
+
+/* دمج كل المضيفات القسرية في مجموعة واحدة للقراءة السريعة */
+var FORCED_HOST_GROUPS = [].concat(PUBG_HOSTS, CDN_HOSTS, DOH_HOSTS, TIKTOK_HOSTS, UNITY_HOSTS, FACEBOOK_HOSTS);
+
+/* === دوال مساعدة === */
+function lc(s){ return s && s.toLowerCase ? s.toLowerCase() : ""; }
+function sh(s,p){ return shExpMatch(s,p); }
+function isPlainHostName(h){ return (h && h.indexOf('.') == -1); }
+function safeResolve(h){ try { return dnsResolve(h); } catch(e) { return null; } }
+function isIPLiteral(h){ return /^[0-9.]+$/.test(h) || (h.indexOf(":") !== -1); }
+
+function hostMatch(host, arr){
+  host = lc(host||"");
+  if(!host || !arr) return false;
+  for(var i=0;i<arr.length;i++){
+    var p = arr[i];
+    if(sh(host, p)) return true;
+    if(p.indexOf("*.") === 0){
+      var suf = p.substring(1);
+      if(host.length >= suf.length && host.substring(host.length - suf.length) === suf) return true;
+    }
+  }
   return false;
 }
 
-/* === القرار النهائي === */
+function urlMatch(url, arr){
+  if(!url || !arr) return false;
+  for(var i=0;i<arr.length;i++){
+    if(sh(url, arr[i])) return true;
+  }
+  return false;
+}
+
+/* LAN / localhost bypass */
+function isBypass(host){
+  if(!BYPASS_LAN) return false;
+  if(!host) return true;
+  host = lc(host);
+  if(isPlainHostName(host)) return true;
+  if(sh(host, "localhost") || sh(host, "localhost.*")) return true;
+  var ip = safeResolve(host);
+  if(!ip) return false;
+  if(isInNet(ip, "10.0.0.0", "255.0.0.0")) return true;
+  if(isInNet(ip, "172.16.0.0", "255.240.0.0")) return true;
+  if(isInNet(ip, "192.168.0.0", "255.255.0.0")) return true;
+  if(isInNet(ip, "169.254.0.0", "255.255.0.0")) return true;
+  // تجنب loop إلى البروكسي نفسه
+  if(sh(host, PROXY_SINGLE.ip) || sh(host, "["+PROXY_SINGLE.ip+"]")) return true;
+  return false;
+}
+
+/* اختبارات انتماء للمجموعات */
+function isPUBG(url, host){ return hostMatch(host, PUBG_HOSTS) || urlMatch(url, PUB G_URLS || PUBG_URLS); } // fallback
+function isDoH(host){ return hostMatch(host, DOH_HOSTS); }
+function isCDN(host){ return hostMatch(host, CDN_HOSTS) || hostMatch(host, TIKTOK_HOSTS) || hostMatch(host, UNITY_HOSTS) || hostMatch(host, FACEBOOK_HOSTS); }
+
+/* توفير حماية بسيطة ضد loop/غياب البروكسي — PAC لا يمكن التحقق فعلياً من صحة البروكسي */
+function proxyAvailable(){ return true; }
+
+/* === FindProxyForURL === */
 function FindProxyForURL(url, host){
   host = host || "";
+  url = url || "";
 
-  // استثناءات محلية
-  if(isBypassHost(host)) return "DIRECT";
+  // استثناءات LAN/localhost
+  if(isBypass(host)) return "DIRECT";
 
-  // جرب حل الـDNS (A) أولاً
-  var ip = null;
-  try { ip = dnsResolve(host); } catch(e) { ip = null; }
+  // إذا هو IP مباشر — إجبار البروكسي (يمنع تسريب)
+  if(isIPLiteral(host)) return proxyAvailable() ? PROXY : (BLOCK_IF_PROXY_DOWN ? PROXY_BLC : "DIRECT");
 
-  // إذا الـA حلّ و هو ضمن النطاقات السكنية الأردنية => DIRECT
-  if(ip && isInJoResidential(ip)) {
-    return "DIRECT";
+  // إذا هو DoH أو CDN أو مضيف قسري أو PUBG => عبر البروكسي
+  if(isDoH(host) || isCDN(host) || hostMatch(host, PUBG_HOSTS) || urlMatch(url, PUBG_URLS)){
+    return proxyAvailable() ? PROXY : (BLOCK_IF_PROXY_DOWN ? PROXY_BLC : "DIRECT");
   }
 
-  // في حالة عدم حلّ A أو غير ضمن النطاق => اجبر البروكسي (system-wide)
-  return PROXY;
+  // فرض شامل: كل شيء عبر البروكسي
+  if(FORCE_ALL){
+    return proxyAvailable() ? PROXY : (BLOCK_IF_PROXY_DOWN ? PROXY_BLC : "DIRECT");
+  }
+
+  // افتراضي: DIRECT
+  return "DIRECT";
 }
