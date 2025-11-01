@@ -1,60 +1,54 @@
-/**** PAC: PUBG JO High-Percent Players (Advanced) ****/
-/* أفكار أساسية:
-   - JordanScore: نقاط تعتمد IPv4/IPv6 JO + فئة السيرفس + ذاكرة تعلم (Adaptive)
-   - IPv6 سكني متوسط (/36) مولّد تلقائيًا لكل فئة (Orange/Zain/Umniah/Batelco)
-   - لصق جلسات (Sticky) للمضيف/الفئة لتقليل التقلّب
-   - إجبار بروكسي أردني للتجنيد، وصَرامة كاملة للـLOBBY/MATCH
-   - حظر ذكي غير أردني بحسب الفئة + آلية Anti-Flap (سالب سريع)
+/**** PAC: PUBG JO High-Percent Players (Advanced v2-JO-Bias) ****/
+
+/* مفاتيح تشديد:
+   - RECRUIT_SEARCH: صار STRICT + FORCE_PROXY + BLOCK_NON_JO
+   - LOBBY/MATCH: صرامة أعلى + قفل جلسة أردني
+   - Anti-Flap أطول + تعلم تكيفي أدق
 */
 
 /* ========== إعدادات عامة ========== */
 var PROXY_POOL = [
   {ip:"91.106.109.12", label:"Zain-JO"},
-  // أضف بروكسيات أردنية أخرى إن وجدت لزيادة الإتاحة:
+  // أضف بروكسيات أردنية لزيادة الإتاحة:
   // {ip:"94.249.XX.XX", label:"Orange-JO"},
   // {ip:"109.107.XX.XX", label:"Umniah-JO"},
+  // {ip:"212.35.XX.XX", label:"Batelco-JO"},
 ];
-var DEFAULT_PROXY_IDX = 0; // أول بروكسي افتراضي
+var DEFAULT_PROXY_IDX = 0;
 
-// منافذ لكل فئة (يمكنك تعديلها)
-var FIXED_PORT = {
-  LOBBY: 443,
-  MATCH: 20001,
-  RECRUIT_SEARCH: 443,
-  UPDATES: 80,
-  CDN: 80
-};
+/* منافذ لكل فئة (MATCH يبقى ثابت) */
+var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
-// تفضيل IPv4/IPv6 لكل فئة
-var PREFER_IPV4_CAT = { LOBBY:true, MATCH:true, RECRUIT_SEARCH:false, UPDATES:false, CDN:false };
+/* تفضيل IPv4/IPv6 */
+var PREFER_IPV4_CAT = { LOBBY:true,  MATCH:true,  RECRUIT_SEARCH:false, UPDATES:false, CDN:false };
 var PREFER_IPV6_CAT = { LOBBY:false, MATCH:false, RECRUIT_SEARCH:true,  UPDATES:false, CDN:false };
 
-// سياسة الفئات
-var STRICT_JO = { LOBBY:true, RECRUIT_SEARCH:false, MATCH:true, UPDATES:false, CDN:false };
-var FORCE_PROXY_CAT = { LOBBY:false, MATCH:false, RECRUIT_SEARCH:true, UPDATES:false, CDN:false };
-var BLOCK_NON_JO_CAT = { LOBBY:true, MATCH:true, RECRUIT_SEARCH:false, UPDATES:false, CDN:false };
+/* سياسة الفئات (تم التشديد هنا) */
+var STRICT_JO =        { LOBBY:true, MATCH:true, RECRUIT_SEARCH:true,  UPDATES:false, CDN:false };
+var FORCE_PROXY_CAT =  { LOBBY:false, MATCH:false, RECRUIT_SEARCH:true, UPDATES:false, CDN:false };
+var BLOCK_NON_JO_CAT = { LOBBY:true, MATCH:true, RECRUIT_SEARCH:true,  UPDATES:false, CDN:false };
 
-// إن كان عميلك نفسه ليس أردني IP: أردننة المصدر عبر البروكسي
+/* إن كان العميل نفسه ليس أردني IP: أردننة المصدر عبر البروكسي */
 var REQUIRE_JO_SOURCE = true;
 var FORCE_PROXY_IF_NOT_CLIENT_JO = true;
 
-// DNS/Geo caching
-var DNS_TTL_MS = 60*1000;    // 60s
-var DNS_JITTER_MS = 10*1000; // 10s
-var GEO_TTL_MS = 60*60*1000; // 1h
+/* DNS/Geo caching */
+var DNS_TTL_MS = 60*1000;       // 60s
+var DNS_JITTER_MS = 10*1000;    // 10s
+var GEO_TTL_MS = 60*60*1000;    // 1h
 
-// Anti-flap للنتائج السلبية (غير أردني):
-var NEG_CACHE_MS = 120*1000;
+/* Anti-flap للنتائج السلبية (غير أردني): (تم تمديدها) */
+var NEG_CACHE_MS = 10*60*1000;  // 10 min
 
-// عتبات الدرجات
-var SCORE_ALLOW_DIRECT_STRICT   = 80; // للـ LOBBY/MATCH
-var SCORE_ALLOW_DIRECT_RELAXED  = 60; // لفئات غير صارمة
-var SCORE_BOOST_CATEGORY_V6     = 70; // IPv6 للفئة
-var SCORE_V6_ANY_JO            = 50;  // أي IPv6 أردني
-var SCORE_V4_JO                = 65;  // IPv4 أردني
-var SCORE_PREFER_V4_MATCH_LOBBY = 10; // تعزيز بسيط لو فئة تفضّل IPv4 وجت A أردني
-var SCORE_LEARN_POSITIVE        = 15; // تعلم تدريجي: كل مشاهدة أردنية +15 حتى 100
-var SCORE_LEARN_DECAY           = 5;  // تناقص بسيط عند المشاهدات غير الأردنية
+/* عتبات الدرجات (تم رفعها) */
+var SCORE_ALLOW_DIRECT_STRICT   = 90; // للـ LOBBY/MATCH/RECRUIT
+var SCORE_ALLOW_DIRECT_RELAXED  = 70; // للفئات غير الصارمة
+var SCORE_BOOST_CATEGORY_V6     = 75; // IPv6 مطابق لفئة
+var SCORE_V6_ANY_JO             = 55; // أي IPv6 أردني
+var SCORE_V4_JO                 = 70; // IPv4 أردني
+var SCORE_PREFER_V4_MATCH_LOBBY = 10; // تعزيز IPv4 للفئات الحرجة
+var SCORE_LEARN_POSITIVE        = 15; // تعلم تدريجي +
+var SCORE_LEARN_DECAY           = 7;  // تناقص أقوى قليلاً
 
 /* ========== نطاقات PUBG ========== */
 var PUBG_DOMAINS = {
@@ -73,15 +67,16 @@ var URL_PATTERNS = {
 };
 
 /* ========== IPv4 سكني مُنظّف (JO) ========== */
+/* (نفس قائمتك + يمكنك الزيادة لاحقًا) */
 var JO_V4_RANGES = [
+  // Umniah
+  ["109.107.224.0","109.107.255.255"],
+  ["188.247.64.0","188.247.127.255"],
   // Orange
   ["94.249.0.0","94.249.255.255"],
   ["86.111.0.0","86.111.255.255"],
   ["62.240.0.0","62.240.255.255"],
   ["212.118.0.0","212.118.127.255"],
-  // Umniah
-  ["109.107.224.0","109.107.255.255"],
-  ["188.247.64.0","188.247.127.255"],
   // Zain
   ["91.106.96.0","91.106.111.255"],
   ["185.80.24.0","185.80.27.255"],
@@ -110,7 +105,6 @@ var JO_V4_RANGES = [
 var V6_MEDIUM_PREFIXLEN = 36;
 var V6_SAMPLES_PER_ISP = 4;
 var V6_STEP_POWER = 4;
-
 var JO_V6_SUPER = {
   ORANGE:  "2a00:18d8::/29",
   ZAIN:    "2a03:b640::/32",
@@ -180,10 +174,12 @@ var C=_root._PAC_HARDCACHE;
 if(!C.dns) C.dns={};
 if(!C.sticky) C.sticky={};
 if(!C.geoClient) C.geoClient={ok:false,t:0};
-if(!C.neg) C.neg={};          // negative cache (غير أردني)
-if(!C.learn) C.learn={};      // تعلم لكل host: score 0..100
+if(!C.neg) C.neg={};
+if(!C.learn) C.learn={};
 if(!C.portStick) C.portStick={};
 if(!C.proxyStick) C.proxyStick={};
+/* قفل جلسة أردني للفئات الحرجة */
+if(!C.sessionJOLock) C.sessionJOLock={ LOBBY:false, MATCH:false, RECRUIT_SEARCH:false };
 
 /* ========== أدوات عامة ========== */
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
@@ -259,7 +255,7 @@ function getCategoryFor(url,host){
 function portFor(cat, host){
   var base = FIXED_PORT[cat]||FIXED_PORT.LOBBY;
   var h = 0; for(var i=0;i<host.length;i++){ h=((h<<5)-h)+host.charCodeAt(i); h|=0; }
-  var delta = Math.abs(h)%3; // يوزّع بين base, base+1, base+2 (إن أردت)
+  var delta = Math.abs(h)%3; // توزيع بسيط
   return base + (cat==="MATCH"?0:delta); // للماتش إبقه ثابتًا
 }
 function pickProxyIdx(host,cat){
@@ -268,46 +264,36 @@ function pickProxyIdx(host,cat){
   p=Math.abs(h)%PROXY_POOL.length; C.proxyStick[key]=p; return p;
 }
 function proxyForCategory(cat,host){
-  var port=portFor(cat,host);
+  var port=portFor(cat,host||"");
   var idx=pickProxyIdx(host||"",cat);
   var ip=PROXY_POOL[idx].ip;
   return "PROXY "+ip+":"+port;
 }
 
-/* JordanScore + تعلم تكيفي + Anti-Flap */
+/* JordanScore + تعلم تكيفي + Anti-Flap + قفل جلسة */
 function negCacheHit(host){var n=C.neg[host]; if(!n) return false; return (nowMs()-n)<NEG_CACHE_MS;}
 function negCacheSet(host){C.neg[host]=nowMs();}
-
 function learnScoreGet(host){var s=C.learn[host]; if(!s) return 0; return s|0;}
-function learnScoreBump(host,delta){
-  var s=learnScoreGet(host);
-  s+=delta; if(s<0) s=0; if(s>100) s=100;
-  C.learn[host]=s; return s;
-}
+function learnScoreBump(host,delta){var s=learnScoreGet(host); s+=delta; if(s<0) s=0; if(s>100) s=100; C.learn[host]=s; return s;}
 
 function jordanScore(host,cat,rr){
-  var score = learnScoreGet(host)*0.5; // نصف النقاط من التعلم السابق
-  var preferV4 = PREFER_IPV4_CAT[cat]; var preferV6 = PREFER_IPV6_CAT[cat];
+  var score = learnScoreGet(host)*0.5;
+  var preferV4 = PREFER_IPV4_CAT[cat];
 
-  // IPv6 للفئة أولاً
   if(rr.ip6 && isJOv6ForCat(rr.ip6, cat)) score += SCORE_BOOST_CATEGORY_V6;
   else if(rr.ip6 && isJOv6Any(rr.ip6))    score += SCORE_V6_ANY_JO;
 
-  // IPv4
   if(rr.ip && isJOv4(rr.ip)){
     score += SCORE_V4_JO;
     if(preferV4 && (cat==="MATCH"||cat==="LOBBY")) score += SCORE_PREFER_V4_MATCH_LOBBY;
   }
 
-  // تعزيز طفيف للفئة الحرجة
-  if(cat==="MATCH"||cat==="LOBBY") score += 5;
+  if(cat==="MATCH"||cat==="LOBBY"||cat==="RECRUIT_SEARCH") score += 7;
 
-  // سقف 100
   if(score>100) score=100;
   return Math.round(score);
 }
 
-/* منطق فحص أردني ذكي */
 function hostIsJordanSmart(host,cat){
   host = host || "";
   if(/^\d+\.\d+\.\d+\.\d+$/.test(host)) { // literal IPv4
@@ -322,27 +308,25 @@ function hostIsJordanSmart(host,cat){
   if(negCacheHit(host)) return {isJO:false, score:learnScoreGet(host)};
 
   var rr=dnsSticky(host);
-  // تفضيل البروتوكول حسب الفئة: ننقل IP المختار لأولوية التقييم فقط (لا نغيّر rr فعليًا)
   var score=jordanScore(host,cat,rr);
-  var isJO = score >= (STRICT_JO[cat]?SCORE_ALLOW_DIRECT_STRICT:SCORE_ALLOW_DIRECT_RELAXED);
+  var threshold = (STRICT_JO[cat]?SCORE_ALLOW_DIRECT_STRICT:SCORE_ALLOW_DIRECT_RELAXED);
+  var isJO = score >= threshold;
 
-  // تعلّم تدريجي
-  if(isJO) learnScoreBump(host,SCORE_LEARN_POSITIVE);
-  else     learnScoreBump(host,-SCORE_LEARN_DECAY);
+  if(isJO){
+    learnScoreBump(host,SCORE_LEARN_POSITIVE);
+    /* قفل جلسة: أول نجاح أردني للفئة الحرِجة يفعّل قفلها */
+    if(cat==="LOBBY"||cat==="MATCH"||cat==="RECRUIT_SEARCH"){ C.sessionJOLock[cat]=true; }
+  } else {
+    learnScoreBump(host,-SCORE_LEARN_DECAY);
+    negCacheSet(host);
+  }
 
-  if(!isJO) negCacheSet(host);
   return {isJO:isJO, score:score};
 }
 
-/* قرار الفئة */
-function hostIsJordanAny(host,cat){
-  var res = hostIsJordanSmart(host,cat);
-  return res.isJO;
-}
+function getCategoryForFast(url,host){ return getCategoryFor(url,host); }
 
 /* قرار نهائي */
-function getCategoryForFast(url,host){ return getCategoryFor(url,host); } // alias
-
 function FindProxyForURL(url, host){
   // أردننة المصدر لو جهازك ليس أردني
   if(!clientIsJO()){
@@ -354,19 +338,34 @@ function FindProxyForURL(url, host){
   }
 
   var cat = getCategoryForFast(url,host||"");
+
+  // قفل جلسة أردني: إذا انقفل لفئة حرِجة، نمنع أي Direct غير أردني لها
+  if((cat==="LOBBY"||cat==="MATCH"||cat==="RECRUIT_SEARCH") && C.sessionJOLock[cat]){
+    // لو المضيف غير أردني، إمّا BLOCK (لو صارِم) أو FORCE بروكسي أردني
+    var rr=dnsSticky(host||"");
+    var tmp = hostIsJordanSmart(host||"",cat);
+    if(!tmp.isJO){
+      if(BLOCK_NON_JO_CAT[cat]) return "PROXY 0.0.0.0:0";
+      return proxyForCategory(cat, host||"");
+    }
+  }
+
   if(FORCE_PROXY_CAT[cat]) return proxyForCategory(cat, host||"");
 
-  var isJO = hostIsJordanAny(host||"", cat);
+  var res = hostIsJordanSmart(host||"", cat);
+  var isJO = res.isJO;
 
   if(STRICT_JO[cat]){
     if(isJO) return "DIRECT";
-    return "PROXY 0.0.0.0:0";
+    // لو صارِم: إمّا بلوك أو أردننة عبر بروكسي حسب الإعداد
+    if(BLOCK_NON_JO_CAT[cat]) return "PROXY 0.0.0.0:0";
+    return proxyForCategory(cat, host||"");
   }
 
   if(isJO) return "DIRECT";
 
   if(BLOCK_NON_JO_CAT[cat]) return "PROXY 0.0.0.0:0";
 
-  // افتراضي: مر عبر بروكسي أردني (يزيد فرص الأردنيين في التيمفايندر/الخدمات غير الأردنية)
+  // افتراضي: مر عبر بروكسي أردني
   return proxyForCategory(cat, host||"");
 }
