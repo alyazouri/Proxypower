@@ -1,22 +1,22 @@
-/**** PAC: PUBG JO HARD-LOCK (v3) ****/
-/* سياسة مختصرة:
-   - LOBBY/MATCH/RECRUIT: دائماً عبر بروكسي أردني. Direct فقط بعد تأكيدين متتالين أنه JO.
-   - CDN/UPDATES: Direct لو JO، وإلا عبر بروكسي.
-   - عميلك لو مش JO: إجبار بروكسي أردني لكل الفئات.
-   - Anti-Flap طويل + لصق جلسة + تأكيد مزدوج (Two-Hit Confirm).
+/**** PAC: PUBG JO HARD-LOCK (v3.1 Tight-V6 /44) ****/
+/* تغييرات هذا الإصدار:
+   - IPv6 “سكني متوسط” صار /44 بدل /36 (ضيّق وأكثر انتقائية).
+   - توزيع عينات أهدأ (STEP_POWER=2) مع عدد عينات أعلى قليلاً لكل ISP.
+   - باقي منطق HARD-LOCK كما في v3 (LOBBY/MATCH/RECRUIT دائماً عبر بروكسي JO، وDIRECT فقط بعد two-hit JO).
 */
 
 var PROXY_POOL = [
   {ip:"91.106.109.12", label:"Zain-JO"},
-  // زوّدها لو عندك بروكسيات JO إضافية لثبات أعلى:
+  // أضف بروكسيات JO إضافية لثبات أعلى:
   // {ip:"94.249.xx.xx", label:"Orange-JO"},
   // {ip:"109.107.xx.xx", label:"Umniah-JO"},
   // {ip:"212.35.xx.xx", label:"Batelco-JO"},
 ];
+
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 var REQUIRE_JO_SOURCE = true, FORCE_PROXY_IF_NOT_CLIENT_JO = true;
 
-/* تصنيف الدومينات/الروابط (كما هو) */
+/* تصنيف الدومينات/الروابط */
 var PUBG_DOMAINS = {
   LOBBY:["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
   MATCH:["*.gcloud.qq.com","gpubgm.com"],
@@ -32,7 +32,7 @@ var URL_PATTERNS = {
   CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
 };
 
-/* IPv4 أردني (قائمتك كما هي ويمكنك الزيادة) */
+/* IPv4 أردني */
 var JO_V4_RANGES = [
   ["94.249.0.0","94.249.255.255"],["86.111.0.0","86.111.255.255"],["62.240.0.0","62.240.255.255"],["212.118.0.0","212.118.127.255"],
   ["109.107.224.0","109.107.255.255"],["188.247.64.0","188.247.127.255"],
@@ -43,9 +43,11 @@ var JO_V4_RANGES = [
   ["91.186.224.0","91.186.239.255"],["85.159.216.0","85.159.223.255"],["217.23.32.0","217.23.47.255"]
 ];
 
-/* IPv6 “سكني متوسط” (/36) كما هو */
+/* ====== IPv6 “سكني متوسط” (/44) مُشدَّد ====== */
 var JO_V6_SUPER = { ORANGE:"2a00:18d8::/29", ZAIN:"2a03:b640::/32", UMNIAH:"2a03:6b00::/29", BATELCO:"2a01:9700::/29" };
-var V6_MEDIUM_PREFIXLEN=36,V6_SAMPLES_PER_ISP=4,V6_STEP_POWER=4;
+var V6_MEDIUM_PREFIXLEN = 44;      // ← كان 36
+var V6_SAMPLES_PER_ISP   = 6;      // عدد عينات أكبر قليلاً
+var V6_STEP_POWER        = 2;      // انتشار أدق داخل الـsupernet
 
 /* ====== كاش/حالة ====== */
 var _root=(typeof globalThis!=="undefined"?globalThis:this);
@@ -108,11 +110,21 @@ function cidrSplitSample_(superCidr,targetLen,samples,stepPow){
   } return res;
 }
 function buildMediumV6Sets_(){
-  var LOBBY=[].concat(cidrSplitSample_(JO_V6_SUPER.ORANGE,36,4,4),cidrSplitSample_(JO_V6_SUPER.BATELCO,36,2,4));
-  var MATCH=[].concat(cidrSplitSample_(JO_V6_SUPER.ZAIN,36,5,4),cidrSplitSample_(JO_V6_SUPER.ORANGE,36,1,4));
-  var RECRUIT=[].concat(cidrSplitSample_(JO_V6_SUPER.UMNIAH,36,4,4),cidrSplitSample_(JO_V6_SUPER.ORANGE,36,2,4),cidrSplitSample_(JO_V6_SUPER.ZAIN,36,1,4));
-  var UPD = cidrSplitSample_(JO_V6_SUPER.UMNIAH,36,2,4);
-  var CDN = cidrSplitSample_(JO_V6_SUPER.ORANGE,36,2,4);
+  var LOBBY=[].concat(
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP,     V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.BATELCO, V6_MEDIUM_PREFIXLEN, Math.max(2,V6_SAMPLES_PER_ISP-2), V6_STEP_POWER)
+  );
+  var MATCH=[].concat(
+    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP+2,   V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 2,                      V6_STEP_POWER)
+  );
+  var RECRUIT=[].concat(
+    cidrSplitSample_(JO_V6_SUPER.UMNIAH,  V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP,     V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 3,                      V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, 2,                      V6_STEP_POWER)
+  );
+  var UPD = cidrSplitSample_(JO_V6_SUPER.UMNIAH, V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER);
+  var CDN = cidrSplitSample_(JO_V6_SUPER.ORANGE, V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER);
   return { LOBBY:LOBBY, MATCH:MATCH, RECRUIT_SEARCH:RECRUIT, UPDATES:UPD, CDN:CDN };
 }
 var JO_V6_PREFIX = buildMediumV6Sets_();
@@ -180,7 +192,6 @@ function FindProxyForURL(url, host){
 
   // HARD-LOCK: الفئات الحرِجة تمر بالبروكسي الأردني دائماً
   if(hardCats){
-    // اسمح DIRECT فقط إذا تأكد مرتين متتاليتين أنه JO (لتجنب False-positive)
     if(hres.isJO && twoHitOK(host||"",cat)) return "DIRECT";
     return proxyForCategory(cat, host||"");
   }
