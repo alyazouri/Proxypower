@@ -1,11 +1,21 @@
-/* ==== PAC: PUBG Jordan-Only IPv6 (Single Range 2a03:6b01::/34) ==== */
-/* عدّل عنوان البروكسي IPv6 إذا لزم */
+/* ==== PAC: PUBG Jordan-Only IPv6 (Full National Prefix Set) ==== */
+/* كل اتصال يمر فقط إذا كان ضمن نطاقات IPv6 الأردنية أدناه */
 var PROXY_CANDIDATES = ["2a03:6b01:8000::2"];
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
-/* نطاق أردني موحد */
-var JO_V6_PREFIXES = ["2a03:6b01::/34"];
+/* نطاقات IPv6 الأردنية */
+var JO_V6_PREFIXES = [
+  "2a00:18d8::/29",       // Orange
+  "2a03:6b01::/34",       // Zain
+  "2a03:6b00::/40",       // Zain (extra)
+  "2a03:6b01:8000::/34",  // Zain (optional widen)
+  "2a03:6b02:2000::/48",  // Zain (optional widen)
+  "2a03:b640::/32",       // Umniah/Batelco
+  "2a01:9700::/32",       // JDC/GO
+  "2a01:1d0::/32"         // VTEL
+];
 
+/* PUBG domains */
 var PUBG_DOMAINS = {
   LOBBY: ["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
   MATCH: ["*.gcloud.qq.com","gpubgm.com"],
@@ -29,17 +39,20 @@ var C=_root._PAC_HARDCACHE;
 if(!C.dns)C.dns={};
 if(!C.proxyPick)C.proxyPick={host:null,t:0,lat:99999};
 if(!C.geoClient)C.geoClient={ok:false,t:0};
-if(!C.geoProxy)C.geoProxy={ok:false,t:0};
 
 /* ===== أدوات IPv6 ===== */
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
 function isIPv6(s){return /^[0-9a-fA-F:]+$/.test(s||"") && s.indexOf(":")>=0;}
 function parseIPv6Words(addr){
-  if(/:.*\./.test(addr)){var i=addr.lastIndexOf(":"),head=addr.substring(0,i),v4=addr.substring(i+1),p=v4.split(".");
-  if(p.length===4){var w6=((parseInt(p[0])<<8)|parseInt(p[1]))&0xffff;var w7=((parseInt(p[2])<<8)|parseInt(p[3]))&0xffff;
-  addr=head+":"+w6.toString(16)+":"+w7.toString(16);}}
-  var parts=addr.split("::");var left=parts[0]?parts[0].split(":"):[];
-  var right=(parts.length>1&&parts[1])?parts[1].split(":"):[];
+  if(/:.*\./.test(addr)){
+    var i=addr.lastIndexOf(":"),head=addr.substring(0,i),v4=addr.substring(i+1),p=v4.split(".");
+    if(p.length===4){
+      var w6=((parseInt(p[0])<<8)|parseInt(p[1]))&0xffff;
+      var w7=((parseInt(p[2])<<8)|parseInt(p[3]))&0xffff;
+      addr=head+":"+w6.toString(16)+":"+w7.toString(16);
+    }
+  }
+  var parts=addr.split("::"),left=parts[0]?parts[0].split(":"):[],right=(parts.length>1&&parts[1])?parts[1].split(":"):[];
   if(parts.length===1){if(left.length!==8)return null;return left.map(h=>parseInt(h||"0",16)&0xffff);}
   var fill=8-(left.length+right.length);if(fill<0)return null;
   var arr=[];for(var i1=0;i1<left.length;i1++)arr.push(parseInt(left[i1]||"0",16)&0xffff);
@@ -91,7 +104,7 @@ function dnsCached(host){
   C.dns[host]={ip:ip,t:now}; return ip;
 }
 
-/* قياس البروكسي */
+/* البروكسي */
 function measureProxyLatency(h){if(isIPv6(h))return 1;try{var t0=(new Date()).getTime();dnsResolve(h);return (new Date()).getTime()-t0;}catch(_){return 99999;}}
 function pickProxyHost(){
   var now=(new Date()).getTime();
@@ -103,7 +116,7 @@ function pickProxyHost(){
 }
 function proxyFor(cat){var h=pickProxyHost();var p=FIXED_PORT[cat]||443;return "PROXY ["+h+"]:"+p;}
 
-/* منطق الفئات */
+/* المنطق */
 function enforceCat(cat,host){
   var ip=isIPv6(host)?host:dnsCached(host);
   if(isJOv6(ip)) return proxyFor(cat);
