@@ -1,13 +1,12 @@
-/* ==== PAC: PUBG Jordan IPv6 Strict (No Prefix Variable) ==== */
+/* ==== PAC: PUBG Jordan IPv6 Strict (Updated National Ranges) ==== */
 /* كل اتصال PUBG يمر فقط عبر نطاقات IPv6 الأردنية المحددة */
 var PROXY_CANDIDATES = [
   "2a00:18d8::",      // Orange
-  "2a03:6b01::",      // Zain
-  "2a03:6b00::",      // Zain extra
-  "2a03:6b02:2000::", // Zain widen
+  "2a03:6b00::",      // Zain (شامل)
+  "2a03:6b01:4000::", // Zain FIXED_USERS (سكني)
+  "2a03:6b01:6400::", // Zain ثابت/سكني موسّع
   "2a03:b640::",      // Umniah/Batelco
-  "2a01:9700::",      // JDC/GO
-  "2a01:1d0::"        // VTEL
+  "2a01:9700::"       // JDC/GO
 ];
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
@@ -30,7 +29,6 @@ var DNS_TTL_MS=15000, PROXY_STICKY_TTL_MS=60000, GEO_TTL_MS=3600000;
 var _root=(typeof globalThis!=="undefined")?globalThis:this;
 if(!_root._PAC_HARDCACHE)_root._PAC_HARDCACHE={};
 var C=_root._PAC_HARDCACHE;
-if(!C.dns)C.dns={};
 if(!C.proxyPick)C.proxyPick={host:null,t:0,lat:99999};
 if(!C.geoClient)C.geoClient={ok:false,t:0};
 
@@ -38,12 +36,13 @@ if(!C.geoClient)C.geoClient={ok:false,t:0};
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
 function isIPv6(s){return /^[0-9a-fA-F:]+$/.test(s||"") && s.indexOf(":")>=0;}
 
-/* تحديد البروكسي (عشوائي من النطاقات الأردنية) */
+/* اختيار بروكسي من النطاقات الأردنية */
 function pickProxyHost(){
   var now=(new Date()).getTime();
   if(C.proxyPick.host&&(now-C.proxyPick.t)<PROXY_STICKY_TTL_MS)return C.proxyPick.host;
   var best=null;
-  if(PROXY_CANDIDATES.length>0)best=PROXY_CANDIDATES[Math.floor(Math.random()*PROXY_CANDIDATES.length)];
+  if(PROXY_CANDIDATES.length>0)
+    best=PROXY_CANDIDATES[Math.floor(Math.random()*PROXY_CANDIDATES.length)];
   if(!best)best="2a00:18d8::"; // fallback Orange
   C.proxyPick={host:best,t:now,lat:1};
   return best;
@@ -54,7 +53,7 @@ function proxyFor(cat){
   return "PROXY ["+h+"]:"+p;
 }
 
-/* العميل */
+/* يتحقق أن جهازك أردني */
 function clientIsJOv6(){
   var now=(new Date()).getTime(),g=C.geoClient;
   if(g&&(now-g.t)<GEO_TTL_MS)return g.ok;
@@ -63,7 +62,6 @@ function clientIsJOv6(){
     if(typeof myIpAddressEx==="function"){var arr=myIpAddressEx(); if(arr&&arr.length>0) ip=arr[0];}
     else ip=myIpAddress();
   }catch(_){}
-  // بسيط: تحقق أن عنوان الجهاز يبدأ بأحد النطاقات الأردنية
   var ok=false;
   for(var i=0;i<PROXY_CANDIDATES.length;i++){
     if(ip.indexOf(PROXY_CANDIDATES[i])===0){ok=true;break;}
