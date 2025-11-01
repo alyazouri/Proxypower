@@ -1,13 +1,14 @@
-/**** PAC: PUBG JO HARD-LOCK (v3.1 Tight-V6 /44) ****/
-/* تغييرات هذا الإصدار:
-   - IPv6 “سكني متوسط” صار /44 بدل /36 (ضيّق وأكثر انتقائية).
-   - توزيع عينات أهدأ (STEP_POWER=2) مع عدد عينات أعلى قليلاً لكل ISP.
-   - باقي منطق HARD-LOCK كما في v3 (LOBBY/MATCH/RECRUIT دائماً عبر بروكسي JO، وDIRECT فقط بعد two-hit JO).
+/**** PAC: PUBG JO ULTRA-HARD-LOCK (v4) ****/
+/* سياسة:
+   - LOBBY/MATCH/RECRUIT/CDN/UPDATES: دائماً عبر بروكسي أردني. DIRECT مسموح فقط إذا A و AAAA كلاهما أردنيين + 3 تأكيدات متتالية.
+   - لو عميلك نفسه مش JO: إجبار بروكسي أردني لكل شيء.
+   - Anti-Flap طويل جداً + قفل جلسة + تأكيد ثلاثي (three-hit).
+   - أي اسم يست resolved لغير أردني في الفئات الحرجة: بروكسي أردني؛ ولو فشل، بلوك مؤقت لمنع السحب خارج JO.
 */
 
 var PROXY_POOL = [
   {ip:"91.106.109.12", label:"Zain-JO"},
-  // أضف بروكسيات JO إضافية لثبات أعلى:
+  // أضف بروكسيات أردنية سكنية/CGNAT حقيقية (Orange/Umniah/Batelco) لنتيجة أقوى:
   // {ip:"94.249.xx.xx", label:"Orange-JO"},
   // {ip:"109.107.xx.xx", label:"Umniah-JO"},
   // {ip:"212.35.xx.xx", label:"Batelco-JO"},
@@ -16,7 +17,7 @@ var PROXY_POOL = [
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 var REQUIRE_JO_SOURCE = true, FORCE_PROXY_IF_NOT_CLIENT_JO = true;
 
-/* تصنيف الدومينات/الروابط */
+/* PUBG domains */
 var PUBG_DOMAINS = {
   LOBBY:["*.pubgmobile.com","*.pubgmobile.net","*.proximabeta.com","*.igamecj.com"],
   MATCH:["*.gcloud.qq.com","gpubgm.com"],
@@ -32,7 +33,7 @@ var URL_PATTERNS = {
   CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
 };
 
-/* IPv4 أردني */
+/* IPv4 أردني (قائمتك) */
 var JO_V4_RANGES = [
   ["94.249.0.0","94.249.255.255"],["86.111.0.0","86.111.255.255"],["62.240.0.0","62.240.255.255"],["212.118.0.0","212.118.127.255"],
   ["109.107.224.0","109.107.255.255"],["188.247.64.0","188.247.127.255"],
@@ -43,11 +44,9 @@ var JO_V4_RANGES = [
   ["91.186.224.0","91.186.239.255"],["85.159.216.0","85.159.223.255"],["217.23.32.0","217.23.47.255"]
 ];
 
-/* ====== IPv6 “سكني متوسط” (/44) مُشدَّد ====== */
+/* IPv6 أردني مُضيَّق (/44) من الإصدار السابق */
 var JO_V6_SUPER = { ORANGE:"2a00:18d8::/29", ZAIN:"2a03:b640::/32", UMNIAH:"2a03:6b00::/29", BATELCO:"2a01:9700::/29" };
-var V6_MEDIUM_PREFIXLEN = 44;      // ← كان 36
-var V6_SAMPLES_PER_ISP   = 6;      // عدد عينات أكبر قليلاً
-var V6_STEP_POWER        = 2;      // انتشار أدق داخل الـsupernet
+var V6_MEDIUM_PREFIXLEN = 44, V6_SAMPLES_PER_ISP = 6, V6_STEP_POWER = 2;
 
 /* ====== كاش/حالة ====== */
 var _root=(typeof globalThis!=="undefined"?globalThis:this);
@@ -56,7 +55,7 @@ var C=_root._PAC_HARDCACHE;
 if(!C.dns)C.dns={}; if(!C.sticky)C.sticky={}; if(!C.geoClient)C.geoClient={ok:false,t:0};
 if(!C.neg)C.neg={}; if(!C.learn)C.learn={}; if(!C.proxyStick)C.proxyStick={};
 if(!C.sessionJOLock) C.sessionJOLock={ LOBBY:false, MATCH:false, RECRUIT_SEARCH:false };
-if(!C.twoHit) C.twoHit={}; // تأكيد مزدوج لكل host+cat
+if(!C.hit3) C.hit3={}; // ثلاث تأكيدات
 
 /* ====== أدوات ====== */
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
@@ -74,7 +73,7 @@ function dnsResolveExPreferV4(host){
   } else { try{ ip=dnsResolve(host)||""; }catch(e){} }
   return {ip:ip, ip6:ip6};
 }
-var DNS_TTL_MS=60*1000, DNS_JITTER_MS=10*1000, GEO_TTL_MS=60*60*1000, NEG_CACHE_MS=10*60*1000;
+var DNS_TTL_MS=60*1000, DNS_JITTER_MS=10*1000, GEO_TTL_MS=60*60*1000, NEG_CACHE_MS=15*60*1000; // أطول
 function dnsSticky(host){
   var now=nowMs(), st=C.sticky[host];
   if(st && now<st.exp) return st;
@@ -86,7 +85,7 @@ function dnsSticky(host){
   return C.sticky[host];
 }
 
-/* IPv4/IPv6 تعرّف JO */
+/* IPv4/IPv6: تحقق JO */
 function ip4ToInt(ip){var p=ip.split(".");return((((parseInt(p[0])<<24)>>>0)+((parseInt(p[1])<<16)>>>0)+((parseInt(p[2])<<8)>>>0)+(parseInt(p[3])>>>0))>>>0);}
 function isJOv4(ip){if(!ip||!/^\d+\.\d+\.\d+\.\d+$/.test(ip))return false;var n=ip4ToInt(ip);
   for(var i=0;i<JO_V4_RANGES.length;i++){var s=ip4ToInt(JO_V4_RANGES[i][0]);var e=ip4ToInt(JO_V4_RANGES[i][1]);if(n>=s&&n<=e)return true;}return false;}
@@ -111,23 +110,24 @@ function cidrSplitSample_(superCidr,targetLen,samples,stepPow){
 }
 function buildMediumV6Sets_(){
   var LOBBY=[].concat(
-    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP,     V6_STEP_POWER),
-    cidrSplitSample_(JO_V6_SUPER.BATELCO, V6_MEDIUM_PREFIXLEN, Math.max(2,V6_SAMPLES_PER_ISP-2), V6_STEP_POWER)
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 6, V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.BATELCO, V6_MEDIUM_PREFIXLEN, 3, V6_STEP_POWER)
   );
   var MATCH=[].concat(
-    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP+2,   V6_STEP_POWER),
-    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 2,                      V6_STEP_POWER)
+    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, 7, V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER)
   );
   var RECRUIT=[].concat(
-    cidrSplitSample_(JO_V6_SUPER.UMNIAH,  V6_MEDIUM_PREFIXLEN, V6_SAMPLES_PER_ISP,     V6_STEP_POWER),
-    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 3,                      V6_STEP_POWER),
-    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, 2,                      V6_STEP_POWER)
+    cidrSplitSample_(JO_V6_SUPER.UMNIAH,  V6_MEDIUM_PREFIXLEN, 6, V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ORANGE,  V6_MEDIUM_PREFIXLEN, 3, V6_STEP_POWER),
+    cidrSplitSample_(JO_V6_SUPER.ZAIN,    V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER)
   );
-  var UPD = cidrSplitSample_(JO_V6_SUPER.UMNIAH, V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER);
-  var CDN = cidrSplitSample_(JO_V6_SUPER.ORANGE, V6_MEDIUM_PREFIXLEN, 2, V6_STEP_POWER);
+  var UPD = cidrSplitSample_(JO_V6_SUPER.UMNIAH, V6_MEDIUM_PREFIXLEN, 3, V6_STEP_POWER);
+  var CDN = cidrSplitSample_(JO_V6_SUPER.ORANGE, V6_MEDIUM_PREFIXLEN, 3, V6_STEP_POWER);
   return { LOBBY:LOBBY, MATCH:MATCH, RECRUIT_SEARCH:RECRUIT, UPDATES:UPD, CDN:CDN };
 }
 var JO_V6_PREFIX = buildMediumV6Sets_();
+function matchV6CIDR(ip,c){return matchV6CIDR_(ip,c);}function matchV6CIDR_(ip,cidr){var spl=cidr.split('/'),pre=spl[0],bits=parseInt(spl[1],10);if(isNaN(bits)||bits<0||bits>128)return false;var a=parse6(ip),b=parse6(pre),full=Math.floor(bits/16),rem=bits%16;for(var i=0;i<full;i++){if(a[i]!==b[i])return false;}if(rem===0)return true;var mask=0xffff<<(16-rem);return((a[full]&mask)===(b[full]&mask));}
 function isJOv6ForCat(ip,cat){ if(!ip||ip.indexOf(":")===-1)return false; var arr=JO_V6_PREFIX[cat]||[]; for(var i=0;i<arr.length;i++){ if(matchV6CIDR(ip,arr[i])) return true; } return false; }
 function isJOv6Any(ip){ if(!ip||ip.indexOf(":")===-1)return false; var cats=["LOBBY","MATCH","RECRUIT_SEARCH","UPDATES","CDN"]; for(var i=0;i<cats.length;i++){ var arr=JO_V6_PREFIX[cats[i]]||[]; for(var j=0;j<arr.length;j++){ if(matchV6CIDR(ip,arr[j])) return true; } } return false; }
 
@@ -146,57 +146,66 @@ function pickProxyIdx(key){var p=C.proxyStick[key];if(typeof p==="number") retur
 function portFor(cat,host){var base=FIXED_PORT[cat]||FIXED_PORT.LOBBY; if(cat==="MATCH") return base; var h=0; for(var i=0;i<(host||"").length;i++){h=((h<<5)-h)+(host.charCodeAt(i)||0);h|=0;} return base + (Math.abs(h)%3);}
 function proxyForCategory(cat,host){var idx=pickProxyIdx((cat||"")+"|"+(host||"")); var ip=PROXY_POOL[idx].ip; return "PROXY "+ip+":"+(portFor(cat,host||""));}
 
-/* تعلم/نفي/تأكيد مزدوج */
+/* تعلم/نفي/تأكيد ثلاثي */
 function negSet(host){C.neg[host]=nowMs();}
 function negHit(host){var t=C.neg[host];return t && (nowMs()-t)<NEG_CACHE_MS;}
-function learnGet(key){return C.learn[key]|0;}
-function learnBump(key,delta){var s=learnGet(key)+delta; if(s<0)s=0;if(s>100)s=100; C.learn[key]=s; return s;}
-function twoHitKey(host,cat){return (cat||"")+"|"+(host||"");}
-function twoHitMark(host,cat,isJO){var k=twoHitKey(host,cat); var v=C.twoHit[k]||0; if(isJO){v=Math.min(2,v+1);} else {v=0;} C.twoHit[k]=v; return v;}
-function twoHitOK(host,cat){return (C.twoHit[twoHitKey(host,cat)]||0)>=2;}
+function h3Key(host,cat){return (cat||"")+"|"+(host||"");}
+function h3Mark(host,cat,isJO){var k=h3Key(host,cat); var v=C.hit3[k]||0; if(isJO){v=Math.min(3,v+1);} else {v=0;} C.hit3[k]=v; return v;}
+function h3OK(host,cat){return (C.hit3[h3Key(host,cat)]||0)>=3;}
 
 /* عميلك JO؟ */
 function anyMyIPs(){var ips=[];try{if(typeof myIpAddressEx==="function"){var xs=myIpAddressEx();if(xs&&xs.length){for(var i=0;i<xs.length;i++)ips.push(xs[i]);}}}catch(e){} if(!ips.length){try{var v4=myIpAddress();if(v4)ips.push(v4);}catch(e){}} return ips;}
 function clientIsJO(){var g=C.geoClient,now=nowMs(); if(g&&(now-g.t)<GEO_TTL_MS) return g.ok; var ips=anyMyIPs(),ok=false; for(var i=0;i<ips.length;i++){var ip=ips[i]; if(isJOv4(ip)||isJOv6Any(ip)){ok=true;break;}} C.geoClient={ok:ok,t:now}; return ok;}
 
-/* فحص JO للمضيف */
+/* فحص JO للمضيف (A + AAAA) */
+function ip4ToInt_(ip){return ip4ToInt(ip);}
+function bothJO(rr,cat){
+  var ok4 = rr.ip  && isJOv4(rr.ip);
+  var ok6 = rr.ip6 && (isJOv6ForCat(rr.ip6,cat)||isJOv6Any(rr.ip6));
+  return {ok4:!!ok4, ok6:!!ok6, both: !!(ok4 && ok6), any: !!(ok4 || ok6)};
+}
+function dnsSticky(host){
+  var now=nowMs(), st=C.sticky[host];
+  if(st && now<st.exp) return st;
+  var rr=C.dns[host];
+  if(!(rr && (now-rr.t)<(DNS_TTL_MS + Math.floor(Math.random()*DNS_JITTER_MS)))){
+    rr=dnsResolveExPreferV4(host); rr.t=now; C.dns[host]=rr;
+  }
+  var b = bothJO(rr, "LOBBY"); // cat-independent rough check
+  C.sticky[host] = {ip:rr.ip||"", ip6:rr.ip6||"", exp:now+DNS_TTL_MS, anyJO:b.any, bothJO:b.both};
+  return C.sticky[host];
+}
+
 function hostJO(host,cat){
-  if(!host) return {isJO:false};
-  if(/^\d+\.\d+\.\d+\.\d+$/.test(host)) { if(isJOv4(host)){learnBump(host,10); return {isJO:true};} negSet(host); learnBump(host,-5); return {isJO:false}; }
-  if(host.indexOf(":")!==-1) { if(isJOv6Any(host)){learnBump(host,10); return {isJO:true};} negSet(host); learnBump(host,-5); return {isJO:false}; }
-  if(negHit(host)) return {isJO:false};
-  var rr=dnsSticky(host), isjo = (rr.ip && isJOv4(rr.ip)) || (rr.ip6 && (isJOv6ForCat(rr.ip6,cat)||isJOv6Any(rr.ip6)));
-  if(isjo) learnBump(host,10); else {learnBump(host,-5); negSet(host);}
-  return {isJO:isjo, ip:rr.ip||"", ip6:rr.ip6||""};
+  if(!host) return {any:false, both:false};
+  if(/^\d+\.\d+\.\d+\.\d+$/.test(host)) { return {any:isJOv4(host), both:isJOv4(host)}; }
+  if(host.indexOf(":")!==-1) { var any6=isJOv6Any(host); return {any:any6, both:any6}; }
+  if(negHit(host)) return {any:false, both:false};
+  var rr=dnsSticky(host), res = bothJO(rr,cat);
+  if(!res.any) negSet(host);
+  return {any:res.any, both:res.both};
 }
 
 /* قرار نهائي */
 function FindProxyForURL(url, host){
   var cat = getCategoryFor(url, host||"");
-
-  // لو عميلك مش JO: إجبار بروكسي أردني لكل شيء
   if(!clientIsJO()){
     if(REQUIRE_JO_SOURCE && FORCE_PROXY_IF_NOT_CLIENT_JO){ return proxyForCategory(cat, host||""); }
     return "PROXY 0.0.0.0:0";
   }
 
   var hres = hostJO(host||"", cat);
-  var hardCats = (cat==="LOBBY"||cat==="MATCH"||cat==="RECRUIT_SEARCH");
+  var hard = (cat==="LOBBY"||cat==="MATCH"||cat==="RECRUIT_SEARCH"||cat==="CDN"||cat==="UPDATES");
 
-  // تأكيد مزدوج + قفل جلسة
-  if(hres.isJO){
-    if(twoHitMark(host||"",cat,true)>=2){ C.sessionJOLock[cat]=true; }
-  } else {
-    twoHitMark(host||"",cat,false);
-  }
-
-  // HARD-LOCK: الفئات الحرِجة تمر بالبروكسي الأردني دائماً
-  if(hardCats){
-    if(hres.isJO && twoHitOK(host||"",cat)) return "DIRECT";
+  // تأكيد ثلاثي لدIRECT
+  if(hard){
+    if(hres.both){ if(h3Mark(host||"",cat,true)>=3){ C.sessionJOLock[cat]=true; return "DIRECT"; } }
+    else { h3Mark(host||"",cat,false); }
+    // افتراضي دائم: بروكسي أردني
     return proxyForCategory(cat, host||"");
   }
 
-  // CDN/UPDATES: Direct لو JO، غير ذلك بروكسي لتظل أردني المصدر
-  if(hres.isJO) return "DIRECT";
+  // غير الفئات أعلاه (لو وُجدت)
+  if(hres.any && h3Mark(host||"",cat,true)>=3) return "DIRECT";
   return proxyForCategory(cat, host||"");
 }
