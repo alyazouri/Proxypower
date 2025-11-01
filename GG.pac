@@ -1,30 +1,28 @@
-/* ==== PAC: PUBG Jordan — Both IPv6 & IPv4 Residential Only (Final) ====
-   الهدف: الفريق والخصم يكونوا من ضمن نطاقات الأردن (IPv6 أو IPv4)
-   - أي فئة من فئات PUBG لا تُمرَّر إلا إذا كانت الوجهة أردنية (v6 أو v4)
-   - اختيار بروكسي v6 إذا الوجهة IPv6 أردنية، أو بروكسي v4 إذا الوجهة IPv4 أردنية
-   - Sticky 10m
-   - غير PUBG => DIRECT (يمكن تغييره لحظر كامل)
+/* ==== PAC: PUBG Jordan — IPv6 & IPv4 Residential Only (Final, Latency-Aware) ====
+   - يسمح فقط باتصالات PUBG إلى وجهات أردنية (IPv6 أو IPv4)
+   - اختيار بروكسي أردني (v6/v4) مُفَضَّل بالأقل زمن DNS + Sticky 10m
+   - غير PUBG => DIRECT (غيّرها إلى "PROXY 0.0.0.0:0" لو بدك حظر كامل)
 */
 
-/* بروكسيات أردنية */
+/* بروكسيات أردنية (عدّلها لِعوَانينك الفعلية داخل الأردن) */
 var PROXY_V6 = [
-  "2a03:6b01::1",   // مثال: Zain IPv6 (بدّله لعنوانك الفعلي داخل الأردن)
+  "2a03:6b01::1",   // مثال: Zain IPv6
   "2a03:b640::1"    // مثال: Umniah IPv6
 ];
 var PROXY_V4 = [
-  "91.106.109.12"   // مثال: IPv4 أردني سكني (زَيّن/أمنية/أورنج) — عدّل لما لديك
+  "91.106.109.12"   // مثال: IPv4 أردني سكني
 ];
 
 /* بورتات PUBG */
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
-/* نطاقات IPv6 الأردنية (مركّزة للسكني: Zain & Umniah) */
-var JO_V6_PREFIXES = [
-  "2a03:6b01::/34", // Zain
-  "2a03:b640::/32"  // Umniah/Batelco
+/* نطاقات IPv6 الأردنية (سكني/محلي: Zain & Umniah) */
+var V6PFX = [
+  ["2a03:6b01::",34], // Zain
+  ["2a03:b640::",32]  // Umniah/Batelco
 ];
 
-/* نطاقات IPv4 الأردنية السكنية الرئيسية (مختصرة ومركّزة) */
+/* نطاقات IPv4 الأردنية السكنية الرئيسية */
 var JO_V4_RANGES = [
   /* Orange */
   ["94.249.0.0","94.249.255.255"], ["80.90.160.0","80.90.175.255"],
@@ -70,7 +68,7 @@ if(!C.dns)C.dns={};
 if(!C.pick4)C.pick4={h:null,t:0};
 if(!C.pick6)C.pick6={h:null,t:0};
 
-/* أدوات عامة */
+/* ===== Helpers عامة ===== */
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
 function isIPv4(s){return /^\d{1,3}(\.\d{1,3}){3}$/.test(s||"");}
 function isIPv6(s){return typeof s==="string" && s.indexOf(":")>=0;}
@@ -111,14 +109,13 @@ function ipv6InPrefix(ip, base, len){
   var mask=(0xffff<<(16-rem))&0xffff;
   return (w[full]&mask)===(pb[full]&mask);
 }
-var V6PFX=[["2a03:6b01::",34],["2a03:b640::",32]];
 function isJOv6(ip){
   if(!isIPv6(ip))return false;
   for(var i=0;i<V6PFX.length;i++) if(ipv6InPrefix(ip,V6PFX[i][0],V6PFX[i][1])) return true;
   return false;
 }
 
-/* DNS cache (PAC غالبًا يرجّع IP واحد) */
+/* DNS cache */
 function dnsCached(host){
   var now=Date.now(), e=C.dns[host];
   if(e && (now-e.t)<DNS_TTL_MS) return e.ip;
@@ -126,27 +123,50 @@ function dnsCached(host){
   C.dns[host]={ip:ip,t:now}; return ip;
 }
 
-/* Pick proxies with 10m sticky */
+/* ===== اختيار بروكسي (تقريب hop أردني: فلترة أردنية + أقل زمن DNS) ===== */
+function dnsLatencyScore(hostOrIp){
+  try{
+    var t0=Date.now();
+    if(isIPv4(hostOrIp)||isIPv6(hostOrIp)){ /* no-op */ } else { dnsResolve(hostOrIp); }
+    var dt=Date.now()-t0;
+    return dt>0?dt:1;
+  }catch(_){ return 99999; }
+}
+function filterSortJO(list){
+  var out=[];
+  for(var i=0;i<list.length;i++){
+    var h=list[i], ip=h;
+    if(!isIPv4(h) && !isIPv6(h)){
+      try{ ip=dnsResolve(h)||""; }catch(_){ ip=""; }
+    }
+    var ok = isIPv6(ip)?isJOv6(ip):isIPv4(ip)?isJOv4(ip):false;
+    if(ok) out.push({h:h,score:dnsLatencyScore(h)});
+  }
+  out.sort(function(a,b){return a.score-b.score;});
+  return out.map(function(x){return x.h;});
+}
 function pickV4(){
   var now=Date.now();
   if(C.pick4.h && (now-C.pick4.t)<STICKY_MS) return C.pick4.h;
-  var h = PROXY_V4[Math.floor(Math.random()*PROXY_V4.length)] || "91.106.109.12";
+  var cand=filterSortJO(PROXY_V4);
+  var h=cand.length?cand[0]:(PROXY_V4[0]||"91.106.109.12");
   C.pick4={h:h,t:now}; return h;
 }
 function pickV6(){
   var now=Date.now();
   if(C.pick6.h && (now-C.pick6.t)<STICKY_MS) return C.pick6.h;
-  var h = PROXY_V6[Math.floor(Math.random()*PROXY_V6.length)] || "2a03:6b01::1";
+  var cand=filterSortJO(PROXY_V6);
+  var h=cand.length?cand[0]:(PROXY_V6[0]||"2a03:6b01::1");
   C.pick6={h:h,t:now}; return h;
 }
 function proxyV4(cat){var p=FIXED_PORT[cat]||443; return "PROXY "+pickV4()+":"+p;}
 function proxyV6(cat){var p=FIXED_PORT[cat]||443; return "PROXY "+bracketIfV6(pickV6())+":"+p;}
 
 /* Helpers */
-function hostMatch(h,arr){h=lc(h);if(!h)return false;for(var i=0;i<arr.length;i++){var p=lc(arr[i]);if(shExpMatch(h,p))return true;if(p.indexOf("*.")===0){var suf=p.substring(1);if(h.length>=suf.length && h.substring(h.length-suf.length)===suf)return true;}}return false;}
+function hostMatch(h,arr){h=lc(h);if(!h)return false;for(var i=0;i<arr.length;i++){var p=lc(arr[i]);if(shExpMatch(h,p))return true;if(p.indexOf("*.")===0){var suf=p.substring(1);if(h.length>=suf.length&&h.substring(h.length-suf.length)===suf)return true;}}return false;}
 function urlMatch(u,arr){if(!u)return false;for(var i=0;i<arr.length;i++) if(shExpMatch(u,arr[i])) return true;return false;}
 
-/* تصنيف الوجهة: نمرر فقط لو الوجهة أردنية (v6 أو v4) ونختار البروكسي المطابق */
+/* تصنيف الوجهة: لازم تكون أردنية (v6 أو v4) ونختار البروكسي المطابق */
 function resolveAndDetect(host){
   if(isIPv4(host)) return {ver:4, ip:host, v4jo:isJOv4(host), v6jo:false};
   if(isIPv6(host)) return {ver:6, ip:host, v4jo:false, v6jo:isJOv6(host)};
@@ -155,13 +175,11 @@ function resolveAndDetect(host){
   if(isIPv6(ip)) return {ver:6, ip:ip, v4jo:false, v6jo:isJOv6(ip)};
   return {ver:0, ip:"", v4jo:false, v6jo:false};
 }
-
-/* سياسة موحدة لكل فئات PUBG: لازم الوجهة أردنية (v6 أو v4) */
 function enforceJordan(cat, host){
   var r=resolveAndDetect(host);
   if(r.v6jo) return proxyV6(cat);
   if(r.v4jo) return proxyV4(cat);
-  return "PROXY 0.0.0.0:0";
+  return "PROXY 0.0.0.0:0"; // حظر أي وجهة غير أردنية
 }
 
 /* Main */
@@ -183,7 +201,6 @@ function FindProxyForURL(url,host){
   if(urlMatch(url,URL_PATTERNS.CDN)||hostMatch(host,PUBG_DOMAINS.CDN))
     return enforceJordan("CDN",host);
 
-  // غير PUBG: DIRECT (لو بدك حظر كامل لغير الأردن/غير PUBG، بدّل السطر التالي):
+  // غير PUBG: DIRECT (بدّلها إلى "PROXY 0.0.0.0:0" لو بدك حظر كامل)
   return "DIRECT";
-  // return "PROXY 0.0.0.0:0"; // ← هذا يخلي كل شيء غير PUBG محظور
 }
