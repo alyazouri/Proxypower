@@ -1,15 +1,21 @@
-/* ==== PAC: PUBG Jordan-Only IPv6 (Aggressive JO Bias) ==== */
-/* هدف السكربت: رفع نسبة دخولك على لُوبي/فريق/خصوم أردنيين عبر IPv6 أردني فقط */
-var PROXY_CANDIDATES = ["2a02:9c0::2"];
+/* ==== PAC: PUBG Jordan-Only IPv6 (Aggressive JO Bias, category-specific proxies) ==== */
+/* هدف: رفع احتمال وجود لُوبي/فريق/خصوم أردنيين + استخدام بروكسيات مخصصة */
+var PROXY_MAP = {
+  LOBBY:       "2a03:6b01:8000::2",  // للوبّي (Zain wide)
+  RECRUIT_SEARCH: "2a03:6b01:8000::2", // لتجنيد/بحث الفريق (Zain wide)
+  MATCH:       "2a02:9c0::2",         // مباريات (Umniah)
+  UPDATES:     "2a02:9c0::2",         // تحديثات/CDN افتراضي (Umniah)
+  CDN:         "2a02:9c0::2"
+};
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
 /* تشديد الأردن */
-var STRICT_JO_MATCH   = true;   /* المباراة (الفريق والخصم) */
-var STRICT_JO_RECRUIT = true;   /* البحث/التجنيد */
-var STRICT_JO_LOBBY   = true;   /* الجلسات/الهارتبيت/الحالة لتثبيت المنطقة أردن */
+var STRICT_JO_MATCH   = true;
+var STRICT_JO_RECRUIT = true;
+var STRICT_JO_LOBBY   = true;
 
 /* تعزيز احتمالية الأردن */
-var BLOCK_NON_JO_TRIES = 6;     
+var BLOCK_NON_JO_TRIES = 6;
 var BLOCK_WINDOW_MS    = 4*60*1000;
 
 /* كاش وضبط */
@@ -18,12 +24,12 @@ var DNS_TTL_MS=15000, PROXY_STICKY_TTL_MS=60000, GEO_TTL_MS=3600000;
 var _root=(typeof globalThis!=="undefined")?globalThis:this;
 if(!_root._PAC_HARDCACHE)_root._PAC_HARDCACHE={};
 var C=_root._PAC_HARDCACHE;
-if(!C.dns)C.dns={};                   
-if(!C.proxyPick)C.proxyPick={host:null,t:0,lat:99999};
+if(!C.dns)C.dns={};
+if(!C.proxyPick)C.proxyPick={hostMap:{},t:0,lat:99999};
 if(!C.geoClient)C.geoClient={ok:false,t:0};
-if(!C.blockCnt)C.blockCnt={};         
+if(!C.blockCnt)C.blockCnt={};
 
-/* نطاقات IPv6 الأردنية المحدّثة */
+/* نطاقات IPv6 الأردنية */
 var JO_V6_PREFIXES = [
   "2001:32c0::/29",  /* Jordan Telecom (Orange) */
   "2a01:1d0::/29",   /* Zain Jordan */
@@ -68,20 +74,19 @@ function parseIPv6Words(addr){
   var parts=addr.split("::"),left=parts[0]?parts[0].split(":"):[],right=(parts.length>1&&parts[1])?parts[1].split(":"):[];
   if(parts.length===1){if(left.length!==8)return null;return left.map(h=>parseInt(h||"0",16)&0xffff);}
   var fill=8-(left.length+right.length);if(fill<0)return null;
-  var out=[];for(var a=0;a<left.length;a++)out.push(parseInt(left[a]||"0",16)&0xffff);
-  for(var z=0;z<fill;z++)out.push(0);
-  for(var b=0;b<right.length;b++)out.push(parseInt(right[b]||"0",16)&0xffff);
-  return out.length===8?out:null;
+  var arr=[];for(var i1=0;i1<left.length;i1++)arr.push(parseInt(left[i1]||"0",16)&0xffff);
+  for(var j=0;j<fill;j++)arr.push(0);
+  for(var k=0;k<right.length;k++)arr.push(parseInt(right[k]||"0",16)&0xffff);
+  return arr.length===8?arr:null;
 }
 function ipv6InPrefix(words,prefWords,prefLenBits){
-  var full=(prefLenBits/16)|0, rem=prefLenBits%16;
-  for(var i=0;i<full;i++) if(words[i]!==prefWords[i]) return false;
-  if(rem===0) return true;
+  var full=Math.floor(prefLenBits/16),rem=prefLenBits%16;
+  for(var i=0;i<full;i++) if(words[i]!==prefWords[i])return false;
+  if(rem===0)return true;
   var mask=(0xffff<<(16-rem))&0xffff;
   return (words[full]&mask)===(prefWords[full]&mask);
 }
-if(!C.v6pref){
-  C.v6pref=[];
+if(!C.v6pref){C.v6pref=[];
   for(var i=0;i<JO_V6_PREFIXES.length;i++){
     var p=JO_V6_PREFIXES[i].split("/");
     var w=parseIPv6Words(p[0]); var l=parseInt(p[1],10);
@@ -99,7 +104,7 @@ function isJOv6(ip){
 /* تحقق من موقع العميل */
 function clientIsJOv6(){
   var now=(new Date()).getTime(),g=C.geoClient;
-  if(g&&(now-g.t)<GEO_TTL_MS) return g.ok;
+  if(g&&(now-g.t)<GEO_TTL_MS)return g.ok;
   var ip=""; try{
     if(typeof myIpAddressEx==="function"){var arr=myIpAddressEx(); if(arr&&arr.length>0) ip=arr[0];}
     else ip=myIpAddress();
@@ -109,7 +114,7 @@ function clientIsJOv6(){
   return ok;
 }
 
-/* DNS */
+/* DNS بكاش ذكي */
 function dnsResolveFresh(host){ try{ return dnsResolve(host)||""; }catch(_){ return ""; } }
 function dnsCached(host, preferJO){
   var now=(new Date()).getTime(),e=C.dns[host];
@@ -121,8 +126,12 @@ function dnsCached(host, preferJO){
   C.dns[host]={ip:ip,t:now}; return ip;
 }
 
-/* بروكسي */
-function proxyFor(cat){var h=PROXY_CANDIDATES[0];var p=FIXED_PORT[cat]||443;return "PROXY ["+h+"]:"+p;}
+/* اختيار بروكسي حسب الفئة */
+function proxyFor(cat){
+  var h = (PROXY_MAP && PROXY_MAP[cat]) ? PROXY_MAP[cat] : (PROXY_MAP.MATCH || Object.values(PROXY_MAP)[0]);
+  var p = FIXED_PORT[cat] || 443;
+  return "PROXY ["+h+"]:"+p;
+}
 
 /* حجب تكيفي */
 function shouldBlockAdaptive(host){
@@ -133,7 +142,7 @@ function shouldBlockAdaptive(host){
   return false;
 }
 
-/* المنطق */
+/* فرض الأردن على فئات محددة + حجب تكيفي */
 function enforceJOProxy(cat, host, preferJO){
   var ip = isIPv6(host) ? host : dnsCached(host, true);
   if(isJOv6(ip)) return proxyFor(cat);
@@ -141,15 +150,16 @@ function enforceJOProxy(cat, host, preferJO){
   return "PROXY 0.0.0.0:0";
 }
 
-function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
+/* مساعدات مطابقة */
 function hostMatch(h,arr){h=lc(h);if(!h)return false;for(var i=0;i<arr.length;i++){var p=lc(arr[i]);if(shExpMatch(h,p))return true;if(p.indexOf("*.")===0){var suf=p.substring(1);if(h.length>=suf.length&&h.substring(h.length-suf.length)===suf)return true;}}return false;}
-function urlMatch(u,arr){if(!u)return false;for(var i=0;i<arr.length;i++)if(shExpMatch(u,arr[i]))return true;return false;}
+function urlMatch(u,arr){if(!u)return false;for(var i=0;i<arr.length;i++) if(shExpMatch(u,arr[i])) return true; return false;}
 function isExcluded(host){host=lc(host);for(var i=0;i<EXCLUDE_HOSTS.length;i++){var e=lc(EXCLUDE_HOSTS[i]);if(shExpMatch(host,"*"+e)||host===e)return true;}return false;}
 
+/* Main */
 function FindProxyForURL(url,host){
   host=lc(host);
   if(isExcluded(host)) return "DIRECT";
-  if(!clientIsJOv6()) return "PROXY 0.0.0.0:0";  
+  if(!clientIsJOv6()) return "PROXY 0.0.0.0:0";
 
   if(urlMatch(url,URL_PATTERNS.MATCH)||hostMatch(host,PUBG_DOMAINS.MATCH)){
     if(STRICT_JO_MATCH)   return enforceJOProxy("MATCH",host,true);
@@ -163,9 +173,12 @@ function FindProxyForURL(url,host){
     if(STRICT_JO_LOBBY)   return enforceJOProxy("LOBBY",host,true);
     return proxyFor("LOBBY");
   }
+
   if(urlMatch(url,URL_PATTERNS.UPDATES)||hostMatch(host,PUBG_DOMAINS.UPDATES))
     return proxyFor("UPDATES");
+
   if(urlMatch(url,URL_PATTERNS.CDN)||hostMatch(host,PUBG_DOMAINS.CDN))
     return proxyFor("CDN");
+
   return "DIRECT";
 }
