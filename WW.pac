@@ -1,7 +1,7 @@
 /* ==== PAC: PUBG Jordan-Only IPv6 (Single Proxy Device) ==== */
 /* بروكسي واحد لكل الفئات — عدّل السطر التالي لعنوان جهازك ذو IPv6 */
 var PROXY_HOST = "2a00:18d8::2";      /* ضع هنا IPv6 جهازك (أو إبقِ الافتراضي) */
-var FIXED_PORT = { LOBBY:8000, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
+var FIXED_PORT = { LOBBY:8000, MATCH:20001, RECRUIT_SEARCH:8000, UPDATES:80, CDN:80 };
 
 /* صرامة الأردن */
 var STRICT_JO_MATCH   = true;
