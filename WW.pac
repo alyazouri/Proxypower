@@ -1,6 +1,5 @@
 function FindProxyForURL(url, host) {
-    // ====================== بروكسياتك داخل الأردن (IPv6) ======================
-    // عدّل العناوين لتطابق سيرفراتك الفعلية
+    // ====================== بروكسيات أردنية (IPv6) ======================
     var PROX = {
         UMN: { lobby:"PROXY [2a0f:77c0::1]:443",   match:"PROXY [2a0f:77c0::1]:20001",
                recruit:"PROXY [2a0f:77c0::1]:10010", other:"PROXY [2a0f:77c0::1]:8080" },
@@ -9,25 +8,25 @@ function FindProxyForURL(url, host) {
         ORG: { lobby:"PROXY [2a11:a580::1]:443",   match:"PROXY [2a11:a580::1]:20001",
                recruit:"PROXY [2a11:a580::1]:10010", other:"PROXY [2a11:a580::1]:8080" }
     };
-    var BLACKHOLE = "PROXY [::1]:9"; // حجب صارم — لا DIRECT أبداً
+    var BLACKHOLE = "PROXY [::1]:9"; // منع صارم — ممنوع DIRECT
 
-    // ============== أوزان الميل (زِد UMN لو بدك تركيز أقوى محلياً) ==============
+    // ============== أوزان الميل (شدّ الأردنة) ==============
     var WEIGHTS = {
-        lobby:   {UMN:65, ZAIN:25, ORG:10},
-        match:   {UMN:70, ZAIN:20, ORG:10},
-        recruit: {UMN:60, ZAIN:25, ORG:15},
-        other:   {UMN:60, ZAIN:25, ORG:15}
+        lobby:   {UMN:70, ZAIN:20, ORG:10},
+        match:   {UMN:80, ZAIN:15, ORG:5},
+        recruit: {UMN:70, ZAIN:20, ORG:10},
+        other:   {UMN:65, ZAIN:25, ORG:10}
     };
 
-    // ====== خريطة Prefix→ISP (إجبار مزوّد معيّن عند رؤية بوادئه لتقصير المسار) ======
+    // ====== خريطة Prefix→ISP (إجبار ISP معيّن لتقصير المسار داخليًا) ======
     var PREFIX_MAP = [
         {cidr:"2a0f:77c0::/29", isp:"UMN"}, {cidr:"2a0f:77d0::/29", isp:"UMN"}, {cidr:"2a0f:ba40::/29", isp:"UMN"},
         {cidr:"2a10:2f00::/29", isp:"ZAIN"},{cidr:"2a10:2f40::/29", isp:"ZAIN"},
         {cidr:"2a11:a580::/29", isp:"ORG"}, {cidr:"2a11:a5c0::/29", isp:"ORG"}
     ];
 
-    // ====================== دومينات PUBG (Global) مصنّفة ======================
-    var DOM_MATCH   = ["*.igamecj.com","*.gcloud.qq.com","*.pubgmobile.com"]; // مباراة + حركة اللاعب
+    // ====================== دومينات PUBG مصنّفة ======================
+    var DOM_MATCH   = ["*.igamecj.com","*.gcloud.qq.com","*.pubgmobile.com"];
     var DOM_LOBBY   = ["*.pubgmobile.com","*.proximabeta.com","*.tencentgames.com","*.tencent.com"];
     var DOM_RECRUIT = ["*.pubgmobile.com","*.igamecj.com"];
     var DOM_REQUESTS= ["*.report.qq.com","*.speed.qq.com","*.stats*.tencent.com","*.log*.tencent.com",
@@ -36,20 +35,24 @@ function FindProxyForURL(url, host) {
                        "*.dl*.qq.com","*.qcloudcdn.com","*.qcloudimg.com"];
     var DOM_ALL = [].concat(DOM_MATCH, DOM_LOBBY, DOM_RECRUIT, DOM_REQUESTS, DOM_UPDATES);
 
-    // ============== نطاقات IPv6 أردنية (JO) — لبّ الموضوع (اختصر/وسع براحتك) ==============
-    var JO_V6 = [
-        "2a0f:77c0::/29","2a0f:77d0::/29","2a0f:ba40::/29",
-        "2a10:2f00::/29","2a10:2f40::/29",
-        "2a11:a580::/29","2a11:a5c0::/29",
-        "2a12:6fc0::/29","2a12:6fc4::/29",
-        "2a15:82c0::/29","2a15:a540::/29",
-        // توسعة حكومية/أكاديمية محلية إن لزم
+    // ============== نطاقات IPv6 أردنية (أساسية) ==============
+    var JO_V6_BASE = [
+        "2a0f:77c0::/29","2a0f:77d0::/29","2a0f:ba40::/29",   // Umniah
+        "2a10:2f00::/29","2a10:2f40::/29",                   // Zain
+        "2a11:a580::/29","2a11:a5c0::/29"                    // Orange
+    ];
+    // ============== توسعات أردنية (أنت ذكرتها قبل) ==============
+    var JO_V6_EXTRA = [
+        "2a03:b640::/32","2a00:18d8::/29","2a03:6b00::/29",
+        // حكومي/أكاديمي داخلي
         "2001:67c:27c0::/48","2001:67c:27c4::/48","2001:67c:27c8::/48","2001:67c:27cc::/48",
         "2001:67c:370::/40","2001:67c:374::/40","2001:67c:378::/40","2001:67c:37c::/40",
         "2001:67c:3f0::/40","2001:67c:400::/40","2001:67c:404::/40","2001:67c:408::/40"
     ];
+    // فعِّل/عطّل الإضافي حسب تجربتك
+    var JO_V6 = JO_V6_BASE.concat(JO_V6_EXTRA);
 
-    // ======================== منافذ ببجي المعتمدة ========================
+    // ======================== منافذ ببجي ========================
     var P_MATCH   = [20001,20002,20003,20004,20005];
     var P_LOBBY   = [443,8080,8443];
     var P_RECRUIT_MIN = 10010, P_RECRUIT_MAX = 12235;
@@ -58,16 +61,18 @@ function FindProxyForURL(url, host) {
     function inList(list, h){ for (var i=0;i<list.length;i++) if (shExpMatch(h, list[i])) return true; return false; }
     function v6Allowed(ip6){ for (var i=0;i<JO_V6.length;i++) if (isInNetEx(ip6, JO_V6[i])) return true; return false; }
     function resolveAAAA(h){
-        // لا نرضى إلا بـ AAAA — لتجنب أي سحب IPv4 برّا الأردن
+        // نرفض أي A (IPv4). نقبل AAAA فقط.
         if (typeof dnsResolveEx === "function") {
             var r = dnsResolveEx(h);
-            if (r && r.indexOf(":") !== -1) return r; // IPv6
+            // بعض المحركات ترجّع first AAAA فقط؛ يكفي نتحقق إنه IPv6
+            if (r && r.indexOf(":") !== -1) return r;
         }
         return null;
     }
     function h32(s){ var h=0,c; for(var i=0;i<s.length;i++){ c=s.charCodeAt(i); h=((h<<5)-h)+c; h|=0;} return (h>>>0); }
-    function dayBucket(){ return Math.floor((new Date().getTime())/86400000); } // Sticky يومي
-    function hourBucket(){ return Math.floor((new Date().getTime())/3600000); } // تذبذب خفيف للمزج الآمن
+    function dayBucket(){ return Math.floor((new Date().getTime())/86400000); }     // Sticky يومي
+    function hourBucket(){ return Math.floor((new Date().getTime())/3600000); }     // مزج خفيف
+    function localHour(){ return (new Date()).getHours(); }                         // Primetime Tilt
     function chainOrder(primary){
         if (primary==="UMN") return ["UMN","ZAIN","ORG"];
         if (primary==="ZAIN") return ["ZAIN","UMN","ORG"];
@@ -125,17 +130,20 @@ function FindProxyForURL(url, host) {
         kind = "other";
     }
 
-    // ===== 4) اختيار المزوّد لتثبيت Pool أردني وتقليل الهوبات =====
-    // (أ) Prefix→ISP: لو الهدف داخل Prefix معيّن، إجبار مزوّد مطابق (أقصر مسار)
-    var primary = forceISPByPrefix(ip6);
-    // (ب) إن ما في Prefix mapping، اختَر موزون Sticky (يومي) + لمسة مزج آمنة
+    // ===== 4) اختيار المزوّد لتثبيت Pool أردني =====
+    var primary = forceISPByPrefix(ip6); // (أ) Prefix→ISP
     if (!primary) {
+        // (ب) Sticky موزون + مزج ساعي
         var seed = host + ":" + port + "|" + kind + "|" + dayBucket() + "|" + hourBucket();
         primary = pickByWeight(kind, seed);
     }
-    // (ج) Tilt ذكي: igamecj ↦ UMN، tencent ↦ ZAIN (يساعد على تجمعات أردنية)
-    if (shExpMatch(host, "*.igamecj.com") && primary!=="UMN") primary = "UMN";
-    if ((shExpMatch(host, "*.tencent.com") || shExpMatch(host, "*.tencentgames.com")) && primary==="UMN") primary = "ZAIN";
+    // (ج) Tilt حسب الدومين: igamecj ↦ UMN ، tencent ↦ ZAIN
+    if (shExpMatch(host, "*.igamecj.com")) primary = "UMN";
+    if (shExpMatch(host, "*.tencent.com") || shExpMatch(host, "*.tencentgames.com")) primary = "ZAIN";
+
+    // (د) Primetime Tilt (19:00–01:00 عمّان): زيد UMN بالمباريات فقط
+    var h = localHour();
+    if (kind==="match" && (h>=19 || h<=1)) primary = "UMN";
 
     // ===== 5) Failover قاسي بدون DIRECT =====
     var order = chainOrder(primary);
