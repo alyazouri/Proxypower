@@ -2,7 +2,7 @@
 /* هدف: زيادة احتمال أن يكون الفريق والخصوم من داخل الأردن عبر IPv6 أردني فقط */
 
 var PROXY_CANDIDATES = ["2a03:6b01:8000::2"]; /* جهازك ذو IPv6 */
-var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
+var FIXED_PORT = { LOBBY:8443, MATCH:20001, RECRUIT_SEARCH:8443, UPDATES:8080, CDN:8080 };
 
 /* صرامة الأردن على الفئات الحساسة */
 var STRICT_JO_LOBBY   = true;   /* يثبت منطقتك على الأردن */
