@@ -1,5 +1,5 @@
 /* ==== PAC: PUBG Jordan-Only IPv6 (Strict Team/Opponent in-JO) ==== */
-var PROXY_CANDIDATES = ["2a03:6b01::2"];
+var PROXY_CANDIDATES = ["2a0d:5300::2"];
 var FIXED_PORT = { LOBBY:443, MATCH:20001, RECRUIT_SEARCH:443, UPDATES:80, CDN:80 };
 
 var STRICT_JO_MATCH = true;           /* يجبر الفريق والخصم من داخل الأردن */
@@ -8,7 +8,7 @@ var DNS_TTL_MS=15000, PROXY_STICKY_TTL_MS=60000, GEO_TTL_MS=3600000;
 
 /* نطاقات IPv6 الأردنية */
 var JO_V6_PREFIXES = [
-  "2a00:18d8::/29",   /* Orange */
+  "2a0d:5300::/29",   /* Umniah new */
   "2a03:6b00::/29",   /* Zain */
   "2a03:b640::/32"    /* Umniah/Batelco */
 ];
