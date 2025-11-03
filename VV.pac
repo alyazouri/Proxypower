@@ -1,10 +1,9 @@
-// JO-HARD-MODE PAC — v2 (strict, optimized, final)
-// هدف: أعلى احتمال للّوبي/الماتش الأردني. أي مسار مش أردني = بلوك نهائي.
+// JO-HARD-MODE PAC — v5 (strict, optimized, final)
+// هدف: أقصى احتمال للّوبي/الماتش الأردني. أي مسار غير أردني = بلوك نهائي.
 
 //================== إعدادات عامة ==================//
 var PROXY_CANDIDATES = [
   "91.106.109.12"
-  // أضف خوادم أردنية إضافية إن وجدت
 ];
 
 var FIXED_PORT = {
@@ -15,32 +14,46 @@ var FIXED_PORT = {
   CDN:              80
 };
 
-// بادئات IPv6 الأردنية — مُحدّثة حسب طلبك
+// بادئات IPv6 الأردنية — محدثة (تشمل Umniah/JDC و Zain المضافة لاحقاً)
 var JO_V6_PREFIX = {
   LOBBY: [
-    "2001:67c:2b40::/48",  // Umniah سكني
-    "2001:7f8::/32",       // Zain 4G/5G
-    "2a02:7f8::/32"        // Zain Fiber
+    "2a03:6b01:8000::/34",
+    "2a03:6b01:4000::/34",
+    "2001:67c:27c0::/48",
+    "2001:67c:2b40::/48",
+    "2a0e:b47::/32"
   ],
   MATCH: [
-    "2001:67c:27c0::/48",  // Umniah Fiber
-    "2001:df0::/32"        // Zain 5G
+    "2a03:6b01:8000::/34",
+    "2a03:6b01:4000::/34",
+    "2001:67c:27c0::/48",
+    "2001:67c:2b40::/48",
+    "2a0e:b47::/32"
   ],
   RECRUIT_SEARCH: [
+    "2a03:6b01:8000::/34",
+    "2a03:6b01:4000::/34",
+    "2001:67c:27c0::/48",
     "2001:67c:2b40::/48",
-    "2a02:7f8::/32"
+    "2a0e:b47::/32"
   ],
   UPDATES: [
+    "2a03:6b01:8000::/34",
+    "2a03:6b01:4000::/34",
+    "2001:67c:27c0::/48",
     "2001:67c:2b40::/48",
-    "2a02:7f8::/32"
+    "2a0e:b47::/32"
   ],
   CDN: [
+    "2a03:6b01:8000::/34",
+    "2a03:6b01:4000::/34",
+    "2001:67c:27c0::/48",
     "2001:67c:2b40::/48",
-    "2a02:7f8::/32"
+    "2a0e:b47::/32"
   ]
 };
 
-// IPv4 ranges أردنية — بالترتيب المطلوب (الأحدث أولًا)
+// IPv4 ranges أردنية — الأحدث أولاً
 var JO_V4_RANGES = [
   ["217.25.0.0","217.25.255.255"],
   ["212.118.0.0","212.118.255.255"],
@@ -91,7 +104,7 @@ var URL_PATTERNS = {
   CDN:["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
 };
 
-//================== أدوات مساعدة ==================//
+//================== الأدوات المساعدة ==================//
 function lc(s){return s&&s.toLowerCase?s.toLowerCase():s;}
 function isIp4(s){return /^\d+\.\d+\.\d+\.\d+$/.test(s);}
 function isIp6Literal(s){return s&&s.indexOf(":")!==-1;}
@@ -108,13 +121,6 @@ function parseCidr6(s){s=s.replace(/:+$/,"");var m=s.split("/");var pre=m[0];var
 function ip6ToBits(ip){var parts=norm6(ip).split(":");var bits="";for(var i=0;i<8;i++){var v=parseInt(parts[i],16);bits+=("0000000000000000"+v.toString(2)).slice(-16);}return bits;}
 function match6(ip,cidr){if(!ip)return false;var b1=ip6ToBits(ip);var b2=ip6ToBits(cidr.norm);var L=Math.max(0,Math.min(128,cidr.len|0));return b1.substring(0,L)===b2.substring(0,L);}
 function isJOv6ForCat(ip,cat){if(!ip||ip.indexOf(":")==-1)return false;var arr=JO_V6_PREFIX[cat];if(!arr||!arr.length)return false;for(var i=0;i<arr.length;i++){var c=parseCidr6(arr[i]);if(match6(ip,c))return true;}return false;}
-function measureProxyLatency(h){if(isIp4(h)||isIp6Literal(h))return 1;try{var t0=(new Date()).getTime();var r=dnsResolve(h);var dt=(new Date()).getTime()-t0;if(!r)return 99999;return dt>0?dt:1;}catch(e){return 99999;}}
-function pickProxyHost(){var now=(new Date()).getTime();if(C.proxyPick.host&&(now-C.proxyPick.t)<PROXY_STICKY_TTL_MS)return C.proxyPick.host;var best=null,bestLat=99999;for(var i=0;i<PROXY_CANDIDATES.length;i++){var cand=PROXY_CANDIDATES[i];var lat=measureProxyLatency(cand);if(lat<bestLat){bestLat=lat;best=cand;}}if(!best)best=PROXY_CANDIDATES[0];C.proxyPick={host:best,t:now,lat:bestLat};return best;}
-function proxyFor(cat){var h=pickProxyHost();var pt=FIXED_PORT[cat]||443;return"PROXY "+h+":"+pt;}
-function clientIsJO(){var now=(new Date()).getTime();var g=C.geoClient;if(g&&(now-g.t)<GEO_TTL_MS)return g.ok;var my="";try{my=myIpAddress();}catch(e){my="";}var ok=isJOv4(my)||isJOv6ForCat(my,"LOBBY")||isJOv6ForCat(my,"MATCH");C.geoClient={ok:ok,t:now};return ok;}
-function proxyIsJO(){var now=(new Date()).getTime();var g=C.geoProxy;if(g&&(now-g.t)<GEO_TTL_MS)return g.ok;var p=pickProxyHost();var ok=false;if(isIp4(p)){ok=isJOv4(p);}else if(isIp6Literal(p)){ok=isJOv6ForCat(p,"LOBBY")||isJOv6ForCat(p,"MATCH");}else{var pip=dnsCached(p);ok=isJOv4(pip)||isJOv6ForCat(pip,"LOBBY")||isJOv6ForCat(pip,"MATCH");}C.geoProxy={ok:ok,t:now};return ok;}
-function isUnsafeHost(h){if(!h)return true;if(isPlainHostName(h))return true;if(shExpMatch(h,"*.local")||shExpMatch(h,"*.lan"))return true;return false;}
-function enforceCat(cat,host){var ip=host;if(!isIp4(ip)&&!isIp6Literal(ip)){if(isUnsafeHost(host))return"PROXY 0.0.0.0:0";ip=dnsCached(host);}if(isIp6Literal(ip)&&isJOv6ForCat(ip,cat))return proxyFor(cat);if(isIp4(ip)&&isJOv4(ip))return proxyFor(cat);return"PROXY 0.0.0.0:0";}
 
 //================== الدالة الرئيسية ==================//
 function FindProxyForURL(url,host){
