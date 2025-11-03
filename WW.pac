@@ -1,33 +1,59 @@
 function FindProxyForURL(url, host) {
-    var p = port;
+    // ===== إعدادات =====
+    var PROXY     = "SOCKS5 91.106.107.12:1080"; // مخرجك الأردني
+    var BLACKHOLE = "PROXY 0.0.0.0:0";           // حظر تام لأي وجهة غير أردنية
 
-    // === Jordan IPv6 Residential & Mobile Ranges ===
-    var ipv6Match = 
-        /^2a01:9700:0{4}:/  || /^2a01:9700:1{4}:/  || /^2a01:9700:2{4}:/  ||
-        /^2a01:9700:3{4}:/  || /^2a01:9700:4{4}:/  || /^2a01:9700:5{4}:/  ||
-        /^2001:9700:/       || /^2001:7f8:/        || /^2a02:7f8:/        ||
-        /^2001:df0:/        || /^2001:67c:27c0:/   || /^2001:67c:2b40:/   ||
-        /^2a0e:97c0:/       || /^2a0e:b47:/        || /^2a0b:64c0:/       ||
-        /^2a0e:1dc0:/       || /^2a0f:5700:/       || /^2a10:cc40:/       ||
-        /^2a12:bec0:/;
+    // ===== أدوات مساعدة =====
+    function parsePort(u){
+        var m=u.match(/^[a-zA-Z0-9+\-.]+:\/\/(?:\[[^\]]+\]|[^\/:]+)(?::(\d+))?/);
+        if(m&&m[1]) return parseInt(m[1],10);
+        return (u.slice(0,5).toLowerCase()==="https")?443:80;
+    }
+    function stripBrackets(h){
+        if(!h) return h;
+        return (h[0]==='[' && h[h.length-1]===']') ? h.slice(1,-1) : h;
+    }
+    function isIPv4(h){ return /^\d{1,3}(\.\d{1,3}){3}$/.test(h||""); }
 
-    // === Jordan IPv4 Residential & Mobile Ranges ===
-    var ipv4Match = 
-        /^81\.28\./     || /^46\.60\./     || /^46\.185\./    || /^185\.108\./   ||
-        /^37\.236\./    || /^37\.237\./    || /^46\.23\./     || /^109\.110\./   ||
-        /^176\.29\./    || /^87\.236\./    || /^87\.237\./    || /^94\.142\./    ||
-        /^109\.224\./   || /^217\.25\./    || /^212\.118\./   || /^212\.35\./    ||
-        /^213\.186\./   || /^213\.187\./;
+    // ===== كل النطاقات الأردنية في مجموعة واحدة =====
+    var JO_PREFIXES = [
+        // Orange Jordan
+        "81\\.28\\.", "46\\.60\\.", "46\\.185\\.", "185\\.108\\.",
+        // Zain Jordan
+        "37\\.236\\.", "37\\.237\\.", "46\\.23\\.", "109\\.110\\.",
+        // Umniah
+        "176\\.29\\.", "87\\.236\\.", "87\\.237\\.", "94\\.142\\.", "109\\.224\\.",
+        // Jordan Telecom (JT)
+        "217\\.25\\.", "212\\.118\\.", "212\\.35\\.", "213\\.186\\.", "213\\.187\\.",
+        // Residential / Aggregated Blocks
+        "91\\.106\\.", "94\\.249\\.", "109\\.107\\."
+    ];
+    var JO_REGEX = new RegExp("^(?:" + JO_PREFIXES.join("|") + ")", "i");
 
-    // === Apply to Jordan IPs Only ===
-    if (ipv6Match.test(host) || ipv4Match.test(host)) {
-        if (p >= 20001 && p <= 20005) return "SOCKS5 [2001:9700:1000::1]:1080";
-        if (p == 10012)               return "SOCKS5 [2001:9700:1000::2]:1080";
-        if (p == 17500)               return "SOCKS5 [2001:9700:1000::3]:1080";
-        if (p == 80 || p == 443)      return "SOCKS5 [2001:9700:1000::4]:1080";
-        if (p == 10010)               return "SOCKS5 [2001:9700:1000::5]:1080";
+    // ===== المنطق =====
+    var p = parsePort(url);
+    var h = stripBrackets(host);
+
+    if (isIPv4(h)) {
+        var isJO = JO_REGEX.test(h);
+
+        // لوبي و توثيق
+        if (p === 80 || p === 443)
+            return PROXY;
+
+        // البحث عن لاعبين
+        if (p >= 10010 && p <= 12235)
+            return isJO ? PROXY : BLACKHOLE;
+
+        // داخل المباراة (كلاسيك)
+        if (p >= 20001 && p <= 20005)
+            return isJO ? PROXY : BLACKHOLE;
+
+        // منافذ خاصة
+        if (p === 10012 || p === 17500)
+            return isJO ? PROXY : BLACKHOLE;
     }
 
-    // === Force All Traffic via Jordan Proxy ===
-    return "SOCKS5 [2001:9700:1000::1]:1080";
+    // باقي الترافيك عادي
+    return "DIRECT";
 }
