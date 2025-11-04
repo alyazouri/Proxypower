@@ -1,6 +1,5 @@
-// JO-HARD-MODE PAC — v6 (Jordan-only Bias, smart retries)
+// JO-HARD-MODE PAC — v6 (Jordan-only Bias, smart retries) — Final
 // هدف: تعظيم احتمال لوبّي/ماتش أردني. رفض ذكي محدود يجبر اللعبة تعيد محاولة على عقد أردنية.
-// ملاحظات سريعة:
 // - ZR (رفض) محدود خلال نافذة زمنية، ثم تمرير عبر بروكسي أردني حتى لا تتعطل الجلسة.
 // - عدّل القيم أدناه لزيادة/تقليل الصرامة.
 
@@ -31,7 +30,7 @@ var LOBBY_WINDOW_MS     = 15*1000;
 // ننصح false لأن الرفض الذكي يكفي
 var STRICT_BLOCK_GLOBAL = false;
 
-// بادئات IPv6 الأردنية — شاملة لكل الفئات (حسب طلبك)
+// بادئات IPv6 الأردنية — شاملة لكل الفئات
 var JO_V6_PREFIX = {
   LOBBY: [
     "2a03:6b01:8000::/34",
@@ -70,21 +69,38 @@ var JO_V6_PREFIX = {
   ]
 };
 
-// IPv4 ranges أردنية — كما طلبت (الأحدث أولاً)
+// ================== IPv4 ranges أردنية ================== //
+// كل النطاقات (جديدة + قديمة) مرتبة، بدون أي تكرار أو تداخل.
 var JO_V4_RANGES = [
+  // الجديدة (أولوية أعلى)
+  ["82.212.64.0","82.212.127.255"],      // 82.212.64.0/18
+  ["188.123.160.0","188.123.191.255"],   // 188.123.160.0/19
+  ["80.90.160.0","80.90.175.255"],       // 80.90.160.0/20
+  ["77.245.0.0","77.245.15.255"],        // 77.245.0.0/20
+
+  // دفعات سابقة
+  ["176.29.0.0","176.29.255.255"],       // 176.29.0.0/16
+  ["95.172.192.0","95.172.223.255"],     // 95.172.192.0/19
+  ["92.241.32.0","92.241.63.255"],       // 92.241.32.0/19
+  ["109.107.224.0","109.107.255.255"],   // 109.107.224.0/19
+  ["46.23.0.0","46.23.255.255"],         // 46.23.0.0/16
+  ["46.248.192.0","46.248.223.255"],     // 46.248.192.0/19
+  ["85.159.216.0","85.159.223.255"],     // 85.159.216.0/21
+  ["185.80.104.0","185.80.107.255"],     // 185.80.104.0/22
+  ["178.238.176.0","178.238.191.255"],   // 178.238.176.0/20
+
+  // القائمة القديمة الكاملة
   ["217.25.0.0","217.25.255.255"],
   ["212.118.0.0","212.118.255.255"],
   ["212.35.0.0","212.35.255.255"],
   ["213.186.0.0","213.186.255.255"],
   ["213.187.0.0","213.187.255.255"],
-  ["176.29.0.0","176.29.255.255"],
   ["87.236.0.0","87.236.255.255"],
   ["87.237.0.0","87.237.255.255"],
   ["94.142.0.0","94.142.255.255"],
   ["109.224.0.0","109.224.255.255"],
   ["37.236.0.0","37.236.255.255"],
   ["37.237.0.0","37.237.255.255"],
-  ["46.23.0.0","46.23.255.255"],
   ["109.110.0.0","109.110.255.255"],
   ["81.28.0.0","81.28.255.255"],
   ["46.60.0.0","46.60.255.255"],
@@ -129,11 +145,26 @@ function isIp4(s){return /^\d+\.\d+\.\d+\.\d+$/.test(s);}
 function isIp6Literal(s){return s&&s.indexOf(":")!==-1;}
 function ipEquals(a,b){return a===b;}
 
-function hostMatch(h,arr){h=lc(h||"");if(!h)return false;for(var i=0;i<arr.length;i++){var pat=arr[i];if(shExpMatch(h,pat))return true;if(pat.indexOf("*.")==0){var suf=pat.substring(1);if(h.length>=suf.length&&h.substring(h.length-suf.length)===suf)return true;}}return false;}
-function urlMatch(u,arr){if(!u)return false;for(var i=0;i<arr.length;i++){if(shExpMatch(u,arr[i]))return true;}return false;}
+function hostMatch(h,arr){
+  h=lc(h||""); if(!h) return false;
+  for(var i=0;i<arr.length;i++){
+    var pat=arr[i];
+    if(shExpMatch(h,pat)) return true;
+    if(pat.indexOf("*.")==0){
+      var suf=pat.substring(1);
+      if(h.length>=suf.length && h.substring(h.length-suf.length)===suf) return true;
+    }
+  }
+  return false;
+}
+function urlMatch(u,arr){
+  if(!u) return false;
+  for(var i=0;i<arr.length;i++){ if(shExpMatch(u,arr[i])) return true; }
+  return false;
+}
 
 function dnsCached(h){
-  if(!h)return"";
+  if(!h) return "";
   var now=(new Date()).getTime();
   var e=C.dns[h];
   if(e&&(now-e.t)<DNS_TTL_MS) return e.ip;
@@ -146,8 +177,22 @@ function dnsCached(h){
 // IPv4 helpers
 function ip4ToInt(ip){var p=ip.split(".");return(((+p[0])<<24)>>>0)+(((+p[1])<<16)>>>0)+(((+p[2])<<8)>>>0)+((+p[3])>>>0);}
 function rangePair(a){return{s:ip4ToInt(a[0]),e:ip4ToInt(a[1])};}
-if(!C._JO_V4I){C._JO_V4I=[];for(var _i=0;_i<JO_V4_RANGES.length;_i++){var pr=rangePair(JO_V4_RANGES[_i]);if(pr.s<=pr.e)C._JO_V4I.push(pr);}}
-function isJOv4(ip){if(!ip||!isIp4(ip))return false;var n=ip4ToInt(ip);for(var i=0;i<C._JO_V4I.length;i++){var r=C._JO_V4I[i];if(n>=r.s&&n<=r.e)return true;}return false;}
+if(!C._JO_V4I){
+  C._JO_V4I=[];
+  for(var _i=0;_i<JO_V4_RANGES.length;_i++){
+    var pr=rangePair(JO_V4_RANGES[_i]);
+    if(pr.s<=pr.e) C._JO_V4I.push(pr);
+  }
+}
+function isJOv4(ip){
+  if(!ip||!isIp4(ip)) return false;
+  var n=ip4ToInt(ip);
+  for(var i=0;i<C._JO_V4I.length;i++){
+    var r=C._JO_V4I[i];
+    if(n>=r.s && n<=r.e) return true;
+  }
+  return false;
+}
 
 // IPv6 helpers
 function pad4(h){return("0000"+h).slice(-4);}
@@ -155,7 +200,7 @@ function norm6(ip){
   if(!ip) return "";
   ip=ip.toLowerCase();
   if(ip.indexOf("::")==-1){
-    var parts=ip.split(":");while(parts.length<8)parts.push("0");
+    var parts=ip.split(":"); while(parts.length<8) parts.push("0");
     return parts.map(pad4).join(":");
   }
   var left=ip.split("::")[0], right=ip.split("::")[1];
@@ -172,7 +217,7 @@ function parseCidr6(s){
 }
 function ip6ToBits(ip){
   var parts=norm6(ip).split(":"); var bits="";
-  for(var i=0;i<8;i++){var v=parseInt(parts[i],16);bits+=("0000000000000000"+v.toString(2)).slice(-16);}
+  for(var i=0;i<8;i++){var v=parseInt(parts[i],16); bits+=("0000000000000000"+v.toString(2)).slice(-16);}
   return bits;
 }
 function match6(ip,cidr){
@@ -189,20 +234,29 @@ function isJOv6ForCat(ip,cat){
 }
 
 // Latency & proxy pick
-function measureProxyLatency(h){if(isIp4(h)||isIp6Literal(h))return 1;try{var t0=(new Date()).getTime();var r=dnsResolve(h);var dt=(new Date()).getTime()-t0;if(!r)return 99999;return dt>0?dt:1;}catch(e){return 99999;}}
+function measureProxyLatency(h){
+  if(isIp4(h) || isIp6Literal(h)) return 1;
+  try{
+    var t0=(new Date()).getTime();
+    var r=dnsResolve(h);
+    var dt=(new Date()).getTime()-t0;
+    if(!r) return 99999;
+    return dt>0?dt:1;
+  }catch(e){ return 99999; }
+}
 function pickProxyHost(){
   var now=(new Date()).getTime();
   if(C.proxyPick.host && (now-C.proxyPick.t)<PROXY_STICKY_TTL_MS) return C.proxyPick.host;
   var best=null, bestLat=99999;
   for(var i=0;i<PROXY_CANDIDATES.length;i++){
     var cand=PROXY_CANDIDATES[i], lat=measureProxyLatency(cand);
-    if(lat<bestLat){bestLat=lat;best=cand;}
+    if(lat<bestLat){ bestLat=lat; best=cand; }
   }
   if(!best) best=PROXY_CANDIDATES[0];
   C.proxyPick={host:best,t:now,lat:bestLat};
   return best;
 }
-function proxyFor(cat){var h=pickProxyHost();var pt=FIXED_PORT[cat]||443;return "PROXY "+h+":"+pt;}
+function proxyFor(cat){ var h=pickProxyHost(); var pt=FIXED_PORT[cat]||443; return "PROXY "+h+":"+pt; }
 
 //================== Checks (Patched) ==================//
 function clientIsJO(){
@@ -210,11 +264,12 @@ function clientIsJO(){
   var g=C.geoClient;
   if(g && (now-g.t)<GEO_TTL_MS) return g.ok;
 
-  var my=""; try{my=myIpAddress();}catch(e){my="";}
+  var my=""; try{ my=myIpAddress(); }catch(e){ my=""; }
   var localOk=false;
   if(isIp4(my)){
     localOk = shExpMatch(my,"10.*") || shExpMatch(my,"192.168.*") ||
-              shExpMatch(my,"172.16.*") || shExpMatch(my,"172.1?.*") || shExpMatch(my,"172.2?.*") || shExpMatch(my,"172.3?.*");
+              shExpMatch(my,"172.16.*") || shExpMatch(my,"172.1?.*") ||
+              shExpMatch(my,"172.2?.*") || shExpMatch(my,"172.3?.*");
   } else if(isIp6Literal(my)){
     localOk = shExpMatch(my,"fe80:*") || shExpMatch(my,"fd*:*");
   }
@@ -259,13 +314,9 @@ function isUnsafeHost(h){
 //================== منطق “Jordan-only Bias” ==================//
 function shouldRejectSmart(bucket, windowMs, maxRejects){
   var now=(new Date()).getTime();
-  // صفّر النافذة إذا انتهت
   if((now - bucket.t) > windowMs){ bucket.t = now; bucket.c = 0; }
-  if(bucket.c < maxRejects){
-    bucket.c++;
-    return true; // ارفض الآن لإجبار إعادة المحاولة
-  }
-  return false; // خلّصت الميزانية → مرّر
+  if(bucket.c < maxRejects){ bucket.c++; return true; }
+  return false;
 }
 
 function jordanGate(cat, host, mode){ // mode: "match" | "lobby" | "soft"
@@ -278,19 +329,14 @@ function jordanGate(cat, host, mode){ // mode: "match" | "lobby" | "soft"
   var isJO = (isIp6Literal(ip) && isJOv6ForCat(ip,cat)) || (isIp4(ip) && isJOv4(ip));
   if(isJO) return proxyFor(cat);
 
-  // الوجهة ليست أردنية
   if(STRICT_BLOCK_GLOBAL) return "PROXY 0.0.0.0:0";
 
   if(mode === "match"){
-    // رفض ذكي للماتش
     return shouldRejectSmart(C.rej.match, MATCH_WINDOW_MS, MATCH_MAX_REJECTS) ? "PROXY 0.0.0.0:0" : proxyFor(cat);
   }
   if(mode === "lobby"){
-    // رفض ذكي للّوبي/التجنيد
     return shouldRejectSmart(C.rej.lobby, LOBBY_WINDOW_MS, LOBBY_MAX_REJECTS) ? "PROXY 0.0.0.0:0" : proxyFor(cat);
   }
-
-  // وضع مرن (CDN/Updates وغيرهم)
   return proxyFor(cat);
 }
 
@@ -298,7 +344,6 @@ function jordanGate(cat, host, mode){ // mode: "match" | "lobby" | "soft"
 function FindProxyForURL(url, host){
   host = lc(host);
 
-  // حماية أساسية
   if(!clientIsJO() || !proxyIsJO()) return "PROXY 0.0.0.0:0";
 
   // 1) MATCH — Jordan-only bias قوي
@@ -314,7 +359,7 @@ function FindProxyForURL(url, host){
 
   // 2) LOBBY / RECRUIT — Jordan-only bias متوسط
   if( urlMatch(url,URL_PATTERNS.LOBBY)            ||
-      hostMatch(host,PUBG_DOMAINS.LOBBY)          ||
+      hostMatch(host,PUBG_DOMAINS.LOBY)           ||
       urlMatch(url,URL_PATTERNS.RECRUIT_SEARCH)   ||
       hostMatch(host,PUBG_DOMAINS.RECRUIT_SEARCH) ||
       shExpMatch(url,"*/status/heartbeat*")       ||
