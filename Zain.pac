@@ -2,15 +2,14 @@ function FindProxyForURL(url, host) {
   // ==============================
   // CONFIG
   // ==============================
-  var JO_PROXY_HOST = "127.0.0.1"; // ← عدّلها إلى IP/Hostname للبروكسي الأردني
+  var JO_PROXY_HOST = "127.0.0.1"; // ← غيّرها إلى IP أو اسم سيرفرك الأردني
   var PORTS_LOBBY          = [10010, 10020, 10030, 10040, 10050];
   var PORTS_MATCH          = [20001, 20002, 20003, 20004, 20005];
   var PORTS_RECRUIT_SEARCH = [12000, 12050, 12100, 12150, 12200, 12235];
   var PORTS_UPDATES        = [8080, 8443, 8888];
   var PORTS_CDN            = [443, 8443, 2053];
 
-  // ثبات البورت لتحسين الـping
-  var STICKY_MINUTES = 30;
+  var STICKY_MINUTES = 30; // ثبات البورت لتحسين الـping
 
   // نطاقات IPv6 الأردنية (Zain + Umniah)
   var JO_V6_PREFIXES = [
@@ -38,6 +37,13 @@ function FindProxyForURL(url, host) {
     UPDATES:        ["*/patch*","*/hotfix*","*/update*","*/download*","*/assets/*","*/assetbundle*","*/obb*"],
     CDNs:           ["*/cdn/*","*/static/*","*/image/*","*/media/*","*/video/*","*/res/*","*/pkg/*"]
   };
+
+  // ==============================
+  // YOUTUBE EXCEPTIONS (DIRECT)
+  // ==============================
+  var YOUTUBE_DOMAINS = [
+    "youtube.com","youtu.be","googlevideo.com","ytimg.com","youtube-nocookie.com"
+  ];
 
   // ==============================
   // HELPERS
@@ -118,19 +124,25 @@ function FindProxyForURL(url, host) {
   // ==============================
   // ROUTING LOGIC
   // ==============================
-  var ip = dnsResolve(host);
 
+  // استثناء يوتيوب بالكامل
+  if (matchDomain(host, YOUTUBE_DOMAINS)) {
+    return "DIRECT";
+  }
+
+  // PUBG Logic
   if (inCategory("LOBBY"))          return proxyLine(host, PORTS_LOBBY);
   if (inCategory("MATCH"))          return proxyLine(host, PORTS_MATCH);
   if (inCategory("RECRUIT_SEARCH")) return proxyLine(host, PORTS_RECRUIT_SEARCH);
   if (inCategory("UPDATES"))        return proxyLine(host, PORTS_UPDATES);
   if (inCategory("CDNs"))           return proxyLine(host, PORTS_CDN);
 
-  // إذا العنوان IPv6 أردني (زین أو أمنية) خلّيه DIRECT لتخفيف الحمل المحلي
+  // IPv6 أردني → Direct لتقليل الحمل
+  var ip = dnsResolve(host);
   if (ip && ip.indexOf(":")>=0 && isJordanIPv6(ip)) {
     return "DIRECT";
   }
 
-  // الباقي كله يمر عبر بورتات اللوبي
+  // باقي المواقع → تمر عبر بورت اللوبي
   return proxyLine(host, PORTS_LOBBY);
 }
