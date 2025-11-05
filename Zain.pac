@@ -17,8 +17,8 @@ function FindProxyForURL(url, host) {
 
   // Jordan IPv6 prefixes (Zain + Umniah)
   var JO_V6 = [
-    "2a03:6b00::/29", "2a03:6b00:8000::/33", "2a03:6b00:c000::/34", // Umniah
-    "2a03:b640::/32", "2a03:b640:8000::/33", "2a03:b640:c000::/34"  // Zain
+    "2a03:b640::/32", "2a03:b640:8000::/33", "2a03:b640:c000::/34",  // Zain
+    "2a03:6b00::/29", "2a03:6b00:8000::/33", "2a03:6b00:c000::/34" // Umniah
   ];
 
   // PUBG domain categories
