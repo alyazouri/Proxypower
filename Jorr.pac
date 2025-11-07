@@ -21,8 +21,7 @@ function FindProxyForURL(url, host) {
   // نطاقات IPv4 الأردنية (ترتيب حسب طلبك: Zain/Umniah/Batelco/GO/Mada ثم Orange بالآخر)
   // ==============================
   var JO_IP_RANGES = [
-    // === Zain ===
-    "176.28.128.0/17"
+    "188.247.64.0/18"
   ];
 
   // ==============================
