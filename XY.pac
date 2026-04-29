@@ -1,11 +1,11 @@
 function FindProxyForURL(url, host) {
-  var PROXY_HOST = "91.106.109.12";
+  var PROXY_HOST = "212.35.66.45";
 
   // منافذ حسب نوع الخدمة
   var PORTS = {
     LOBBY: [443, 8443],
-    MATCH: [20001, 20003],
-    RECRUIT_SEARCH: [10012,10013],
+    MATCH: [20005],
+    RECRUIT_SEARCH: [10001,10010],
     UPDATES: [80, 443, 8443],
     CDNs: [80, 443]
   };
