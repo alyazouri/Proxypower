@@ -1,40 +1,48 @@
 // ============================================================
-// 🎮 GAME BOOSTER ALPHA v4.0 — JORDAN ULTRA MODE 2026
-// محسّن للسرعة — بدون ذبذبة — سيرفرات أردنية بيور
-// النطاقات مرتبة من الأقوى (أقل بنق) للأقل
+// 🎮 GAME BOOSTER ALPHA v4.1 — JORDAN PURE MODE 2026
+// بروكسيات أردنية مؤكدة فقط — Orange Jordan
+// محسّن للسرعة — بدون ذبذبة — بدون بروكسيات مشكوك فيها
 // ============================================================
 
 var CONFIG = {
-  // سيرفرات MATCH — أردنية خالصة بأقل بنق
-  MATCH_TIER1: "PROXY 46.185.131.218:8443",
-  MATCH_TIER2: "PROXY 212.35.66.45:20005",
-  MATCH_TIER3: "PROXY 178.238.184.2:20005",
-  MATCH_TIER4: "PROXY 109.237.205.83:20005",
-  MATCH_TIER5: "PROXY 92.253.111.235:1080",
-  MATCH_TIER6: "PROXY 37.220.121.191:443",
+  // ═══════════════════════════════════════════════════════════
+  // سيرفرات MATCH — Orange Jordan فقط — مؤكد 100%
+  // ═══════════════════════════════════════════════════════════
+  MATCH_TIER1: "PROXY 46.185.131.218:8443",    // Orange — أساسي
+  MATCH_TIER2: "PROXY 212.35.66.45:20005",     // Orange — ثانوي
+  MATCH_TIER3: "PROXY 46.185.131.218:20001",   // Orange — بديل 1
+  MATCH_TIER4: "PROXY 212.35.66.45:8085",      // Orange — بديل 2
 
-  // سيرفرات LOBBY — ترتيب حسب الأداء
+  // ═══════════════════════════════════════════════════════════
+  // سيرفرات LOBBY — Orange Jordan فقط — مؤكد 100%
+  // ═══════════════════════════════════════════════════════════
   LOBBY_FAST: [
-    "PROXY 109.237.205.83:5000",
-    "PROXY 46.185.131.218:8443",
-    "PROXY 212.35.66.45:8085",
-    "PROXY 178.238.184.2:5000",
-    "PROXY 92.253.111.235:1080",
-    "PROXY 37.220.121.191:443"
+    "PROXY 46.185.131.218:8443",               // Orange — الأسرع
+    "PROXY 212.35.66.45:20005",                // Orange — الثاني
+    "PROXY 46.185.131.218:20001",              // Orange — الثالث
+    "PROXY 212.35.66.45:8085"                  // Orange — الرابع
   ],
 
-  // صوت — مباشر بدون تأخير
-  VOICE_PROXY: "PROXY 46.185.131.218:20001",
-  VOICE_PROXY2: "PROXY 212.35.66.45:8085",
+  // ═══════════════════════════════════════════════════════════
+  // صوت — Orange Jordan فقط
+  // ═══════════════════════════════════════════════════════════
+  VOICE_PROXY: "PROXY 46.185.131.218:20001",   // Orange — صوت أساسي
+  VOICE_PROXY2: "PROXY 212.35.66.45:8085",     // Orange — صوت بديل
 
-  // CDN — مباشر دائماً للسرعة القصوى
+  // ═══════════════════════════════════════════════════════════
+  // CDN — مباشر للسرعة القصوى
+  // ═══════════════════════════════════════════════════════════
   CDN_DIRECT: "DIRECT",
 
-  // حجب — أي شيء ضار أو بطيء
+  // ═══════════════════════════════════════════════════════════
+  // حجب
+  // ═══════════════════════════════════════════════════════════
   BLOCK: "PROXY 127.0.0.1:9",
   DIRECT: "DIRECT",
 
+  // ═══════════════════════════════════════════════════════════
   // إعدادات التحسين المتقدمة
+  // ═══════════════════════════════════════════════════════════
   DNS_CACHE_TIME: 300000,
   DNS_PREFETCH_ENABLED: true,
   STICKY_SESSION_TIME: 3600000,
@@ -48,7 +56,9 @@ var CONFIG = {
   PACKET_PRIORITY: true,
   TCP_FAST_OPEN: true,
 
+  // ═══════════════════════════════════════════════════════════
   // JORDAN ONLY — فلترة صارمة
+  // ═══════════════════════════════════════════════════════════
   JORDAN_ONLY_MATCH: true,
   JORDAN_ONLY_TEAM: true,
   JORDAN_ONLY_RECRUIT: true,
@@ -56,7 +66,9 @@ var CONFIG = {
   JORDAN_ONLY_SOCIAL: true,
   BLOCK_MIDDLE_EAST_NON_JO: true,
 
+  // ═══════════════════════════════════════════════════════════
   // حدود الأداء
+  // ═══════════════════════════════════════════════════════════
   MAX_MATCH_LATENCY: 80,
   JITTER_THRESHOLD: 15,
   FAILOVER_TIMEOUT: 2000,
@@ -67,84 +79,69 @@ var CONFIG = {
 // 🇯🇴 نطاقات IP الأردنية — مرتبة من الأقوى للأقل
 // ============================================================
 
-// ───────────────────────────────────────────────
 // 🥇 الطبقة الأولى — Orange Jordan (أقوى — أقل بنق)
-// السيرفرات الرئيسية 46.185.x.x و 212.35.x.x
-// ───────────────────────────────────────────────
 var JORDAN_TIER1 = [
-  ["46.185.0.0","255.255.0.0"],          // Orange Jordan — أساسي
-  ["212.35.64.0","255.255.224.0"],       // Orange Jordan — ثانوي
+  ["46.185.0.0","255.255.0.0"],          // Orange Jordan أساسي
+  ["212.35.64.0","255.255.224.0"],       // Orange Jordan ثانوي
   ["212.34.0.0","255.255.0.0"],          // Orange Jordan
   ["212.118.0.0","255.255.0.0"],         // Orange Jordan
   ["46.32.0.0","255.255.0.0"],           // Jordan Telecom / Orange
   ["194.165.130.0","255.255.255.0"]      // Orange Jordan دقى
 ];
 
-// ───────────────────────────────────────────────
-// 🥈 الطبقة الثانية — Zain Jordan (قوي — بنق منخفض)
-// ───────────────────────────────────────────────
+// 🥈 الطبقة الثانية — Zain Jordan (قوي)
 var JORDAN_TIER2 = [
   ["178.77.0.0","255.255.0.0"],          // Zain Jordan
   ["178.76.0.0","255.255.0.0"],          // Zain Jordan
   ["82.137.192.0","255.255.192.0"],      // Zain Jordan
   ["176.29.0.0","255.255.0.0"],          // Zain Jordan
   ["176.28.0.0","255.255.0.0"],          // Zain Jordan
-  ["176.57.0.0","255.255.0.0"],          // Zain Jordan
-  ["178.238.0.0","255.255.0.0"]          // Zain — سيرفر MATCH_TIER3
+  ["176.57.0.0","255.255.0.0"]           // Zain Jordan
 ];
 
-// ───────────────────────────────────────────────
 // 🥉 الطبقة الثالثة — Umniah (متوسط-قوي)
-// ───────────────────────────────────────────────
 var JORDAN_TIER3 = [
   ["188.161.0.0","255.255.0.0"],         // Umniah
   ["188.123.0.0","255.255.0.0"],         // Umniah
   ["188.247.0.0","255.255.0.0"],         // Umniah
-  ["188.225.0.0","255.255.0.0"],         // Umniah
-  ["109.237.0.0","255.255.0.0"]          // Umniah — سيرفر MATCH_TIER4
+  ["188.225.0.0","255.255.0.0"]          // Umniah
 ];
 
-// ───────────────────────────────────────────────
 // 4️⃣ الطبقة الرابعة — Batelco / Damamax (متوسط)
-// ───────────────────────────────────────────────
 var JORDAN_TIER4 = [
   ["37.202.0.0","255.255.0.0"],          // Batelco Jordan
   ["37.252.0.0","255.255.0.0"],          // Damamax
-  ["37.220.0.0","255.255.0.0"],          // سيرفر MATCH_TIER6
   ["213.202.0.0","255.255.0.0"],         // Batelco Jordan
-  ["213.139.0.0","255.255.0.0"],         // Batelco Jordan
-  ["92.253.0.0","255.255.0.0"]           // سيرفر MATCH_TIER5
+  ["213.139.0.0","255.255.0.0"]          // Batelco Jordan
 ];
 
-// ───────────────────────────────────────────────
 // 5️⃣ الطبقة الخامسة — مزودين آخرين (أقل استقرار)
-// ───────────────────────────────────────────────
 var JORDAN_TIER5 = [
-  ["93.93.0.0","255.255.0.0"],           // Jordan Data
-  ["93.95.0.0","255.255.0.0"],           // Jordan Data
-  ["94.127.0.0","255.255.0.0"],          // MENA Telecom
-  ["79.134.0.0","255.255.0.0"],          // Link Jordan
-  ["79.173.0.0","255.255.0.0"],          // Link Jordan
-  ["85.159.0.0","255.255.0.0"],          // Jordan
-  ["77.245.0.0","255.255.0.0"],          // Jordan
-  ["217.23.0.0","255.255.0.0"],          // Jordan
-  ["185.162.0.0","255.255.0.0"],         // Jordan
-  ["185.80.0.0","255.255.0.0"],          // Jordan
-  ["185.170.0.0","255.255.0.0"],         // Jordan
-  ["185.53.0.0","255.255.0.0"],          // Jordan
-  ["45.155.0.0","255.255.0.0"],          // Jordan
-  ["149.200.0.0","255.255.0.0"],         // Jordan
-  ["149.201.0.0","255.255.0.0"],         // Jordan
-  ["5.45.128.0","255.255.128.0"],        // Jordan
-  ["5.198.0.0","255.255.0.0"],           // Jordan
-  ["31.5.0.0","255.255.0.0"],            // Jordan
-  ["31.14.0.0","255.255.0.0"],           // Jordan
-  ["195.8.0.0","255.255.0.0"]            // Jordan
+  ["93.93.0.0","255.255.0.0"],
+  ["93.95.0.0","255.255.0.0"],
+  ["94.127.0.0","255.255.0.0"],
+  ["79.134.0.0","255.255.0.0"],
+  ["79.173.0.0","255.255.0.0"],
+  ["85.159.0.0","255.255.0.0"],
+  ["77.245.0.0","255.255.0.0"],
+  ["217.23.0.0","255.255.0.0"],
+  ["185.162.0.0","255.255.0.0"],
+  ["185.80.0.0","255.255.0.0"],
+  ["185.170.0.0","255.255.0.0"],
+  ["185.53.0.0","255.255.0.0"],
+  ["45.155.0.0","255.255.0.0"],
+  ["149.200.0.0","255.255.0.0"],
+  ["149.201.0.0","255.255.0.0"],
+  ["5.45.128.0","255.255.128.0"],
+  ["5.198.0.0","255.255.0.0"],
+  ["31.5.0.0","255.255.0.0"],
+  ["31.14.0.0","255.255.0.0"],
+  ["195.8.0.0","255.255.0.0"]
 ];
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // دمج الكل بترتيب من الأقوى للأقل
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 var JORDAN_RANGES = [].concat(
   JORDAN_TIER1,
   JORDAN_TIER2,
@@ -153,9 +150,9 @@ var JORDAN_RANGES = [].concat(
   JORDAN_TIER5
 );
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // فئة السيرفر — للاختيار الذكي
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function getJordanTier(ip) {
   if (!ip) return 0;
   if (isInRangeList(ip, JORDAN_TIER1)) return 1;
@@ -170,13 +167,10 @@ function getJordanTier(ip) {
 // نطاقات بطيئة — حجب مباشر (تقليل الذبذبة)
 // ============================================================
 var HIGH_LATENCY_RANGES = [
-  // أفريقيا — بنق عالي جداً
   ["197.0.0.0","255.0.0.0"],
   ["41.0.0.0","255.0.0.0"],
   ["102.0.0.0","255.0.0.0"],
   ["196.0.0.0","255.0.0.0"],
-
-  // شرق آسيا — بعيد جداً
   ["14.0.0.0","255.0.0.0"],
   ["27.0.0.0","255.0.0.0"],
   ["49.0.0.0","255.0.0.0"],
@@ -204,11 +198,7 @@ var HIGH_LATENCY_RANGES = [
   ["126.0.0.0","255.0.0.0"],
   ["175.0.0.0","255.0.0.0"],
   ["180.0.0.0","255.0.0.0"],
-
-  // جنوب آسيا
   ["103.0.0.0","255.0.0.0"],
-
-  // أمريكا الجنوبية
   ["177.0.0.0","255.0.0.0"],
   ["179.0.0.0","255.0.0.0"],
   ["181.0.0.0","255.0.0.0"],
@@ -219,8 +209,6 @@ var HIGH_LATENCY_RANGES = [
   ["191.0.0.0","255.0.0.0"],
   ["200.0.0.0","255.0.0.0"],
   ["201.0.0.0","255.0.0.0"],
-
-  // Cloudflare محملة
   ["104.16.0.0","255.240.0.0"],
   ["172.64.0.0","255.248.0.0"],
   ["104.24.0.0","255.252.0.0"]
@@ -245,7 +233,7 @@ var BLOCKED_RANGES = [
 ];
 
 // ============================================================
-// أنماط ترافيك PUBG — موسعة ودقيقة
+// أنماط ترافيك PUBG
 // ============================================================
 var MATCH_PATTERNS = [
   "*.pubgmobile.com","*.tencentigame.com",
@@ -346,17 +334,12 @@ var SESSION = {
 
   dnsCache: {},
 
+  // بروكسيات Orange Jordan فقط
   proxyHealth: {
-    "PROXY 46.185.131.218:8443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 212.35.66.45:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 178.238.184.2:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 109.237.205.83:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 92.253.111.235:1080": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 37.220.121.191:443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 46.185.131.218:8443":  { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 212.35.66.45:20005":   { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
     "PROXY 46.185.131.218:20001": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 212.35.66.45:8085": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 109.237.205.83:5000": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 178.238.184.2:5000": { latency: 0, failCount: 0, lastCheck: 0, score: 100 }
+    "PROXY 212.35.66.45:8085":    { latency: 0, failCount: 0, lastCheck: 0, score: 100 }
   },
 
   networkMap: {},
@@ -410,7 +393,7 @@ function getNetworkPrefix(ip) {
 }
 
 // ============================================================
-// نظام DNS ذكي مع تخزين مؤقت متقدم
+// نظام DNS ذكي
 // ============================================================
 
 function fastResolve(host) {
@@ -482,7 +465,7 @@ function cleanDNSCache() {
 }
 
 // ============================================================
-// تصنيف الترافيك المتقدم
+// تصنيف الترافيك
 // ============================================================
 
 function isPUBGTraffic(host) {
@@ -542,7 +525,7 @@ function isSocialTraffic(url, host) {
 }
 
 // ============================================================
-// نظام اختيار البروكسي المتقدم
+// نظام اختيار البروكسي المتقدم — Orange فقط
 // ============================================================
 
 function getBestProxy(proxyList) {
@@ -558,24 +541,13 @@ function getBestProxy(proxyList) {
   return bestProxy;
 }
 
-/**
- * اختيار بروكسي بناءً على طبقة السيرفر
- * Tier 1 = أقوى بروكسي — Tier 5 = أضعف بروكسي
- */
 function selectProxyByTier(tier) {
   switch(tier) {
-    case 1:
-      return CONFIG.MATCH_TIER1;
-    case 2:
-      return CONFIG.MATCH_TIER2;
-    case 3:
-      return CONFIG.MATCH_TIER3;
-    case 4:
-      return CONFIG.MATCH_TIER4;
-    case 5:
-      return CONFIG.MATCH_TIER5;
-    default:
-      return CONFIG.MATCH_TIER1;
+    case 1: return CONFIG.MATCH_TIER1;
+    case 2: return CONFIG.MATCH_TIER2;
+    case 3: return CONFIG.MATCH_TIER3;
+    case 4: return CONFIG.MATCH_TIER4;
+    default: return CONFIG.MATCH_TIER1;
   }
 }
 
@@ -583,14 +555,12 @@ function selectLobbyProxy(host, ip) {
   var prefix = getNetworkPrefix(ip);
   var tier = getJordanTier(ip);
 
-  // اختيار بروكسي حسب قوة السيرفر
   var preferredProxy;
   switch(tier) {
     case 1: preferredProxy = CONFIG.LOBBY_FAST[0]; break;
     case 2: preferredProxy = CONFIG.LOBBY_FAST[1]; break;
     case 3: preferredProxy = CONFIG.LOBBY_FAST[2]; break;
-    case 4: preferredProxy = CONFIG.LOBBY_FAST[3]; break;
-    default: preferredProxy = CONFIG.LOBBY_FAST[4]; break;
+    default: preferredProxy = CONFIG.LOBBY_FAST[3]; break;
   }
 
   if (!SESSION.lobby.affinityMap[prefix]) {
@@ -613,9 +583,7 @@ function buildMatchChain() {
   return CONFIG.MATCH_TIER1 + "; " +
          CONFIG.MATCH_TIER2 + "; " +
          CONFIG.MATCH_TIER3 + "; " +
-         CONFIG.MATCH_TIER4 + "; " +
-         CONFIG.MATCH_TIER5 + "; " +
-         CONFIG.MATCH_TIER6;
+         CONFIG.MATCH_TIER4;
 }
 
 function buildLobbyChain(primary) {
@@ -684,8 +652,7 @@ function switchMatchProxy() {
 
   var allProxies = [
     CONFIG.MATCH_TIER1, CONFIG.MATCH_TIER2,
-    CONFIG.MATCH_TIER3, CONFIG.MATCH_TIER4,
-    CONFIG.MATCH_TIER5, CONFIG.MATCH_TIER6
+    CONFIG.MATCH_TIER3, CONFIG.MATCH_TIER4
   ];
 
   var newProxy = getBestProxy(allProxies);
@@ -740,20 +707,18 @@ function performMaintenance() {
 }
 
 // ============================================================
-// معالجة ترافيك المباراة المتقدمة
+// معالجة ترافيك المباراة
 // ============================================================
 
 function handleMatchTraffic(url, host, ip) {
   var prefix = getNetworkPrefix(ip);
   var tier = getJordanTier(ip);
 
-  // فحص أردن فقط
   if (CONFIG.JORDAN_ONLY_MATCH && !isInRangeList(ip, JORDAN_RANGES)) {
     SESSION.counters.jordanBlocked++;
     return CONFIG.BLOCK;
   }
 
-  // تسجيل الطبقة
   switch(tier) {
     case 1: SESSION.counters.tier1Hits++; break;
     case 2: SESSION.counters.tier2Hits++; break;
@@ -762,7 +727,6 @@ function handleMatchTraffic(url, host, ip) {
     case 5: SESSION.counters.tier5Hits++; break;
   }
 
-  // جلسة جديدة — اختيار بروكسي حسب قوة السيرفر
   if (!SESSION.match.locked) {
     SESSION.match.networkPrefix = prefix;
     SESSION.match.hostname = host;
@@ -776,7 +740,6 @@ function handleMatchTraffic(url, host, ip) {
     return buildMatchChain();
   }
 
-  // نفس المضيف ونفس الشبكة
   if (host === SESSION.match.hostname && prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
 
@@ -788,13 +751,11 @@ function handleMatchTraffic(url, host, ip) {
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3;
   }
 
-  // نفس الشبكة مضيف مختلف
   if (prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2;
   }
 
-  // شبكة مختلفة — حجب
   SESSION.match.failCount++;
   return CONFIG.BLOCK;
 }
@@ -810,56 +771,45 @@ function FindProxyForURL(url, host) {
 
   performMaintenance();
 
-  // ليس ترافيك PUBG
   if (!isPUBGTraffic(host)) return CONFIG.DIRECT;
 
-  // حل DNS
   var ip = fastResolve(host);
 
-  // IP غير صالح
   if (!ip || ip.indexOf(":") !== -1) {
     SESSION.counters.blockedRequests++;
     return CONFIG.BLOCK;
   }
 
-  // IP محظور (نطاقات خاصة)
   if (isInRangeList(ip, BLOCKED_RANGES)) {
     SESSION.counters.blockedRequests++;
     return CONFIG.BLOCK;
   }
 
-  // نطاقات بطيئة — حجب مباشر
   if (CONFIG.AGGRESSIVE_BLOCK && isInRangeList(ip, HIGH_LATENCY_RANGES)) {
     SESSION.counters.latencyBlocked++;
     return CONFIG.BLOCK;
   }
 
-  // تحديث جودة الاتصال
   updateConnectionQuality();
 
-  // تحليلات وتيليمتري — حجب
   if (isAnalyticsTraffic(url, host)) {
     SESSION.counters.blockedRequests++;
     return CONFIG.BLOCK;
   }
 
-  // CDN — مباشر
   if (isCDNTraffic(url, host)) {
     return CONFIG.CDN_DIRECT;
   }
 
-  // VOICE
   if (isVoiceTraffic(url, host)) {
     return CONFIG.VOICE_PROXY + "; " + CONFIG.VOICE_PROXY2 + "; " + CONFIG.DIRECT;
   }
 
-  // MATCH
   if (isMatchTraffic(url, host)) {
     SESSION.counters.matchRequests++;
     return handleMatchTraffic(url, host, ip);
   }
 
-  // RECRUIT
   if (isRecruitTraffic(url, host)) {
     SESSION.counters.lobbyRequests++;
     if (CONFIG.JORDAN_ONLY_RECRUIT && !isInRangeList(ip, JORDAN_RANGES)) {
@@ -869,7 +819,6 @@ function FindProxyForURL(url, host) {
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // LOBBY / SOCIAL
   if (isLobbyTraffic(url, host) || isSocialTraffic(url, host)) {
     SESSION.counters.lobbyRequests++;
     if (CONFIG.JORDAN_ONLY_LOBBY && !isInRangeList(ip, JORDAN_RANGES)) {
@@ -879,17 +828,15 @@ function FindProxyForURL(url, host) {
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // أي ترافيك PUBG أردني
   if (isInRangeList(ip, JORDAN_RANGES)) {
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // حجب كل شيء
   SESSION.counters.blockedRequests++;
   return CONFIG.BLOCK;
 }
 
 // ============================================================
-// جلب DNS مسبق عند التحميل
+// جلب DNS مسبق
 // ============================================================
 prefetchDNS();
