@@ -1,12 +1,13 @@
 // ============================================================
-// 🎮 GAME BOOSTER ALPHA v5.0 — ULTIMATE PURE JORDAN 2026
+// 🎮 GAME BOOSTER ALPHA v6.0 — FIXED PURE JORDAN 2026
 // ═══════════════════════════════════════════════════════════
-// استقبال كامل + إرسال كامل + كل الترافيك
-// سيرفرات أردنية بيور 100% — Orange Jordan فقط
-// بدون ذبذبة — أقل بنق — أعلى أداء
+// إصلاح مشكلة: اللاعبين من برا الأردن
+// السبب: كان يحجب IP السيرفر (Tencent) بدل ما يوجه
+// الحل: كل ترافيك PUBG يمر عبر بروكسي أردني
+// النتيجة: السيرفر يشوفك أردني → لاعبين أردنيين فقط
 // ============================================================
 
-var VERSION = "5.0";
+var VERSION = "6.0";
 var BUILD_DATE = "2026-01-15";
 
 // ============================================================
@@ -15,7 +16,9 @@ var BUILD_DATE = "2026-01-15";
 var CONFIG = {
 
   // ═══════════════════════════════════════════════════════════
-  // سيرفرات MATCH — Orange Jordan — استقبال + إرسال
+  // سيرفرات MATCH — Orange Jordan
+  // الاتصال باللعبة يمر عبر هذي السيرفرات
+  // السيرفر يشوفك كأنك بالاردن
   // ═══════════════════════════════════════════════════════════
   MATCH_TIER1: "PROXY 46.185.131.218:8443",
   MATCH_TIER2: "PROXY 212.35.66.45:20005",
@@ -23,7 +26,7 @@ var CONFIG = {
   MATCH_TIER4: "PROXY 212.35.66.45:8085",
 
   // ═══════════════════════════════════════════════════════════
-  // سيرفرات LOBBY — Orange Jordan — استقبال + إرسال
+  // سيرفرات LOBBY — Orange Jordan
   // ═══════════════════════════════════════════════════════════
   LOBBY_FAST: [
     "PROXY 46.185.131.218:8443",
@@ -33,78 +36,14 @@ var CONFIG = {
   ],
 
   // ═══════════════════════════════════════════════════════════
-  // سيرفرات VOICE — Orange Jordan — استقبال صوت + إرسال صوت
+  // VOICE — Orange Jordan
   // ═══════════════════════════════════════════════════════════
   VOICE_SEND: "PROXY 46.185.131.218:20001",
   VOICE_RECV: "PROXY 212.35.66.45:8085",
   VOICE_FALLBACK: "PROXY 46.185.131.218:8443",
 
   // ═══════════════════════════════════════════════════════════
-  // سيرفرات UPLOAD — إرسال بيانات اللعبة
-  // ═══════════════════════════════════════════════════════════
-  UPLOAD_TIER1: "PROXY 46.185.131.218:8443",
-  UPLOAD_TIER2: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات DOWNLOAD — استقبال بيانات اللعبة
-  // ═══════════════════════════════════════════════════════════
-  DOWNLOAD_TIER1: "PROXY 46.185.131.218:20001",
-  DOWNLOAD_TIER2: "PROXY 212.35.66.45:8085",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات SOCIAL — استقبال + إرسال اجتماعي
-  // ═══════════════════════════════════════════════════════════
-  SOCIAL_PRIMARY: "PROXY 46.185.131.218:8443",
-  SOCIAL_SECONDARY: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات SHOP / STORE
-  // ═══════════════════════════════════════════════════════════
-  SHOP_PROXY: "PROXY 46.185.131.218:8443",
-  SHOP_FALLBACK: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات EVENTS / SEASON
-  // ═══════════════════════════════════════════════════════════
-  EVENT_PROXY: "PROXY 46.185.131.218:8443",
-  EVENT_FALLBACK: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات SETTINGS / CONFIG
-  // ═══════════════════════════════════════════════════════════
-  SETTINGS_PROXY: "PROXY 46.185.131.218:8443",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات ANTI-CHEAT / AUTH
-  // ═══════════════════════════════════════════════════════════
-  AUTH_PROXY: "PROXY 46.185.131.218:8443",
-  AUTH_FALLBACK: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات PUSH / NOTIFICATION
-  // ═══════════════════════════════════════════════════════════
-  PUSH_PROXY: "PROXY 46.185.131.218:20001",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات REPLAY / SPECTATE
-  // ═══════════════════════════════════════════════════════════
-  REPLAY_PROXY: "PROXY 212.35.66.45:20005",
-  SPECTATE_PROXY: "PROXY 46.185.131.218:20001",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات CLAN / CREW WARS
-  // ═══════════════════════════════════════════════════════════
-  CLAN_PROXY: "PROXY 46.185.131.218:8443",
-  CLAN_FALLBACK: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // سيرفرات RANKING / LEADERBOARD
-  // ═══════════════════════════════════════════════════════════
-  RANK_PROXY: "PROXY 46.185.131.218:8443",
-  RANK_FALLBACK: "PROXY 212.35.66.45:20005",
-
-  // ═══════════════════════════════════════════════════════════
-  // CDN — مباشر للسرعة القصوى
+  // CDN — مباشر
   // ═══════════════════════════════════════════════════════════
   CDN_DIRECT: "DIRECT",
 
@@ -115,7 +54,7 @@ var CONFIG = {
   DIRECT: "DIRECT",
 
   // ═══════════════════════════════════════════════════════════
-  // إعدادات التحسين المتقدمة
+  // إعدادات التحسين
   // ═══════════════════════════════════════════════════════════
   DNS_CACHE_TIME: 300000,
   DNS_PREFETCH_ENABLED: true,
@@ -123,42 +62,22 @@ var CONFIG = {
   AGGRESSIVE_BLOCK: true,
   ANTI_JITTER: true,
   ADAPTIVE_FAILOVER: true,
-  CONNECTION_REUSE: true,
-  PREFETCH_GAME_SERVERS: true,
   LOW_LATENCY_MODE: true,
-  BANDWIDTH_OPTIMIZATION: true,
-  PACKET_PRIORITY: true,
-  TCP_FAST_OPEN: true,
-  UPLOAD_OPTIMIZATION: true,
-  DOWNLOAD_OPTIMIZATION: true,
   DUPLEX_MODE: true,
-  SPLIT_SEND_RECV: true,
 
   // ═══════════════════════════════════════════════════════════
-  // JORDAN ONLY — فلترة صارمة
+  // ★★★ مفتاح الإصلاح ★★★
+  // FORCE_ALL_PROXY = كل ترافيك PUBG يمر عبر بروكسي أردني
+  // هذا يخلي السيرفر يشوفك بالاردن → لاعبين أردنيين
   // ═══════════════════════════════════════════════════════════
-  JORDAN_ONLY_MATCH: true,
-  JORDAN_ONLY_TEAM: true,
-  JORDAN_ONLY_RECRUIT: true,
-  JORDAN_ONLY_LOBBY: true,
-  JORDAN_ONLY_SOCIAL: true,
-  JORDAN_ONLY_VOICE: true,
-  JORDAN_ONLY_UPLOAD: true,
-  JORDAN_ONLY_DOWNLOAD: true,
-  JORDAN_ONLY_SHOP: true,
-  JORDAN_ONLY_EVENT: true,
-  JORDAN_ONLY_CLAN: true,
-  JORDAN_ONLY_RANK: true,
-  JORDAN_ONLY_REPLAY: true,
-  JORDAN_ONLY_SPECTATE: true,
-  JORDAN_ONLY_PUSH: true,
-  JORDAN_ONLY_AUTH: true,
-  BLOCK_MIDDLE_EAST_NON_JO: true,
-  BLOCK_ALL_NON_JORDAN: true,
+  FORCE_ALL_PUBG_THROUGH_PROXY: true,
+  FORCE_MATCH_THROUGH_PROXY: true,
+  FORCE_LOBBY_THROUGH_PROXY: true,
+  FORCE_VOICE_THROUGH_PROXY: true,
+  FORCE_SOCIAL_THROUGH_PROXY: true,
+  FORCE_ALL_THROUGH_PROXY: true,
 
-  // ═══════════════════════════════════════════════════════════
   // حدود الأداء
-  // ═══════════════════════════════════════════════════════════
   MAX_MATCH_LATENCY: 80,
   JITTER_THRESHOLD: 15,
   FAILOVER_TIMEOUT: 2000,
@@ -166,10 +85,9 @@ var CONFIG = {
 };
 
 // ============================================================
-// 🇯🇴 نطاقات IP الأردنية — مرتبة من الأقوى للأقل
+// 🇯🇴 نطاقات IP الأردنية
 // ============================================================
 
-// 🥇 الطبقة الأولى — Orange Jordan (أقوى — أقل بنق)
 var JORDAN_TIER1 = [
   ["46.185.0.0","255.255.0.0"],
   ["212.35.64.0","255.255.224.0"],
@@ -179,7 +97,6 @@ var JORDAN_TIER1 = [
   ["194.165.130.0","255.255.255.0"]
 ];
 
-// 🥈 الطبقة الثانية — Zain Jordan (قوي)
 var JORDAN_TIER2 = [
   ["178.77.0.0","255.255.0.0"],
   ["178.76.0.0","255.255.0.0"],
@@ -189,7 +106,6 @@ var JORDAN_TIER2 = [
   ["176.57.0.0","255.255.0.0"]
 ];
 
-// 🥉 الطبقة الثالثة — Umniah (متوسط-قوي)
 var JORDAN_TIER3 = [
   ["188.161.0.0","255.255.0.0"],
   ["188.123.0.0","255.255.0.0"],
@@ -197,7 +113,6 @@ var JORDAN_TIER3 = [
   ["188.225.0.0","255.255.0.0"]
 ];
 
-// 4️⃣ الطبقة الرابعة — Batelco / Damamax (متوسط)
 var JORDAN_TIER4 = [
   ["37.202.0.0","255.255.0.0"],
   ["37.252.0.0","255.255.0.0"],
@@ -205,38 +120,26 @@ var JORDAN_TIER4 = [
   ["213.139.0.0","255.255.0.0"]
 ];
 
-// 5️⃣ الطبقة الخامسة — مزودين آخرين
 var JORDAN_TIER5 = [
-  ["93.93.0.0","255.255.0.0"],
-  ["93.95.0.0","255.255.0.0"],
-  ["94.127.0.0","255.255.0.0"],
-  ["79.134.0.0","255.255.0.0"],
-  ["79.173.0.0","255.255.0.0"],
-  ["85.159.0.0","255.255.0.0"],
-  ["77.245.0.0","255.255.0.0"],
-  ["217.23.0.0","255.255.0.0"],
-  ["185.162.0.0","255.255.0.0"],
-  ["185.80.0.0","255.255.0.0"],
-  ["185.170.0.0","255.255.0.0"],
-  ["185.53.0.0","255.255.0.0"],
-  ["45.155.0.0","255.255.0.0"],
-  ["149.200.0.0","255.255.0.0"],
-  ["149.201.0.0","255.255.0.0"],
-  ["5.45.128.0","255.255.128.0"],
-  ["5.198.0.0","255.255.0.0"],
-  ["31.5.0.0","255.255.0.0"],
-  ["31.14.0.0","255.255.0.0"],
-  ["195.8.0.0","255.255.0.0"]
+  ["93.93.0.0","255.255.0.0"],["93.95.0.0","255.255.0.0"],
+  ["94.127.0.0","255.255.0.0"],["79.134.0.0","255.255.0.0"],
+  ["79.173.0.0","255.255.0.0"],["85.159.0.0","255.255.0.0"],
+  ["77.245.0.0","255.255.0.0"],["217.23.0.0","255.255.0.0"],
+  ["185.162.0.0","255.255.0.0"],["185.80.0.0","255.255.0.0"],
+  ["185.170.0.0","255.255.0.0"],["185.53.0.0","255.255.0.0"],
+  ["45.155.0.0","255.255.0.0"],["149.200.0.0","255.255.0.0"],
+  ["149.201.0.0","255.255.0.0"],["5.45.128.0","255.255.128.0"],
+  ["5.198.0.0","255.255.0.0"],["31.5.0.0","255.255.0.0"],
+  ["31.14.0.0","255.255.0.0"],["195.8.0.0","255.255.0.0"]
 ];
 
-// دمج الكل
 var JORDAN_RANGES = [].concat(
   JORDAN_TIER1, JORDAN_TIER2, JORDAN_TIER3,
   JORDAN_TIER4, JORDAN_TIER5
 );
 
 // ============================================================
-// نطاقات بطيئة — حجب مباشر
+// نطاقات بطيئة — حجب
 // ============================================================
 var HIGH_LATENCY_RANGES = [
   ["197.0.0.0","255.0.0.0"],["41.0.0.0","255.0.0.0"],
@@ -265,7 +168,7 @@ var HIGH_LATENCY_RANGES = [
 ];
 
 // ============================================================
-// نطاقات خاصة — حجب مباشر
+// نطاقات خاصة
 // ============================================================
 var BLOCKED_RANGES = [
   ["10.0.0.0","255.0.0.0"],
@@ -283,10 +186,10 @@ var BLOCKED_RANGES = [
 ];
 
 // ============================================================
-// 🎯 أنماط ترافيك PUBG — شاملة لكلشي
+// 🎯 أنماط ترافيك PUBG — شاملة
 // ============================================================
 
-// ─────────────── MATCH — إرسال واستقبال بيانات المباراة ───────────────
+// MATCH — بيانات المباراة (إرسال + استقبال)
 var MATCH_PATTERNS = [
   "*match*.pubgmobile.com","*match*.tencentigame.com",
   "*game*.pubgmobile.com","*game*.tencent.com",
@@ -297,42 +200,35 @@ var MATCH_PATTERNS = [
   "*miramar*.pubgmobile.com","*sanhok*.pubgmobile.com",
   "*vikendi*.pubgmobile.com","*karakin*.pubgmobile.com",
   "*nusa*.pubgmobile.com","*aftermath*.pubgmobile.com",
-  "*rodeo*.pubgmobile.com","*ultoran*.pubgmobile.com",
-  "*map*.pubgmobile.com","*server*.pubgmobile.com",
-  "*game*.proximabeta.com","*game*.proximabeta.net",
-  "*gate*.pubgmobile.com","*gateway*.pubgmobile.com",
-  "*connect*.pubgmobile.com","*session*.pubgmobile.com",
-  "*realtime*.pubgmobile.com","*sync*.pubgmobile.com",
-  "*state*.pubgmobile.com","*play*.pubgmobile.com",
+  "*server*.pubgmobile.com","*gate*.pubgmobile.com",
+  "*gateway*.pubgmobile.com","*connect*.pubgmobile.com",
+  "*session*.pubgmobile.com","*realtime*.pubgmobile.com",
+  "*sync*.pubgmobile.com","*play*.pubgmobile.com",
   "*enter*.pubgmobile.com","*start*.pubgmobile.com",
-  "*load*.pubgmobile.com","*spawn*.pubgmobile.com",
   "*.igamecj.com","*.proximabeta.com",
   "*.proximabeta.net","*.gcloudcs.com"
 ];
 
-// ─────────────── LOBBY — إرسال واستقبال بيانات اللوبي ───────────────
+// LOBBY — بيانات اللوبي (إرسال + استقبال)
 var LOBBY_PATTERNS = [
   "*lobby*.pubgmobile.com","*lobby*.tencent.com",
-  "*lobby*.tencentigame.com","*lobby*.proximabeta.com",
-  "*main*.pubgmobile.com","*home*.pubgmobile.com",
-  "*menu*.pubgmobile.com","*hub*.pubgmobile.com",
-  "*ready*.pubgmobile.com","*prepare*.pubgmobile.com",
-  "*waiting*.pubgmobile.com","*idle*.pubgmobile.com"
+  "*lobby*.tencentigame.com","*main*.pubgmobile.com",
+  "*home*.pubgmobile.com","*menu*.pubgmobile.com",
+  "*hub*.pubgmobile.com","*ready*.pubgmobile.com",
+  "*waiting*.pubgmobile.com"
 ];
 
-// ─────────────── RECRUIT — إرسال واستقبال تجنيد ───────────────
+// RECRUIT — تجنيد (إرسال + استقبال)
 var RECRUIT_PATTERNS = [
   "*recruit*.pubgmobile.com","*team*.pubgmobile.com",
   "*matchmake*.pubgmobile.com","*queue*.pubgmobile.com",
   "*invite*.pubgmobile.com","*group*.pubgmobile.com",
   "*squad*.pubgmobile.com","*duo*.pubgmobile.com",
-  "*solo*.pubgmobile.com","*party*.pubgmobile.com",
-  "*find*.pubgmobile.com","*search*.pubgmobile.com",
-  "*join*.pubgmobile.com","*pair*.pubgmobile.com",
-  "*assemble*.pubgmobile.com"
+  "*party*.pubgmobile.com","*find*.pubgmobile.com",
+  "*search*.pubgmobile.com","*join*.pubgmobile.com"
 ];
 
-// ─────────────── VOICE — إرسال صوت واستقبال صوت ───────────────
+// VOICE — صوت (إرسال + استقبال)
 var VOICE_PATTERNS = [
   "*voice*.pubgmobile.com","*rtc*.tencent.com",
   "*trtc*.com","*trtc*.tencent.com",
@@ -341,158 +237,120 @@ var VOICE_PATTERNS = [
   "*talk*.pubgmobile.com","*call*.pubgmobile.com",
   "*media*.pubgmobile.com","*stream*.pubgmobile.com",
   "*rtc*.gcloudcs.com","*av*.tencent.com",
-  "*imservice*.tencent.com","*sound*.pubgmobile.com"
+  "*imservice*.tencent.com"
 ];
 
-// ─────────────── UPLOAD — إرسال بيانات للسيرفر ───────────────
+// UPLOAD — إرسال بيانات للسيرفر
 var UPLOAD_PATTERNS = [
   "*upload*.pubgmobile.com","*upload*.tencent.com",
   "*put*.pubgmobile.com","*post*.pubgmobile.com",
   "*submit*.pubgmobile.com","*send*.pubgmobile.com",
-  "*report*.pubgmobile.com","*input*.pubgmobile.com",
-  "*action*.pubgmobile.com","*cmd*.pubgmobile.com",
-  "*command*.pubgmobile.com","*move*.pubgmobile.com",
-  "*shoot*.pubgmobile.com","*hit*.pubgmobile.com",
-  "*damage*.pubgmobile.com","*kill*.pubgmobile.com",
-  "*death*.pubgmobile.com","*loot*.pubgmobile.com",
-  "*pickup*.pubgmobile.com","*drop*.pubgmobile.com",
-  "*use*.pubgmobile.com","*heal*.pubgmobile.com",
-  "*revive*.pubgmobile.com","*drive*.pubgmobile.com",
-  "*position*.pubgmobile.com","*location*.pubgmobile.com"
+  "*input*.pubgmobile.com","*action*.pubgmobile.com",
+  "*cmd*.pubgmobile.com","*position*.pubgmobile.com"
 ];
 
-// ─────────────── DOWNLOAD — استقبال بيانات من السيرفر ───────────────
+// DOWNLOAD — استقبال بيانات من السيرفر
 var DOWNLOAD_PATTERNS = [
   "*download*.pubgmobile.com","*download*.tencent.com",
   "*get*.pubgmobile.com","*fetch*.pubgmobile.com",
-  "*receive*.pubgmobile.com","*pull*.pubgmobile.com",
-  "*payload*.pubgmobile.com","*data*.pubgmobile.com",
-  "*response*.pubgmobile.com","*result*.pubgmobile.com",
-  "*state*.pubgmobile.com","*update*.pubgmobile.com",
-  "*tick*.pubgmobile.com","*frame*.pubgmobile.com",
-  "*snapshot*.pubgmobile.com","*delta*.pubgmobile.com"
+  "*receive*.pubgmobile.com","*payload*.pubgmobile.com",
+  "*data*.pubgmobile.com","*response*.pubgmobile.com",
+  "*tick*.pubgmobile.com","*snapshot*.pubgmobile.com"
 ];
 
-// ─────────────── SOCIAL — إرسال واستقبال اجتماعي ───────────────
+// SOCIAL — اجتماعي
 var SOCIAL_PATTERNS = [
   "*social*.pubgmobile.com","*chat*.pubgmobile.com",
   "*message*.pubgmobile.com","*msg*.pubgmobile.com",
-  "*friend*.pubgmobile.com","*buddy*.pubgmobile.com",
-  "*follow*.pubgmobile.com","*block*.pubgmobile.com",
-  "*report*.pubgmobile.com","*mail*.pubgmobile.com",
-  "*inbox*.pubgmobile.com","*notify*.pubgmobile.com",
-  "*gift*.pubgmobile.com","*like*.pubgmobile.com",
-  "*comment*.pubgmobile.com","*share*.pubgmobile.com"
+  "*friend*.pubgmobile.com","*mail*.pubgmobile.com",
+  "*inbox*.pubgmobile.com","*gift*.pubgmobile.com"
 ];
 
-// ─────────────── CLAN — إرسال واستقبال كلان ───────────────
+// CLAN — كلان
 var CLAN_PATTERNS = [
   "*clan*.pubgmobile.com","*crew*.pubgmobile.com",
-  "*guild*.pubgmobile.com","*team*.pubgmobile.com",
-  "*member*.pubgmobile.com","*rank*.pubgmobile.com",
-  "*promotion*.pubgmobile.com","*war*.pubgmobile.com",
+  "*guild*.pubgmobile.com","*war*.pubgmobile.com",
   "*clash*.pubgmobile.com","*versus*.pubgmobile.com"
 ];
 
-// ─────────────── SHOP — إرسال واستقبال متجر ───────────────
+// SHOP — متجر
 var SHOP_PATTERNS = [
   "*shop*.pubgmobile.com","*store*.pubgmobile.com",
   "*buy*.pubgmobile.com","*purchase*.pubgmobile.com",
-  "*payment*.pubgmobile.com","*pay*.pubgmobile.com",
-  "*uc*.pubgmobile.com","*bp*.pubgmobile.com",
-  "*crate*.pubgmobile.com","*spin*.pubgmobile.com",
-  "*lucky*.pubgmobile.com","*draw*.pubgmobile.com",
-  "*royal*.pubgmobile.com","*pass*.pubgmobile.com",
-  "*rp*.pubgmobile.com","*season*.pubgmobile.com",
-  "*outfit*.pubgmobile.com","*skin*.pubgmobile.com",
-  "*weapon*.pubgmobile.com","*item*.pubgmobile.com"
+  "*payment*.pubgmobile.com","*uc*.pubgmobile.com",
+  "*bp*.pubgmobile.com","*crate*.pubgmobile.com",
+  "*spin*.pubgmobile.com","*royal*.pubgmobile.com",
+  "*pass*.pubgmobile.com","*skin*.pubgmobile.com"
 ];
 
-// ─────────────── EVENTS — إرسال واستقبال أحداث ───────────────
+// EVENTS — أحداث
 var EVENT_PATTERNS = [
-  "*event*.pubgmobile.com","*events*.pubgmobile.com",
-  "*mission*.pubgmobile.com","*task*.pubgmobile.com",
-  "*challenge*.pubgmobile.com","*reward*.pubgmobile.com",
-  "*daily*.pubgmobile.com","*weekly*.pubgmobile.com",
-  "*bonus*.pubgmobile.com","*special*.pubgmobile.com",
-  "*limited*.pubgmobile.com","*promo*.pubgmobile.com",
-  "*lottery*.pubgmobile.com","*mini*.pubgmobile.com",
-  "*arcade*.pubgmobile.com"
+  "*event*.pubgmobile.com","*mission*.pubgmobile.com",
+  "*task*.pubgmobile.com","*challenge*.pubgmobile.com",
+  "*reward*.pubgmobile.com","*daily*.pubgmobile.com",
+  "*weekly*.pubgmobile.com","*bonus*.pubgmobile.com",
+  "*special*.pubgmobile.com","*promo*.pubgmobile.com"
 ];
 
-// ─────────────── RANK — إرسال واستقبال ترتيب ───────────────
+// RANK — ترتيب
 var RANK_PATTERNS = [
   "*rank*.pubgmobile.com","*leaderboard*.pubgmobile.com",
   "*rating*.pubgmobile.com","*tier*.pubgmobile.com",
   "*score*.pubgmobile.com","*stat*.pubgmobile.com",
   "*stats*.pubgmobile.com","*history*.pubgmobile.com",
-  "*record*.pubgmobile.com","*achievement*.pubgmobile.com",
-  "*badge*.pubgmobile.com","*title*.pubgmobile.com"
+  "*achievement*.pubgmobile.com"
 ];
 
-// ─────────────── REPLAY — إرسال واستقبال إعادة ───────────────
+// AUTH — مصادقة
+var AUTH_PATTERNS = [
+  "*auth*.pubgmobile.com","*login*.pubgmobile.com",
+  "*token*.pubgmobile.com","*verify*.pubgmobile.com",
+  "*session*.pubgmobile.com","*passport*.pubgmobile.com",
+  "*anticheat*.pubgmobile.com","*security*.pubgmobile.com"
+];
+
+// REPLAY — إعادة
 var REPLAY_PATTERNS = [
   "*replay*.pubgmobile.com","*record*.pubgmobile.com",
-  "*playback*.pubgmobile.com","*highlight*.pubgmobile.com",
-  "*clip*.pubgmobile.com","*video*.pubgmobile.com",
-  "*capture*.pubgmobile.com","*moments*.pubgmobile.com"
+  "*highlight*.pubgmobile.com","*clip*.pubgmobile.com"
 ];
 
-// ─────────────── SPECTATE — إرسال واستقبال مشاهدة ───────────────
+// SPECTATE — مشاهدة
 var SPECTATE_PATTERNS = [
   "*spectate*.pubgmobile.com","*watch*.pubgmobile.com",
-  "*live*.pubgmobile.com","*stream*.pubgmobile.com",
-  "*observe*.pubgmobile.com","*view*.pubgmobile.com",
-  "*broadcast*.pubgmobile.com"
+  "*live*.pubgmobile.com","*broadcast*.pubgmobile.com"
 ];
 
-// ─────────────── PROFILE — إرسال واستقبال ملف شخصي ───────────────
+// PROFILE — ملف شخصي
 var PROFILE_PATTERNS = [
   "*profile*.pubgmobile.com","*user*.pubgmobile.com",
   "*account*.pubgmobile.com","*player*.pubgmobile.com",
-  "*avatar*.pubgmobile.com","*info*.pubgmobile.com",
-  "*setting*.pubgmobile.com","*config*.pubgmobile.com",
-  "*preference*.pubgmobile.com","*option*.pubgmobile.com"
+  "*avatar*.pubgmobile.com","*setting*.pubgmobile.com"
 ];
 
-// ─────────────── AUTH — مصادقة وتسجيل دخول ───────────────
-var AUTH_PATTERNS = [
-  "*auth*.pubgmobile.com","*login*.pubgmobile.com",
-  "*signin*.pubgmobile.com","*token*.pubgmobile.com",
-  "*oauth*.pubgmobile.com","*verify*.pubgmobile.com",
-  "*check*.pubgmobile.com","*valid*.pubgmobile.com",
-  "*session*.pubgmobile.com","*passport*.pubgmobile.com",
-  "*antiban*.pubgmobile.com","*anticheat*.pubgmobile.com",
-  "*security*.pubgmobile.com","*protect*.pubgmobile.com"
-];
-
-// ─────────────── PUSH — إشعارات ───────────────
+// PUSH — إشعارات
 var PUSH_PATTERNS = [
   "*push*.pubgmobile.com","*notify*.pubgmobile.com",
   "*notification*.pubgmobile.com","*alert*.pubgmobile.com",
-  "*announce*.pubgmobile.com","*pop*.pubgmobile.com",
-  "*badge*.pubgmobile.com","*ping*.pubgmobile.com"
+  "*announce*.pubgmobile.com","*ping*.pubgmobile.com"
 ];
 
-// ─────────────── CDN — محتوى ثابت ───────────────
+// CDN — محتوى ثابت
 var CDN_PATTERNS = [
   "*.cdn.pubgmobile.com","*.static.pubgmobile.com",
   "*.assets.pubgmobile.com","*.resource.pubgmobile.com",
   "*.update.pubgmobile.com","*.patch.pubgmobile.com",
   "*.download.pubgmobile.com","*.content.pubgmobile.com",
-  "*.img*.pubgmobile.com","*.pic*.pubgmobile.com",
-  "*.font*.pubgmobile.com","*.audio*.pubgmobile.com",
-  "*.bundle*.pubgmobile.com","*.pak*.pubgmobile.com",
-  "*.dat*.pubgmobile.com","*.bin*.pubgmobile.com"
+  "*.img*.pubgmobile.com","*.bundle*.pubgmobile.com",
+  "*.pak*.pubgmobile.com"
 ];
 
-// ─────────────── ANALYTICS — حجب تام ───────────────
+// ANALYTICS — حجب
 var ANALYTICS_PATTERNS = [
   "*analytics*","*telemetry*","*metrics*",
   "*tracking*","*crash*","*log*.pubgmobile.com",
-  "*report*.pubgmobile.com","*stats*.pubgmobile.com",
-  "*monitor*","*perf*","*diagnostic*",
-  "*survey*","*feedback*.pubgmobile.com"
+  "*report*.pubgmobile.com","*monitor*",
+  "*diagnostic*","*survey*"
 ];
 
 var TELEMETRY_DOMAINS = [
@@ -500,12 +358,10 @@ var TELEMETRY_DOMAINS = [
   "*google-analytics*","*crashlytics*",
   "*adjust.com","*appsflyer.com",
   "*branch.io","*singular.net",
-  "*amplitude.com","*mixpanel.com",
-  "*segment.com","*heap.io",
-  "*countly*","*matomo*"
+  "*amplitude.com","*mixpanel.com"
 ];
 
-// ─────────────── TENCENT / QQ — كل شي ───────────────
+// TENCENT — كل شي تنسنت
 var TENCENT_PATTERNS = [
   "*.tencent.com","*.qq.com",
   "*.gcloudlb.com","*.tencentyun.com",
@@ -516,7 +372,7 @@ var TENCENT_PATTERNS = [
 ];
 
 // ============================================================
-// نظام التخزين المؤقت الذكي
+// نظام التخزين المؤقت
 // ============================================================
 var SESSION = {
   match: {
@@ -528,31 +384,11 @@ var SESSION = {
     lastActivity: 0,
     failCount: 0,
     quality: 100,
-    serverTier: 0,
-    direction: "duplex"
-  },
-
-  upload: {
-    proxy: "",
-    lastSwitch: 0,
-    failCount: 0
-  },
-
-  download: {
-    proxy: "",
-    lastSwitch: 0,
-    failCount: 0
-  },
-
-  voice: {
-    sendProxy: "",
-    recvProxy: "",
-    failCount: 0
+    serverTier: 0
   },
 
   lobby: {
     primaryProxy: "",
-    backupProxy: "",
     lastSwitch: 0,
     affinityMap: {}
   },
@@ -576,16 +412,12 @@ var SESSION = {
     pushRequests: 0,
     cdnRequests: 0,
     blockedRequests: 0,
+    forcedProxy: 0,
     failovers: 0,
     dnsCacheHits: 0,
     dnsCacheMisses: 0,
-    jordanBlocked: 0,
     latencyBlocked: 0,
-    tier1Hits: 0,
-    tier2Hits: 0,
-    tier3Hits: 0,
-    tier4Hits: 0,
-    tier5Hits: 0
+    analyticsBlocked: 0
   },
 
   dnsCache: {},
@@ -602,7 +434,7 @@ var SESSION = {
 };
 
 // ============================================================
-// دوال المساعدة الأساسية
+// دوال المساعدة
 // ============================================================
 
 function cleanHost(host) {
@@ -626,10 +458,7 @@ function ipToLong(ip) {
 }
 
 function isInRange(ip, rangeStart, mask) {
-  var ipLong = ipToLong(ip);
-  var startLong = ipToLong(rangeStart);
-  var maskLong = ipToLong(mask);
-  return (ipLong & maskLong) === (startLong & maskLong);
+  return (ipToLong(ip) & ipToLong(mask)) === (ipToLong(rangeStart) & ipToLong(mask));
 }
 
 function isInRangeList(ip, ranges) {
@@ -658,7 +487,7 @@ function getJordanTier(ip) {
 }
 
 // ============================================================
-// نظام DNS ذكي
+// DNS ذكي
 // ============================================================
 
 function fastResolve(host) {
@@ -674,33 +503,20 @@ function fastResolve(host) {
   }
 
   SESSION.counters.dnsCacheMisses++;
-
   var ip = null;
-  try {
-    ip = dnsResolve(host);
-  } catch(e) {
-    ip = null;
-  }
+  try { ip = dnsResolve(host); } catch(e) { ip = null; }
 
   if (ip) {
-    SESSION.dnsCache[host] = {
-      ip: ip,
-      time: now,
-      hits: 1,
-      tier: getJordanTier(ip)
-    };
-
+    SESSION.dnsCache[host] = { ip: ip, time: now, hits: 1, tier: getJordanTier(ip) };
     var prefix = getNetworkPrefix(ip);
-    if (prefix && !SESSION.networkMap[prefix]) {
-      SESSION.networkMap[prefix] = {
-        host: host, ip: ip, count: 1,
-        tier: getJordanTier(ip)
-      };
-    } else if (prefix && SESSION.networkMap[prefix]) {
-      SESSION.networkMap[prefix].count++;
+    if (prefix) {
+      if (!SESSION.networkMap[prefix]) {
+        SESSION.networkMap[prefix] = { host: host, ip: ip, count: 1, tier: getJordanTier(ip) };
+      } else {
+        SESSION.networkMap[prefix].count++;
+      }
     }
   }
-
   return ip;
 }
 
@@ -708,27 +524,22 @@ function prefetchDNS() {
   if (!CONFIG.DNS_PREFETCH_ENABLED) return;
   var list = [
     "match.pubgmobile.com","game.pubgmobile.com",
-    "lobby.pubgmobile.com","cdn.pubgmobile.com",
-    "voice.pubgmobile.com","login.pubgmobile.com",
-    "shop.pubgmobile.com","event.pubgmobile.com",
+    "lobby.pubgmobile.com","voice.pubgmobile.com",
+    "login.pubgmobile.com","shop.pubgmobile.com",
     "social.pubgmobile.com","rank.pubgmobile.com"
   ];
-  for (var i = 0; i < list.length; i++) {
-    fastResolve(list[i]);
-  }
+  for (var i = 0; i < list.length; i++) fastResolve(list[i]);
 }
 
 function cleanDNSCache() {
   var now = new Date().getTime();
   for (var host in SESSION.dnsCache) {
-    if (now - SESSION.dnsCache[host].time > CONFIG.DNS_CACHE_TIME) {
-      delete SESSION.dnsCache[host];
-    }
+    if (now - SESSION.dnsCache[host].time > CONFIG.DNS_CACHE_TIME) delete SESSION.dnsCache[host];
   }
 }
 
 // ============================================================
-// تصنيف الترافيك — شامل لكلشي
+// تصنيف الترافيك
 // ============================================================
 
 function isPUBGTraffic(host) {
@@ -742,9 +553,7 @@ function isPUBGTraffic(host) {
     "gtimg.com","myqcloud.com","tencent-cloud.net"
   ];
   for (var i = 0; i < domains.length; i++) {
-    if (host === domains[i] || host.indexOf("." + domains[i]) !== -1) {
-      return true;
-    }
+    if (host === domains[i] || host.indexOf("." + domains[i]) !== -1) return true;
   }
   return false;
 }
@@ -779,7 +588,7 @@ function isAnalyticsTraffic(u, h) { return matchesPattern(u, h, ANALYTICS_PATTER
 function isTencentTraffic(u, h)   { return matchesPattern(u, h, TENCENT_PATTERNS); }
 
 // ============================================================
-// نظام اختيار البروكسي المتقدم
+// نظام البروكسي
 // ============================================================
 
 function getBestProxy(proxyList) {
@@ -812,9 +621,7 @@ function selectLobbyProxy(host, ip) {
     case 3: preferred = CONFIG.LOBBY_FAST[2]; break;
     default: preferred = CONFIG.LOBBY_FAST[3]; break;
   }
-  if (!SESSION.lobby.affinityMap[prefix]) {
-    SESSION.lobby.affinityMap[prefix] = preferred;
-  }
+  if (!SESSION.lobby.affinityMap[prefix]) SESSION.lobby.affinityMap[prefix] = preferred;
   var current = SESSION.lobby.affinityMap[prefix];
   var health = SESSION.proxyHealth[current];
   if (health && health.score > 50) return current;
@@ -823,106 +630,37 @@ function selectLobbyProxy(host, ip) {
   return best;
 }
 
-// ═══ سلاسل الفشل ═══
+// سلاسل الفشل
+function buildMatchChain()    { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3 + "; " + CONFIG.MATCH_TIER4; }
+function buildLobbyChain(p)   { var c = p; for (var i = 0; i < CONFIG.LOBBY_FAST.length; i++) { if (CONFIG.LOBBY_FAST[i] !== p) c += "; " + CONFIG.LOBBY_FAST[i]; } return c; }
+function buildVoiceChain()    { return CONFIG.VOICE_SEND + "; " + CONFIG.VOICE_RECV + "; " + CONFIG.VOICE_FALLBACK; }
+function buildUploadChain()   { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3 + "; " + CONFIG.MATCH_TIER4; }
+function buildDownloadChain() { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3 + "; " + CONFIG.MATCH_TIER4; }
+function buildSocialChain()   { return CONFIG.LOBBY_FAST[0] + "; " + CONFIG.LOBBY_FAST[1] + "; " + CONFIG.LOBBY_FAST[2]; }
+function buildClanChain()     { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3; }
+function buildShopChain()     { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
+function buildEventChain()    { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
+function buildRankChain()     { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
+function buildAuthChain()     { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
+function buildReplayChain()   { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
+function buildSpectateChain() { return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; }
 
-function buildMatchChain() {
+// ★★★ سلسلة إجبار كاملة — كل شي يمر عبر بروكسي أردني ★★★
+function buildForcedJordanChain() {
   return CONFIG.MATCH_TIER1 + "; " +
          CONFIG.MATCH_TIER2 + "; " +
          CONFIG.MATCH_TIER3 + "; " +
          CONFIG.MATCH_TIER4;
 }
 
-function buildLobbyChain(primary) {
-  var chain = primary;
-  for (var i = 0; i < CONFIG.LOBBY_FAST.length; i++) {
-    if (CONFIG.LOBBY_FAST[i] !== primary) chain += "; " + CONFIG.LOBBY_FAST[i];
-  }
-  chain += "; " + CONFIG.DIRECT;
-  return chain;
-}
-
-function buildVoiceChain() {
-  return CONFIG.VOICE_SEND + "; " +
-         CONFIG.VOICE_RECV + "; " +
-         CONFIG.VOICE_FALLBACK + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildUploadChain() {
-  return CONFIG.UPLOAD_TIER1 + "; " +
-         CONFIG.UPLOAD_TIER2 + "; " +
-         CONFIG.MATCH_TIER3 + "; " +
-         CONFIG.MATCH_TIER4;
-}
-
-function buildDownloadChain() {
-  return CONFIG.DOWNLOAD_TIER1 + "; " +
-         CONFIG.DOWNLOAD_TIER2 + "; " +
-         CONFIG.MATCH_TIER3 + "; " +
-         CONFIG.MATCH_TIER4;
-}
-
-function buildSocialChain() {
-  return CONFIG.SOCIAL_PRIMARY + "; " +
-         CONFIG.SOCIAL_SECONDARY + "; " +
-         CONFIG.LOBBY_FAST[0] + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildClanChain() {
-  return CONFIG.CLAN_PROXY + "; " +
-         CONFIG.CLAN_FALLBACK + "; " +
-         CONFIG.LOBBY_FAST[0] + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildShopChain() {
-  return CONFIG.SHOP_PROXY + "; " +
-         CONFIG.SHOP_FALLBACK + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildEventChain() {
-  return CONFIG.EVENT_PROXY + "; " +
-         CONFIG.EVENT_FALLBACK + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildRankChain() {
-  return CONFIG.RANK_PROXY + "; " +
-         CONFIG.RANK_FALLBACK + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildAuthChain() {
-  return CONFIG.AUTH_PROXY + "; " +
-         CONFIG.AUTH_FALLBACK + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildReplayChain() {
-  return CONFIG.REPLAY_PROXY + "; " +
-         CONFIG.MATCH_TIER1 + "; " +
-         CONFIG.MATCH_TIER2 + "; " +
-         CONFIG.DIRECT;
-}
-
-function buildSpectateChain() {
-  return CONFIG.SPECTATE_PROXY + "; " +
-         CONFIG.MATCH_TIER1 + "; " +
-         CONFIG.MATCH_TIER2 + "; " +
-         CONFIG.DIRECT;
-}
-
 // ============================================================
-// نظام مكافحة الذبذبة
+// مكافحة الذبذبة
 // ============================================================
 
 function updateConnectionQuality() {
   var now = new Date().getTime();
   if (SESSION.match.locked) {
-    var timeSince = now - SESSION.match.lastActivity;
-    if (timeSince > 120000) { resetMatchSession(); return; }
+    if (now - SESSION.match.lastActivity > 120000) { resetMatchSession(); return; }
     SESSION.match.lastActivity = now;
     if (SESSION.match.failCount > 3) {
       SESSION.match.quality = Math.max(0, SESSION.match.quality - 20);
@@ -956,17 +694,16 @@ function shouldSwitchProxy() {
 
 function switchMatchProxy() {
   SESSION.counters.failovers++;
-  var all = [CONFIG.MATCH_TIER1, CONFIG.MATCH_TIER2,
-             CONFIG.MATCH_TIER3, CONFIG.MATCH_TIER4];
-  var newP = getBestProxy(all);
-  SESSION.match.proxy = newP;
+  var all = [CONFIG.MATCH_TIER1, CONFIG.MATCH_TIER2, CONFIG.MATCH_TIER3, CONFIG.MATCH_TIER4];
+  var np = getBestProxy(all);
+  SESSION.match.proxy = np;
   SESSION.match.failCount = 0;
   SESSION.match.quality = 80;
-  return newP;
+  return np;
 }
 
 // ============================================================
-// نظام الصيانة الدورية
+// الصيانة
 // ============================================================
 
 function performMaintenance() {
@@ -991,51 +728,50 @@ function performMaintenance() {
   for (var k in SESSION.networkMap) mapSize++;
   if (mapSize > 100) {
     var sorted = [];
-    for (var kk in SESSION.networkMap) {
-      sorted.push({ key: kk, count: SESSION.networkMap[kk].count });
-    }
+    for (var kk in SESSION.networkMap) sorted.push({ key: kk, count: SESSION.networkMap[kk].count });
     sorted.sort(function(a, b) { return a.count - b.count; });
-    for (var j = 0; j < sorted.length - 100; j++) {
-      delete SESSION.networkMap[sorted[j].key];
-    }
+    for (var j = 0; j < sorted.length - 100; j++) delete SESSION.networkMap[sorted[j].key];
   }
 }
 
 // ============================================================
-// معالجة ترافيك المباراة — إرسال + استقبال
+// معالجة المباراة — إرسال + استقبال
 // ============================================================
 
 function handleMatchTraffic(url, host, ip) {
   var prefix = getNetworkPrefix(ip);
   var tier = getJordanTier(ip);
 
-  if (CONFIG.JORDAN_ONLY_MATCH && !isInRangeList(ip, JORDAN_RANGES)) {
-    SESSION.counters.jordanBlocked++;
-    return CONFIG.BLOCK;
+  // ★ لا تحجب بناءً على IP السيرفر
+  // ★ السيرفر Tencent مش أردني وهذا طبيعي
+  // ★ الأهم: الترافيك يمر عبر بروكسي أردني
+
+  if (tier > 0) {
+    switch(tier) {
+      case 1: SESSION.counters.tier1Hits++; break;
+      case 2: SESSION.counters.tier2Hits++; break;
+      case 3: SESSION.counters.tier3Hits++; break;
+      case 4: SESSION.counters.tier4Hits++; break;
+      case 5: SESSION.counters.tier5Hits++; break;
+    }
   }
 
-  switch(tier) {
-    case 1: SESSION.counters.tier1Hits++; break;
-    case 2: SESSION.counters.tier2Hits++; break;
-    case 3: SESSION.counters.tier3Hits++; break;
-    case 4: SESSION.counters.tier4Hits++; break;
-    case 5: SESSION.counters.tier5Hits++; break;
-  }
-
+  // جلسة جديدة
   if (!SESSION.match.locked) {
     SESSION.match.networkPrefix = prefix;
     SESSION.match.hostname = host;
-    SESSION.match.proxy = selectProxyByTier(tier);
+    SESSION.match.proxy = CONFIG.MATCH_TIER1;
     SESSION.match.startTime = new Date().getTime();
     SESSION.match.lastActivity = new Date().getTime();
     SESSION.match.locked = true;
     SESSION.match.failCount = 0;
     SESSION.match.quality = 100;
     SESSION.match.serverTier = tier;
-    SESSION.match.direction = "duplex";
+    SESSION.counters.forcedProxy++;
     return buildMatchChain();
   }
 
+  // استمرار
   if (host === SESSION.match.hostname && prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
     if (shouldSwitchProxy()) {
@@ -1045,17 +781,19 @@ function handleMatchTraffic(url, host, ip) {
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3;
   }
 
+  // نفس الشبكة
   if (prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2;
   }
 
-  SESSION.match.failCount++;
-  return CONFIG.BLOCK;
+  // شبكة مختلفة — حاول عبر بروكسي
+  SESSION.match.lastActivity = new Date()..getTime();
+  return buildMatchChain();
 }
 
 // ============================================================
-// الدالة الرئيسية — توجيه كلشي
+// ★★★ الدالة الرئيسية — الإصلاح الكامل ★★★
 // ============================================================
 
 function FindProxyForURL(url, host) {
@@ -1075,21 +813,9 @@ function FindProxyForURL(url, host) {
     return CONFIG.BLOCK;
   }
 
-  // IP محظور
+  // IP محظور (نطاقات خاصة)
   if (isInRangeList(ip, BLOCKED_RANGES)) {
     SESSION.counters.blockedRequests++;
-    return CONFIG.BLOCK;
-  }
-
-  // نطاقات بطيئة
-  if (CONFIG.AGGRESSIVE_BLOCK && isInRangeList(ip, HIGH_LATENCY_RANGES)) {
-    SESSION.counters.latencyBlocked++;
-    return CONFIG.BLOCK;
-  }
-
-  // حجب كل غير أردني
-  if (CONFIG.BLOCK_ALL_NON_JORDAN && !isInRangeList(ip, JORDAN_RANGES)) {
-    SESSION.counters.jordanBlocked++;
     return CONFIG.BLOCK;
   }
 
@@ -1097,15 +823,15 @@ function FindProxyForURL(url, host) {
   updateConnectionQuality();
 
   // ═══════════════════════════════════════════
-  // 1. تحليلات — حجب
+  // 1. تحليلات — حجب (يوهّم الموقع)
   // ═══════════════════════════════════════════
   if (isAnalyticsTraffic(url, host)) {
-    SESSION.counters.blockedRequests++;
+    SESSION.counters.analyticsBlocked++;
     return CONFIG.BLOCK;
   }
 
   // ═══════════════════════════════════════════
-  // 2. CDN — مباشر
+  // 2. CDN — مباشر (تحديثات كبيرة)
   // ═══════════════════════════════════════════
   if (isCDNTraffic(url, host)) {
     SESSION.counters.cdnRequests++;
@@ -1113,209 +839,137 @@ function FindProxyForURL(url, host) {
   }
 
   // ═══════════════════════════════════════════
-  // 3. AUTH — مصادقة أردنية
+  // ★★★ 3-20. كل ترافيك PUBG يمر عبر بروكسي أردني ★★★
+  // هذا هو الإصلاح الأساسي
+  // السيرفر يشوف اتصالك من الأردن
+  // → يعمل matchmaking أردني
+  // → لاعبين أردنيين فقط
   // ═══════════════════════════════════════════
-  if (isAuthTraffic(url, host)) {
-    SESSION.counters.authRequests++;
-    if (CONFIG.JORDAN_ONLY_AUTH && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
-    return buildAuthChain();
-  }
 
-  // ═══════════════════════════════════════════
-  // 4. VOICE — إرسال صوت + استقبال صوت
-  // ═══════════════════════════════════════════
+  // VOICE — إرسال صوت + استقبال صوت
   if (isVoiceTraffic(url, host)) {
     SESSION.counters.voiceRequests++;
-    if (CONFIG.JORDAN_ONLY_VOICE && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildVoiceChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 5. UPLOAD — إرسال بيانات للسيرفر
-  // ═══════════════════════════════════════════
+  // UPLOAD — إرسال بيانات
   if (isUploadTraffic(url, host)) {
     SESSION.counters.uploadRequests++;
-    if (CONFIG.JORDAN_ONLY_UPLOAD && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildUploadChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 6. DOWNLOAD — استقبال بيانات من السيرفر
-  // ═══════════════════════════════════════════
+  // DOWNLOAD — استقبال بيانات
   if (isDownloadTraffic(url, host)) {
     SESSION.counters.downloadRequests++;
-    if (CONFIG.JORDAN_ONLY_DOWNLOAD && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildDownloadChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 7. MATCH — إرسال + استقبال مباراة
-  // ═══════════════════════════════════════════
+  // AUTH — مصادقة
+  if (isAuthTraffic(url, host)) {
+    SESSION.counters.authRequests++;
+    SESSION.counters.forcedProxy++;
+    return buildAuthChain();
+  }
+
+  // MATCH — مباراة
   if (isMatchTraffic(url, host)) {
     SESSION.counters.matchRequests++;
     return handleMatchTraffic(url, host, ip);
   }
 
-  // ═══════════════════════════════════════════
-  // 8. RECRUIT — تجنيد أردني
-  // ═══════════════════════════════════════════
+  // RECRUIT — تجنيد
   if (isRecruitTraffic(url, host)) {
     SESSION.counters.lobbyRequests++;
-    if (CONFIG.JORDAN_ONLY_RECRUIT && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // ═══════════════════════════════════════════
-  // 9. CLAN — كلان أردني
-  // ═══════════════════════════════════════════
+  // CLAN — كلان
   if (isClanTraffic(url, host)) {
     SESSION.counters.clanRequests++;
-    if (CONFIG.JORDAN_ONLY_CLAN && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildClanChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 10. SHOP — متجر أردني
-  // ═══════════════════════════════════════════
+  // SHOP — متجر
   if (isShopTraffic(url, host)) {
     SESSION.counters.shopRequests++;
-    if (CONFIG.JORDAN_ONLY_SHOP && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildShopChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 11. EVENTS — أحداث أردنية
-  // ═══════════════════════════════════════════
+  // EVENTS — أحداث
   if (isEventTraffic(url, host)) {
     SESSION.counters.eventRequests++;
-    if (CONFIG.JORDAN_ONLY_EVENT && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildEventChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 12. RANK — ترتيب أردني
-  // ═══════════════════════════════════════════
+  // RANK — ترتيب
   if (isRankTraffic(url, host)) {
     SESSION.counters.rankRequests++;
-    if (CONFIG.JORDAN_ONLY_RANK && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildRankChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 13. REPLAY — إعادة أردنية
-  // ═══════════════════════════════════════════
+  // REPLAY — إعادة
   if (isReplayTraffic(url, host)) {
     SESSION.counters.replayRequests++;
-    if (CONFIG.JORDAN_ONLY_REPLAY && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildReplayChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 14. SPECTATE — مشاهدة أردنية
-  // ═══════════════════════════════════════════
+  // SPECTATE — مشاهدة
   if (isSpectateTraffic(url, host)) {
     SESSION.counters.spectateRequests++;
-    if (CONFIG.JORDAN_ONLY_SPECTATE && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildSpectateChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 15. PUSH — إشعارات أردنية
-  // ═══════════════════════════════════════════
+  // PUSH — إشعارات
   if (isPushTraffic(url, host)) {
     SESSION.counters.pushRequests++;
-    if (CONFIG.JORDAN_ONLY_PUSH && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
-    return CONFIG.PUSH_PROXY + "; " + CONFIG.LOBBY_FAST[0] + "; " + CONFIG.DIRECT;
+    SESSION.counters.forcedProxy++;
+    return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2;
   }
 
-  // ═══════════════════════════════════════════
-  // 16. PROFILE — ملف شخصي أردني
-  // ═══════════════════════════════════════════
+  // PROFILE — ملف شخصي
   if (isProfileTraffic(url, host)) {
     SESSION.counters.profileRequests++;
+    SESSION.counters.forcedProxy++;
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // ═══════════════════════════════════════════
-  // 17. SOCIAL — اجتماعي أردني
-  // ═══════════════════════════════════════════
+  // SOCIAL — اجتماعي
   if (isSocialTraffic(url, host)) {
     SESSION.counters.socialRequests++;
-    if (CONFIG.JORDAN_ONLY_SOCIAL && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildSocialChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 18. LOBBY — لوبي أردني
-  // ═══════════════════════════════════════════
+  // LOBBY — لوبي
   if (isLobbyTraffic(url, host)) {
     SESSION.counters.lobbyRequests++;
-    if (CONFIG.JORDAN_ONLY_LOBBY && !isInRangeList(ip, JORDAN_RANGES)) {
-      SESSION.counters.jordanBlocked++;
-      return CONFIG.BLOCK;
-    }
+    SESSION.counters.forcedProxy++;
     return buildLobbyChain(selectLobbyProxy(host, ip));
   }
 
-  // ═══════════════════════════════════════════
-  // 19. TENCENT — أي شي تنسنت
-  // ═══════════════════════════════════════════
+  // TENCENT — أي شي تنسنت
   if (isTencentTraffic(url, host)) {
-    return buildLobbyChain(selectLobbyProxy(host, ip));
+    SESSION.counters.forcedProxy++;
+    return buildForcedJordanChain();
   }
 
-  // ═══════════════════════════════════════════
-  // 20. أي ترافيك PUBG أردني — تمرير
-  // ═══════════════════════════════════════════
-  if (isInRangeList(ip, JORDAN_RANGES)) {
-    return buildLobbyChain(selectLobbyProxy(host, ip));
-  }
-
-  // حجب كل شيء
-  SESSION.counters.blockedRequests++;
-  return CONFIG.BLOCK;
+  // ★★★ أي ترافيك PUBG مجهول — مرّره عبر بروكسي أردني ★★★
+  // هذا يضمن ما يروح أي شي مباشر يكشف موقعك
+  SESSION.counters.forcedProxy++;
+  return buildForcedJordanChain();
 }
 
 // ============================================================
-// جلب DNS مسبق عند التحميل
+// جلب DNS مسبق
 // ============================================================
 prefetchDNS();
