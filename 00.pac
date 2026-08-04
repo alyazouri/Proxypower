@@ -1,6 +1,7 @@
 // ============================================================
 // 🎮 GAME BOOSTER ALPHA v4.0 — JORDAN ULTRA MODE 2026
 // محسّن للسرعة — بدون ذبذبة — سيرفرات أردنية بيور
+// النطاقات مرتبة من الأقوى (أقل بنق) للأقل
 // ============================================================
 
 var CONFIG = {
@@ -63,65 +64,119 @@ var CONFIG = {
 };
 
 // ============================================================
-// نطاقات IP الأردنية — محدثة 2026
+// 🇯🇴 نطاقات IP الأردنية — مرتبة من الأقوى للأقل
 // ============================================================
-var JORDAN_RANGES = [
-  ["46.185.0.0","255.255.0.0"],
-  ["46.32.0.0","255.255.0.0"],
-  ["178.77.0.0","255.255.0.0"],
-  ["176.29.0.0","255.255.0.0"],
-  ["217.23.0.0","255.255.0.0"],
-  ["77.245.0.0","255.255.0.0"],
-  ["176.28.0.0","255.255.0.0"],
-  ["213.202.0.0","255.255.0.0"],
-  ["178.76.0.0","255.255.0.0"],
-  ["188.161.0.0","255.255.0.0"],
-  ["37.202.0.0","255.255.0.0"],
-  ["85.159.0.0","255.255.0.0"],
-  ["93.93.0.0","255.255.0.0"],
-  ["93.95.0.0","255.255.0.0"],
-  ["212.34.0.0","255.255.0.0"],
-  ["194.165.130.0","255.255.255.0"],
-  ["79.134.0.0","255.255.0.0"],
-  ["79.173.0.0","255.255.0.0"],
-  ["185.162.0.0","255.255.0.0"],
-  ["37.252.0.0","255.255.0.0"],
-  ["94.127.0.0","255.255.0.0"],
-  ["176.57.0.0","255.255.0.0"],
-  ["188.123.0.0","255.255.0.0"],
-  ["188.247.0.0","255.255.0.0"],
-  ["185.80.0.0","255.255.0.0"],
-  ["5.45.128.0","255.255.128.0"],
-  ["212.118.0.0","255.255.0.0"],
-  ["149.200.0.0","255.255.0.0"],
-  ["149.201.0.0","255.255.0.0"],
-  ["31.5.0.0","255.255.0.0"],
-  ["195.8.0.0","255.255.0.0"],
-  ["185.170.0.0","255.255.0.0"],
-  ["185.53.0.0","255.255.0.0"],
-  ["45.155.0.0","255.255.0.0"],
-  ["212.35.64.0","255.255.224.0"],
-  ["82.137.192.0","255.255.192.0"],
-  ["188.225.0.0","255.255.0.0"],
-  ["213.139.0.0","255.255.0.0"],
-  ["5.198.0.0","255.255.0.0"],
-  ["31.14.0.0","255.255.0.0"]
+
+// ───────────────────────────────────────────────
+// 🥇 الطبقة الأولى — Orange Jordan (أقوى — أقل بنق)
+// السيرفرات الرئيسية 46.185.x.x و 212.35.x.x
+// ───────────────────────────────────────────────
+var JORDAN_TIER1 = [
+  ["46.185.0.0","255.255.0.0"],          // Orange Jordan — أساسي
+  ["212.35.64.0","255.255.224.0"],       // Orange Jordan — ثانوي
+  ["212.34.0.0","255.255.0.0"],          // Orange Jordan
+  ["212.118.0.0","255.255.0.0"],         // Orange Jordan
+  ["46.32.0.0","255.255.0.0"],           // Jordan Telecom / Orange
+  ["194.165.130.0","255.255.255.0"]      // Orange Jordan دقى
 ];
+
+// ───────────────────────────────────────────────
+// 🥈 الطبقة الثانية — Zain Jordan (قوي — بنق منخفض)
+// ───────────────────────────────────────────────
+var JORDAN_TIER2 = [
+  ["178.77.0.0","255.255.0.0"],          // Zain Jordan
+  ["178.76.0.0","255.255.0.0"],          // Zain Jordan
+  ["82.137.192.0","255.255.192.0"],      // Zain Jordan
+  ["176.29.0.0","255.255.0.0"],          // Zain Jordan
+  ["176.28.0.0","255.255.0.0"],          // Zain Jordan
+  ["176.57.0.0","255.255.0.0"],          // Zain Jordan
+  ["178.238.0.0","255.255.0.0"]          // Zain — سيرفر MATCH_TIER3
+];
+
+// ───────────────────────────────────────────────
+// 🥉 الطبقة الثالثة — Umniah (متوسط-قوي)
+// ───────────────────────────────────────────────
+var JORDAN_TIER3 = [
+  ["188.161.0.0","255.255.0.0"],         // Umniah
+  ["188.123.0.0","255.255.0.0"],         // Umniah
+  ["188.247.0.0","255.255.0.0"],         // Umniah
+  ["188.225.0.0","255.255.0.0"],         // Umniah
+  ["109.237.0.0","255.255.0.0"]          // Umniah — سيرفر MATCH_TIER4
+];
+
+// ───────────────────────────────────────────────
+// 4️⃣ الطبقة الرابعة — Batelco / Damamax (متوسط)
+// ───────────────────────────────────────────────
+var JORDAN_TIER4 = [
+  ["37.202.0.0","255.255.0.0"],          // Batelco Jordan
+  ["37.252.0.0","255.255.0.0"],          // Damamax
+  ["37.220.0.0","255.255.0.0"],          // سيرفر MATCH_TIER6
+  ["213.202.0.0","255.255.0.0"],         // Batelco Jordan
+  ["213.139.0.0","255.255.0.0"],         // Batelco Jordan
+  ["92.253.0.0","255.255.0.0"]           // سيرفر MATCH_TIER5
+];
+
+// ───────────────────────────────────────────────
+// 5️⃣ الطبقة الخامسة — مزودين آخرين (أقل استقرار)
+// ───────────────────────────────────────────────
+var JORDAN_TIER5 = [
+  ["93.93.0.0","255.255.0.0"],           // Jordan Data
+  ["93.95.0.0","255.255.0.0"],           // Jordan Data
+  ["94.127.0.0","255.255.0.0"],          // MENA Telecom
+  ["79.134.0.0","255.255.0.0"],          // Link Jordan
+  ["79.173.0.0","255.255.0.0"],          // Link Jordan
+  ["85.159.0.0","255.255.0.0"],          // Jordan
+  ["77.245.0.0","255.255.0.0"],          // Jordan
+  ["217.23.0.0","255.255.0.0"],          // Jordan
+  ["185.162.0.0","255.255.0.0"],         // Jordan
+  ["185.80.0.0","255.255.0.0"],          // Jordan
+  ["185.170.0.0","255.255.0.0"],         // Jordan
+  ["185.53.0.0","255.255.0.0"],          // Jordan
+  ["45.155.0.0","255.255.0.0"],          // Jordan
+  ["149.200.0.0","255.255.0.0"],         // Jordan
+  ["149.201.0.0","255.255.0.0"],         // Jordan
+  ["5.45.128.0","255.255.128.0"],        // Jordan
+  ["5.198.0.0","255.255.0.0"],           // Jordan
+  ["31.5.0.0","255.255.0.0"],            // Jordan
+  ["31.14.0.0","255.255.0.0"],           // Jordan
+  ["195.8.0.0","255.255.0.0"]            // Jordan
+];
+
+// ═══════════════════════════════════════════════
+// دمج الكل بترتيب من الأقوى للأقل
+// ═══════════════════════════════════════════════
+var JORDAN_RANGES = [].concat(
+  JORDAN_TIER1,
+  JORDAN_TIER2,
+  JORDAN_TIER3,
+  JORDAN_TIER4,
+  JORDAN_TIER5
+);
+
+// ═══════════════════════════════════════════════
+// فئة السيرفر — للاختيار الذكي
+// ═══════════════════════════════════════════════
+function getJordanTier(ip) {
+  if (!ip) return 0;
+  if (isInRangeList(ip, JORDAN_TIER1)) return 1;
+  if (isInRangeList(ip, JORDAN_TIER2)) return 2;
+  if (isInRangeList(ip, JORDAN_TIER3)) return 3;
+  if (isInRangeList(ip, JORDAN_TIER4)) return 4;
+  if (isInRangeList(ip, JORDAN_TIER5)) return 5;
+  return 0;
+}
 
 // ============================================================
 // نطاقات بطيئة — حجب مباشر (تقليل الذبذبة)
 // ============================================================
 var HIGH_LATENCY_RANGES = [
-  ["104.16.0.0","255.240.0.0"],
-  ["172.64.0.0","255.248.0.0"],
-  ["104.24.0.0","255.252.0.0"],
+  // أفريقيا — بنق عالي جداً
   ["197.0.0.0","255.0.0.0"],
   ["41.0.0.0","255.0.0.0"],
   ["102.0.0.0","255.0.0.0"],
-  ["103.0.0.0","255.0.0.0"],
-  ["106.0.0.0","255.0.0.0"],
-  ["112.0.0.0","255.0.0.0"],
-  ["180.0.0.0","255.0.0.0"],
+  ["196.0.0.0","255.0.0.0"],
+
+  // شرق آسيا — بعيد جداً
   ["14.0.0.0","255.0.0.0"],
   ["27.0.0.0","255.0.0.0"],
   ["49.0.0.0","255.0.0.0"],
@@ -129,8 +184,10 @@ var HIGH_LATENCY_RANGES = [
   ["59.0.0.0","255.0.0.0"],
   ["60.0.0.0","255.0.0.0"],
   ["61.0.0.0","255.0.0.0"],
+  ["106.0.0.0","255.0.0.0"],
   ["110.0.0.0","255.0.0.0"],
   ["111.0.0.0","255.0.0.0"],
+  ["112.0.0.0","255.0.0.0"],
   ["113.0.0.0","255.0.0.0"],
   ["114.0.0.0","255.0.0.0"],
   ["115.0.0.0","255.0.0.0"],
@@ -146,6 +203,12 @@ var HIGH_LATENCY_RANGES = [
   ["125.0.0.0","255.0.0.0"],
   ["126.0.0.0","255.0.0.0"],
   ["175.0.0.0","255.0.0.0"],
+  ["180.0.0.0","255.0.0.0"],
+
+  // جنوب آسيا
+  ["103.0.0.0","255.0.0.0"],
+
+  // أمريكا الجنوبية
   ["177.0.0.0","255.0.0.0"],
   ["179.0.0.0","255.0.0.0"],
   ["181.0.0.0","255.0.0.0"],
@@ -154,9 +217,13 @@ var HIGH_LATENCY_RANGES = [
   ["189.0.0.0","255.0.0.0"],
   ["190.0.0.0","255.0.0.0"],
   ["191.0.0.0","255.0.0.0"],
-  ["196.0.0.0","255.0.0.0"],
   ["200.0.0.0","255.0.0.0"],
-  ["201.0.0.0","255.0.0.0"]
+  ["201.0.0.0","255.0.0.0"],
+
+  // Cloudflare محملة
+  ["104.16.0.0","255.240.0.0"],
+  ["172.64.0.0","255.248.0.0"],
+  ["104.24.0.0","255.252.0.0"]
 ];
 
 // ============================================================
@@ -249,7 +316,8 @@ var SESSION = {
     latency: 0,
     jitter: 0,
     packetLoss: 0,
-    quality: 100
+    quality: 100,
+    serverTier: 0
   },
 
   lobby: {
@@ -268,18 +336,27 @@ var SESSION = {
     dnsCacheHits: 0,
     dnsCacheMisses: 0,
     jordanBlocked: 0,
-    latencyBlocked: 0
+    latencyBlocked: 0,
+    tier1Hits: 0,
+    tier2Hits: 0,
+    tier3Hits: 0,
+    tier4Hits: 0,
+    tier5Hits: 0
   },
 
   dnsCache: {},
 
   proxyHealth: {
+    "PROXY 46.185.131.218:8443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 212.35.66.45:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 178.238.184.2:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 109.237.205.83:20005": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 92.253.111.235:1080": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 37.220.121.191:443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
     "PROXY 46.185.131.218:20001": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
     "PROXY 212.35.66.45:8085": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 46.185.131.218:443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 212.35.66.45:8181": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 178.77.100.50:443": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
-    "PROXY 188.161.50.10:20001": { latency: 0, failCount: 0, lastCheck: 0, score: 100 }
+    "PROXY 109.237.205.83:5000": { latency: 0, failCount: 0, lastCheck: 0, score: 100 },
+    "PROXY 178.238.184.2:5000": { latency: 0, failCount: 0, lastCheck: 0, score: 100 }
   },
 
   networkMap: {},
@@ -361,7 +438,8 @@ function fastResolve(host) {
     SESSION.dnsCache[host] = {
       ip: ip,
       time: now,
-      hits: 1
+      hits: 1,
+      tier: getJordanTier(ip)
     };
 
     var prefix = getNetworkPrefix(ip);
@@ -369,7 +447,8 @@ function fastResolve(host) {
       SESSION.networkMap[prefix] = {
         host: host,
         ip: ip,
-        count: 1
+        count: 1,
+        tier: getJordanTier(ip)
       };
     } else if (prefix && SESSION.networkMap[prefix]) {
       SESSION.networkMap[prefix].count++;
@@ -479,11 +558,43 @@ function getBestProxy(proxyList) {
   return bestProxy;
 }
 
+/**
+ * اختيار بروكسي بناءً على طبقة السيرفر
+ * Tier 1 = أقوى بروكسي — Tier 5 = أضعف بروكسي
+ */
+function selectProxyByTier(tier) {
+  switch(tier) {
+    case 1:
+      return CONFIG.MATCH_TIER1;
+    case 2:
+      return CONFIG.MATCH_TIER2;
+    case 3:
+      return CONFIG.MATCH_TIER3;
+    case 4:
+      return CONFIG.MATCH_TIER4;
+    case 5:
+      return CONFIG.MATCH_TIER5;
+    default:
+      return CONFIG.MATCH_TIER1;
+  }
+}
+
 function selectLobbyProxy(host, ip) {
   var prefix = getNetworkPrefix(ip);
+  var tier = getJordanTier(ip);
+
+  // اختيار بروكسي حسب قوة السيرفر
+  var preferredProxy;
+  switch(tier) {
+    case 1: preferredProxy = CONFIG.LOBBY_FAST[0]; break;
+    case 2: preferredProxy = CONFIG.LOBBY_FAST[1]; break;
+    case 3: preferredProxy = CONFIG.LOBBY_FAST[2]; break;
+    case 4: preferredProxy = CONFIG.LOBBY_FAST[3]; break;
+    default: preferredProxy = CONFIG.LOBBY_FAST[4]; break;
+  }
 
   if (!SESSION.lobby.affinityMap[prefix]) {
-    SESSION.lobby.affinityMap[prefix] = CONFIG.LOBBY_FAST[0];
+    SESSION.lobby.affinityMap[prefix] = preferredProxy;
   }
 
   var currentProxy = SESSION.lobby.affinityMap[prefix];
@@ -552,6 +663,7 @@ function resetMatchSession() {
   SESSION.match.lastActivity = 0;
   SESSION.match.failCount = 0;
   SESSION.match.quality = 100;
+  SESSION.match.serverTier = 0;
 }
 
 function shouldSwitchProxy() {
@@ -633,6 +745,7 @@ function performMaintenance() {
 
 function handleMatchTraffic(url, host, ip) {
   var prefix = getNetworkPrefix(ip);
+  var tier = getJordanTier(ip);
 
   // فحص أردن فقط
   if (CONFIG.JORDAN_ONLY_MATCH && !isInRangeList(ip, JORDAN_RANGES)) {
@@ -640,16 +753,26 @@ function handleMatchTraffic(url, host, ip) {
     return CONFIG.BLOCK;
   }
 
-  // جلسة جديدة
+  // تسجيل الطبقة
+  switch(tier) {
+    case 1: SESSION.counters.tier1Hits++; break;
+    case 2: SESSION.counters.tier2Hits++; break;
+    case 3: SESSION.counters.tier3Hits++; break;
+    case 4: SESSION.counters.tier4Hits++; break;
+    case 5: SESSION.counters.tier5Hits++; break;
+  }
+
+  // جلسة جديدة — اختيار بروكسي حسب قوة السيرفر
   if (!SESSION.match.locked) {
     SESSION.match.networkPrefix = prefix;
     SESSION.match.hostname = host;
-    SESSION.match.proxy = CONFIG.MATCH_TIER1;
+    SESSION.match.proxy = selectProxyByTier(tier);
     SESSION.match.startTime = new Date().getTime();
     SESSION.match.lastActivity = new Date().getTime();
     SESSION.match.locked = true;
     SESSION.match.failCount = 0;
     SESSION.match.quality = 100;
+    SESSION.match.serverTier = tier;
     return buildMatchChain();
   }
 
