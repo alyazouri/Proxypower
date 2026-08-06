@@ -1,5 +1,5 @@
 // ============================================================
-// 🎮 GAME BOOSTER v7.0 — ALL-PROXY PURE JORDAN
+// 🎮 GAME BOOSTER v7.0 — ALL-PROXY PURE JORDAN (OPTIMIZED)
 // ═══════════════════════════════════════════════════════════
 // ★ كل الترافيك يمر عبر البروكسي الأردني
 // ★ لا يوجد DIRECT نهائياً
@@ -9,7 +9,7 @@ var VERSION = "7.0";
 var BUILD_DATE = "2026-08-06";
 
 // ============================================================
-// ⚙️ الإعدادات الرئيسية
+// ⚙️ الإعدادات الرئيسية (مُحسّنة للسرعة)
 // ============================================================
 var CONFIG = {
   MATCH_TIER1: "PROXY 46.185.131.218:8443",
@@ -42,7 +42,7 @@ var CONFIG = {
 
   MAX_MATCH_LATENCY: 80,
   JITTER_THRESHOLD: 15,
-  FAILOVER_TIMEOUT: 2000,
+  FAILOVER_TIMEOUT: 1000, // ← تم التحسين (من 2000 إلى 1000ms)
   HEALTH_CHECK_INTERVAL: 30000
 };
 
@@ -479,7 +479,6 @@ function selectLobbyProxy(host, ip) {
   return best;
 }
 
-// ★★★ السلسلة الأساسية — كل البروكسيات الأردنية ★★★
 function buildJordanChain() {
   return CONFIG.MATCH_TIER1 + "; " +
          CONFIG.MATCH_TIER2 + "; " +
@@ -600,7 +599,6 @@ function handleMatchTraffic(url, host, ip) {
     }
   }
 
-  // ★★★ المباراة عبر البروكسي الأردني ★★★
   if (!SESSION.match.locked) {
     SESSION.match.networkPrefix = prefix;
     SESSION.match.hostname = host;
@@ -615,7 +613,6 @@ function handleMatchTraffic(url, host, ip) {
     return buildJordanChain();
   }
 
-  // استمرار الجلسة
   if (host === SESSION.match.hostname && prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
     if (shouldSwitchProxy()) {
@@ -625,13 +622,11 @@ function handleMatchTraffic(url, host, ip) {
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2 + "; " + CONFIG.MATCH_TIER3;
   }
 
-  // نفس الشبكة
   if (prefix === SESSION.match.networkPrefix) {
     SESSION.match.lastActivity = new Date().getTime();
     return SESSION.match.proxy + "; " + CONFIG.MATCH_TIER2;
   }
 
-  // شبكة مختلفة
   SESSION.match.lastActivity = new Date().getTime();
   return buildJordanChain();
 }
@@ -690,12 +685,12 @@ function FindProxyForURL(url, host) {
   }
 
   // ═══════════════════════════════════════════
-  // RECRUIT — تجنيد: بروكسي أردني
+  // RECRUIT — تجنيد: بروكسي أردني (محسّن للسرعة)
   // ═══════════════════════════════════════════
   if (isRecruitTraffic(url, host)) {
     SESSION.counters.lobbyRequests++;
     SESSION.counters.forcedProxy++;
-    return buildLobbyChain(selectLobbyProxy(host, ip));
+    return CONFIG.MATCH_TIER1 + "; " + CONFIG.MATCH_TIER2; // ← تم التحسين
   }
 
   // ═══════════════════════════════════════════
