@@ -1,178 +1,92 @@
 /*
  * ================================================================
- * ALYAZOURI PAC 6.1 — JORDAN PURE ROUTE
+ * ALYAZOURI PAC 7.1 — JORDAN PURE DIRECT
  * ================================================================
  *
- * الهدف: مسار أردني بيور (خروج من IP أردني فقط)
+ * سكربت بدون بروكسي — كل شي يمر مباشرة من شبكتك الأردنية
  *
- * ROUTING POLICY (بالترتيب)
+ * الاعتماد الرئيسي على:
+ *   - نطاقات CIDR الأردنية السكانية والتجارية (31 نطاق IPv4)
+ *   - النطاقات الأردنية (.jo + تجارية + بنوك + خدمات)
+ *   - نطاقات الألعاب
+ *   - بدون أي نطاقات حكومية (.gov.jo)
  *
- *  1. Local / private / loopback        -> DIRECT
- *  2. Plain hostnames (intranet)        -> DIRECT
- *  3. GAME / MATCHMAKING domains        -> DIRECT   (مسار أردني بيور)
- *  4. Jordan IPv4 / IPv6 destinations   -> DIRECT   (ما في معنى تخرج برّا وترجع)
- *  5. ALWAYS_DIRECT_DOMAINS             -> DIRECT
- *  6. باقي الإنترنت                      -> JO_PROXY إذا (وفقط إذا) البروكسي IP أردني
- *                                          وإلا -> حسب NON_JO_FALLBACK
+ * بدون بروكسي — بدون VPN — كل شي DIRECT
  *
- * ================================================================
- * تحذيرات لازم تنقرأ (ما هي زينة):
- *
- * [1] PAC ما بيتحكم بترافيك الألعاب.
- *     PUBG / COD / Fortnite بتستخدم UDP خام + بروتوكولات خاصة،
- *     والـ PAC بينطبق فقط على التطبيقات اللي تقرأه (متصفحات، بعض
- *     التطبيقات). حتى لو كتبت "PUBG -> SOCKS5" ما رح يصير إشي.
- *     => الطريقة الوحيدة تضمن matchmaking أردني/إقليمي:
- *        تضل على IP أردني حقيقي بدون أي بروكسي/VPN، وهذا بالضبط
- *        اللي بتعمله هاي النسخة (DIRECT للألعاب).
- *
- * [2] SOCKS5 داخل PAC مدعوم جزئيًا فقط:
- *     Chrome/Chromium/Firefox بيدعموا "SOCKS5 host:port".
- *     نظام iOS/macOS وبعض التطبيقات ما بتدعمه من PAC.
- *
- * [3] البروكسيات القديمة في 6.0 مش أردنية:
- *        104.248.197.67  -> DigitalOcean (أوروبا)
- *        104.248.203.234 -> DigitalOcean (أوروبا)
- *        139.59.24.173   -> DigitalOcean (أوروبا)
- *     استخدامها = خصم وفريق أوروبي، عكس المطلوب تمامًا.
- *     لهيك انحطّت enabled:false، وفي فحص تلقائي
- *     (ENFORCE_JORDAN_EXIT) بيرفض أي بروكسي IP مش داخل نطاقات الأردن.
  * ================================================================
  */
 
 var CONFIG = {
-    VERSION: "6.1.0",
-    MODE: "JORDAN_PURE",
 
-    /* إذا false => كل شي DIRECT (أنقى مسار أردني ممكن) */
+    VERSION: "7.1.0",
+    MODE: "JORDAN_PURE_DIRECT",
+
+    /* كل شي DIRECT — لا بروكسي */
     PROXY_ENABLED: false,
 
-    /* يرفض أي بروكسي IP مش ضمن نطاقات الأردن أدناه */
-    ENFORCE_JORDAN_EXIT: true,
-
-    /* لما ما يكون في بروكسي أردني صالح: "DIRECT" أو "BLOCK" */
-    NON_JO_FALLBACK: "DIRECT",
-
-    MAX_PROXY_CHAIN: 3,
-
-    /*
+    /* ============================================================
+     * JORDAN IPv4 — نطاقات سكانية و تجارية
      * ============================================================
-     * JORDAN EXIT PROXY POOL
-     * ============================================================
-     * حط هون بروكسي أردني حقيقي (Orange JO / Zain JO / Umniah / VPS أردني)
-     * وخلي enabled:true. أي IP غير أردني رح يترفض تلقائيًا.
-     */
-    PROXIES: [
-        {
-            name: "JO_EXIT_PRIMARY",
-            host: "0.0.0.0",          /* <-- ضع IP أردني هنا */
-            port: 1080,
-            type: "SOCKS5",
-            enabled: false,
-            priority: 100,
-            weight: 5
-        },
-        {
-            name: "JO_EXIT_SECONDARY",
-            host: "0.0.0.0",
-            port: 1080,
-            type: "SOCKS5",
-            enabled: false,
-            priority: 90,
-            weight: 3
-        },
-
-        /* --- بروكسيات 6.0 القديمة: أوروبية، معطّلة عمدًا --- */
-        { name: "LEGACY_EU_1", host: "104.248.197.67",  port: 1080, type: "SOCKS5", enabled: false, priority: 10, weight: 1 },
-        { name: "LEGACY_EU_2", host: "104.248.203.234", port: 1080, type: "SOCKS5", enabled: false, priority: 9,  weight: 1 },
-        { name: "LEGACY_EU_3", host: "139.59.24.173",   port: 1080, type: "SOCKS5", enabled: false, priority: 8,  weight: 1 }
-    ],
-
-    /*
-     * ============================================================
-     * GAME / MATCHMAKING DOMAINS -> DIRECT دائمًا
-     * ============================================================
-     * هدول للّوجن/الـ API/الـ CDN تبع الألعاب. تمريرهم عبر بروكسي أجنبي
-     * بيخلّي السيرفر يشوفك أجنبي => لوبي أجنبي.
-     */
-    GAME_DIRECT_DOMAINS: [
-        "pubg.com",
-        "pubgmobile.com",
-        "pubgmobile.live",
-        "igamecj.com",
-        "proximabeta.com",
-        "tencentgames.com",
-        "qcloud.com",
-        "tencent.com",
-        "krafton.com",
-        "battlegroundsmobileindia.com",
-        "garena.com",
-        "callofduty.com",
-        "activision.com",
-        "blizzard.com",
-        "battle.net",
-        "riotgames.com",
-        "leagueoflegends.com",
-        "valorant.com",
-        "epicgames.com",
-        "fortnite.com",
-        "ea.com",
-        "easports.com",
-        "playstation.net",
-        "playstation.com",
-        "xboxlive.com",
-        "steampowered.com",
-        "steamcommunity.com",
-        "steamcontent.com",
-        "steamstatic.com",
-        "roblox.com",
-        "rbxcdn.com",
-        "supercell.com",
-        "miniclip.com",
-        "unity3d.com",
-        "unityads.unity3d.com",
-        "agora.io",
-        "photonengine.com"
-    ],
-
-    /*
-     * ============================================================
-     * JORDAN IPv4  (وجهات محلية + فحص خروج البروكسي)
-     * ============================================================
-     */
+     * مصدّر: RIPE NCC — MaxMind — IP2Location
+     *         github.com/ebrasha/cidr-ip-ranges-by-country
+     *
+     * مصنّفة حسب مزود الخدمة:
+     *   Orange JO — Zain JO — Umniah — TE Data
+     *   Batelco JO — Damamax — Link — أخرى
+     * ============================================================ */
     JORDAN_IPV4: [
-        "212.34.0.0/19",
-        "212.35.64.0/19",
-        "212.118.0.0/19",
-        "213.139.32.0/19",
-        "213.186.160.0/19",
-        "193.188.64.0/19",
-        "178.77.128.0/18",
-        "176.57.0.0/19",
-        "95.172.192.0/19",
-        "84.18.32.0/19",
-        "84.18.64.0/19",
-        "37.123.64.0/19",
-        "46.185.128.0/17",
-        "46.248.192.0/19",
-        "79.134.128.0/19",
-        "5.45.128.0/20",
-        "91.186.224.0/19",
-        "80.90.160.0/19",
-        "185.16.160.0/22",
-        "188.247.64.0/18",
-        "77.245.16.0/20",
-        "62.72.96.0/19",
-        "94.249.0.0/16",
-        "82.212.64.0/18",
-        "217.144.0.0/20"
+        /* ---- Orange Jordan (أكبر مزود) ---- */
+        "46.185.128.0/17",          /* Orange — نطاق واسع */
+        "79.134.128.0/19",          /* Orange */
+        "88.201.0.0/16",            /* Orange — /16 كامل */
+        "94.249.0.0/16",            /* Orange — /16 كامل */
+        "178.77.128.0/18",          /* Orange */
+        "37.123.64.0/19",           /* Orange */
+        "212.35.64.0/19",           /* Orange / Jordan Telecom */
+
+        /* ---- Zain Jordan ---- */
+        "188.247.64.0/18",          /* Zain — نطاق واسع */
+        "109.107.128.0/18",         /* Zain */
+
+        /* ---- Umniah ---- */
+        "37.35.0.0/17",             /* Umniah — نطاق واسع */
+
+        /* ---- TE Data Jordan ---- */
+        "62.72.96.0/19",            /* TE Data */
+        "84.18.32.0/19",            /* TE Data */
+        "84.18.64.0/19",            /* TE Data */
+
+        /* ---- Batelco Jordan ---- */
+        "212.34.0.0/19",            /* Batelco */
+
+        /* ---- Damamax ---- */
+        "185.117.80.0/22",          /* Damamax */
+
+        /* ---- مزودون آخرون / Link / مشتركة ---- */
+        "5.45.128.0/20",            /* Link / مشاركة */
+        "31.14.80.0/20",            /* مشاركة */
+        "46.248.192.0/19",          /* مشاركة */
+        "77.245.16.0/20",           /* مشاركة */
+        "80.90.160.0/19",           /* مشاركة */
+        "82.212.64.0/18",           /* مشاركة */
+        "86.108.64.0/18",           /* JO/محدود — مشاركة */
+        "91.186.224.0/19",          /* مشاركة */
+        "95.172.192.0/19",          /* مشاركة */
+        "176.57.0.0/19",            /* مشاركة */
+        "185.16.160.0/22",          /* مشاركة */
+        "193.188.64.0/19",          /* مشاركة */
+        "212.118.0.0/19",           /* مشاركة */
+        "213.139.32.0/19",          /* مشاركة */
+        "213.186.160.0/19",         /* مشاركة */
+        "217.144.0.0/20"            /* مشاركة */
     ],
 
-    /*
-     * ============================================================
+    /* ============================================================
      * JORDAN IPv6
      * ============================================================
-     */
+     * مصدّر: RIPE NCC
+     *         github.com/ebrasha/cidr-ip-ranges-by-country
+     * ============================================================ */
     JORDAN_IPV6: [
         "2a01:1d0::/29",
         "2a01:9700::/29",
@@ -198,43 +112,314 @@ var CONFIG = {
         "2a07:d887:7000::/40"
     ],
 
-    ALWAYS_DIRECT_DOMAINS: [
-        "jo",                 /* كل النطاقات الأردنية .jo */
-        "apple.com",
-        "icloud.com",
-        "google.com",
-        "gstatic.com",
-        "googleapis.com",
-        "youtube.com",
-        "ytimg.com",
-        "facebook.com",
-        "fbcdn.net",
-        "instagram.com",
-        "whatsapp.com",
-        "telegram.org",
-        "tiktok.com",
-        "microsoft.com",
-        "windowsupdate.com",
-        "office.com",
-        "live.com",
-        "netflix.com",
-        "spotify.com",
-        "cloudflare.com",
-        "amazon.com",
-        "akamaihd.net",
-        "akamaized.net",
-        "fastly.net",
-        "github.com",
-        "githubusercontent.com",
-        "wikipedia.org",
+    /* ============================================================
+     * PRIVATE / LOOPBACK / CGNAT
+     * ============================================================ */
+    PRIVATE_IPV4: [
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "100.64.0.0/10"             /* CGNAT — شائع عند Orange/Zain */
+    ],
+
+    PRIVATE_IPV6: [
+        "fc00::/7",
+        "fe80::/10",
+        "::1/128"
+    ],
+
+    /* ============================================================
+     * GAME / MATCHMAKING DOMAINS — DIRECT دائمًا
+     * ============================================================
+     * تمريرها عبر أي بروكسي = لوبي أجنبي
+     * هون كل شي DIRECT => الألعاب تبقى على IP الأردني
+     * ============================================================ */
+    GAME_DIRECT_DOMAINS: [
+        /* PUBG / Krafton */
+        "pubg.com",
+        "pubgmobile.com",
+        "pubgmobile.live",
+        "igamecj.com",
+        "proximabeta.com",
+        "krafton.com",
+        "battlegroundsmobileindia.com",
+
+        /* Tencent */
+        "tencentgames.com",
+        "tencent.com",
+        "qcloud.com",
+
+        /* Garena */
+        "garena.com",
+
+        /* Call of Duty / Activision / Blizzard */
+        "callofduty.com",
+        "activision.com",
+        "blizzard.com",
+        "battle.net",
+
+        /* Riot Games */
+        "riotgames.com",
+        "leagueoflegends.com",
+        "valorant.com",
+
+        /* Epic / Fortnite */
+        "epicgames.com",
+        "fortnite.com",
+
+        /* EA */
+        "ea.com",
+        "easports.com",
+
+        /* PlayStation / Xbox */
+        "playstation.net",
+        "playstation.com",
+        "xboxlive.com",
+
+        /* Steam */
+        "steampowered.com",
+        "steamcommunity.com",
+        "steamcontent.com",
+        "steamstatic.com",
+
+        /* Roblox */
+        "roblox.com",
+        "rbxcdn.com",
+
+        /* أخرى */
+        "supercell.com",
+        "miniclip.com",
+        "unity3d.com",
+        "unityads.unity3d.com",
+        "agora.io",
+        "photonengine.com",
+        "mojang.com",
+        "minecraft.net",
+        "neteasegames.com",
+        "supercell.net"
+    ],
+
+    /* ============================================================
+     * JORDAN DOMAINS — سكانية و تجارية فقط (بدون حكومية)
+     * ============================================================
+     * ملاحظة: .jo TLD يغطي كل النطاقات الأردنية تلقائيًا
+     * هون بنضيف النطاقات التجارية والخدمية صراحةً للوضوح
+     * ============================================================ */
+    JORDAN_DOMAINS: [
+        /* ---- نطاق الأردن العام ---- */
+        "jo",
+
+        /* ---- مزودو الخدمة (ISPs) ---- */
         "orange.jo",
         "zain.jo",
         "umniah.com",
-        "efawateercom.jo",
-        "eservices.gov.jo",
-        "cliq.jo"
+        "damamax.com",
+        "batelco.jo",
+        "link.jo",
+        "linkdotnet.com.jo",
+        "pendasil.com",
+        "myinternet.jo",
+
+        /* ---- البنوك والخدمات المالية ---- */
+        "arabbank.com",
+        "arabbank.jo",
+        "housingbank.jo",
+        "bankofjordan.com.jo",
+        "capitalbank.jo",
+        "etihadawuna.jo",
+        "cairoammanbank.jo",
+        "bkaurgroup.com",
+        "jnb.com.jo",
+        "jordan-kuwait-bank.com",
+        "blombank.jo",
+        "sultan.jo",
+        "investbank.jo",
+        "jopost.jo",
+
+        /* ---- الدفع الإلكتروني ---- */
+        "madfooatcom.com",
+        "cashu.com",
+        "klip.jo",
+
+        /* ---- التجارة الإلكترونية والخدمات ---- */
+        "opensooq.com",
+        "jeeran.com",
+        "markavip.com",
+        "mawdoo3.com",
+        "talabat.com.jo",
+        "careem.com",
+        "souq.jo",
+        "noon.jo",
+
+        /* ---- الأخبار والإعلام ---- */
+        "alghad.com",
+        "ammonnews.net",
+        "khaberni.com",
+        "jo24.net",
+        "addustour.com",
+        "sarayanews.jo",
+        "jordannews.jo",
+        "albayan-news.com",
+        "jfrasatv.com",
+        "joenews.net",
+        "khabarjo.com",
+        "alrai.com",
+
+        /* ---- التعليمي ---- */
+        "edu.jo",
+        "just.edu.jo",
+        "ju.edu.jo",
+        "mu.edu.jo",
+        "psut.edu.jo",
+        "aauj.edu",
+        "bau.edu.jo",
+        "hu.edu.jo",
+        "zu.edu.jo",
+        "uj.edu.jo"
     ],
 
+    /* ============================================================
+     * ALWAYS DIRECT — نطاقات عالمية
+     * ============================================================ */
+    ALWAYS_DIRECT_DOMAINS: [
+        /* Google */
+        "google.com",
+        "gstatic.com",
+        "googleapis.com",
+        "googleusercontent.com",
+        "googlevideo.com",
+        "ggpht.com",
+        "youtube.com",
+        "ytimg.com",
+        "googleadservices.com",
+        "googlesyndication.com",
+        "google.jo",
+        "google-analytics.com",
+        "googletagmanager.com",
+
+        /* Apple */
+        "apple.com",
+        "icloud.com",
+        "apple-dns.net",
+        "mzstatic.com",
+        "cdn-apple.com",
+
+        /* Microsoft */
+        "microsoft.com",
+        "windowsupdate.com",
+        "office.com",
+        "office365.com",
+        "live.com",
+        "outlook.com",
+        "skype.com",
+        "msn.com",
+        "bing.com",
+        "azure.com",
+        "windows.com",
+        "msftconnecttest.com",
+
+        /* Meta */
+        "facebook.com",
+        "fbcdn.net",
+        "fbsbx.com",
+        "instagram.com",
+        "whatsapp.com",
+        "whatsapp.net",
+        "threads.net",
+        "cdninstagram.com",
+
+        /* TikTok */
+        "tiktok.com",
+        "tiktokcdn.com",
+        "tiktokv.com",
+        "musical.ly",
+        "bytedance.com",
+        "byteoversea.com",
+        "snssdk.com",
+
+        /* Telegram */
+        "telegram.org",
+        "t.me",
+        "telegram.me",
+
+        /* Amazon / AWS */
+        "amazon.com",
+        "amazonaws.com",
+        "cloudfront.net",
+        "aws.amazon.com",
+        "amazonservices.com",
+
+        /* Netflix */
+        "netflix.com",
+        "nflxvideo.net",
+        "nflximg.net",
+        "nflxext.com",
+        "nflxso.net",
+
+        /* Spotify */
+        "spotify.com",
+        "spotifycdn.com",
+        "scdn.co",
+        "spoti.fi",
+
+        /* Cloudflare / CDNs */
+        "cloudflare.com",
+        "cloudflare-dns.com",
+        "cdnjs.cloudflare.com",
+        "akamaihd.net",
+        "akamaized.net",
+        "fastly.net",
+        "fastlylb.net",
+        "edgecastcdn.net",
+        "hwcdn.net",
+        "stackpathdns.com",
+        "stackpath.com",
+
+        /* GitHub */
+        "github.com",
+        "github.io",
+        "githubusercontent.com",
+        "githubassets.com",
+        "raw.githubusercontent.com",
+
+        /* Wikipedia */
+        "wikipedia.org",
+        "wikimedia.org",
+        "wikidata.org",
+        "wikimediafoundation.org",
+
+        /* DNS */
+        "dns.google",
+        "cloudflare-dns.com",
+        "opendns.com",
+        "quad9.net",
+
+        /* أخرى */
+        "twitter.com",
+        "x.com",
+        "twimg.com",
+        "linkedin.com",
+        "licdn.com",
+        "reddit.com",
+        "redd.it",
+        "redditstatic.com",
+        "discord.com",
+        "discord.gg",
+        "discordapp.com",
+        "discordapp.net",
+        "zoom.us",
+        "dropbox.com",
+        "dropboxstatic.com",
+        "wetransfer.com",
+        "speedtest.net",
+        "ooklaserver.net"
+    ],
+
+    /* ============================================================
+     * DIRECT URL PATTERNS
+     * ============================================================ */
     DIRECT_URL_PATTERNS: [
         "*://*.windowsupdate.com/*",
         "*://*.apple.com/*",
@@ -246,28 +431,23 @@ var CONFIG = {
         "*://*.fastly.net/*",
         "*://*.apple-dns.net/*",
         "*://*.github.io/*",
-        "*://*.jo/*"
-    ],
-
-    PRIVATE_IPV4: [
-        "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
-        "127.0.0.0/8",
-        "169.254.0.0/16",
-        "100.64.0.0/10"       /* CGNAT — شائع عند مزودي الأردن */
-    ],
-
-    PRIVATE_IPV6: [
-        "fc00::/7",
-        "fe80::/10",
-        "::1/128"
+        "*://*.jo/*",
+        "*://*.googlevideo.com/*",
+        "*://*.youtube.com/*",
+        "*://*.nflxvideo.net/*",
+        "*://*.nflximg.net/*",
+        "*://*.fbcdn.net/*",
+        "*://*.cdninstagram.com/*",
+        "*://*.spotifycdn.com/*",
+        "*://*.tiktokcdn.com/*"
     ]
 };
 
+
 /* ================================================================
- * STRING
+ *  ██  دوال مساعدة — UTILITY FUNCTIONS
  * ================================================================ */
+
 function safeLower(value) {
     if (!value) { return ""; }
     return String(value).toLowerCase();
@@ -370,7 +550,7 @@ function ipv6InCIDR(ip, cidr) {
 }
 
 /* ================================================================
- * CIDR LIST
+ * CIDR LIST LOOKUP
  * ================================================================ */
 function ipInList(ip, list) {
     for (var i = 0; i < list.length; i++) {
@@ -391,7 +571,7 @@ function isJordanIP(ip) {
 }
 
 /* ================================================================
- * DOMAIN MATCH
+ * DOMAIN MATCHING
  * ================================================================ */
 function domainMatch(host, domain) {
     host   = safeLower(host);
@@ -410,6 +590,10 @@ function isGameHost(host) {
     return inDomainList(host, CONFIG.GAME_DIRECT_DOMAINS);
 }
 
+function isJordanDomain(host) {
+    return inDomainList(host, CONFIG.JORDAN_DOMAINS);
+}
+
 function isAlwaysDirect(host) {
     return inDomainList(host, CONFIG.ALWAYS_DIRECT_DOMAINS);
 }
@@ -422,82 +606,70 @@ function isDirectURL(url) {
 }
 
 /* ================================================================
- * PROXY VALIDATION — لازم يكون أردني
+ * تشخيص سريع (للdebug — بيشتغل في بعض المتصفحات)
  * ================================================================ */
-function isValidProxy(proxy) {
-    if (!proxy)          { return false; }
-    if (!proxy.enabled)  { return false; }
-    if (!proxy.host || !proxy.port) { return false; }
-    if (proxy.port < 1 || proxy.port > 65535) { return false; }
-    if (proxy.type !== "SOCKS5" && proxy.type !== "PROXY") { return false; }
-
-    /* placeholder */
-    if (proxy.host === "0.0.0.0") { return false; }
-
-    /* شرط "المسار الأردني البيور": IP خروج داخل نطاقات الأردن */
-    if (CONFIG.ENFORCE_JORDAN_EXIT) {
-        if (!isIPv4(proxy.host) && !isIPv6(proxy.host)) {
-            /* hostname ما نقدر نتحقق منه وقت التقييم => نرفضه */
-            return false;
-        }
-        if (!isJordanIP(proxy.host)) { return false; }
-    }
-    return true;
+function diag(host, ip, result) {
+    /* ممكن تضيف alert() أو console.log() للاختبار */
+    return result;
 }
 
-function getProxyChain() {
-    var list = [];
-    var i;
-    for (i = 0; i < CONFIG.PROXIES.length; i++) {
-        if (isValidProxy(CONFIG.PROXIES[i])) { list.push(CONFIG.PROXIES[i]); }
-    }
-    list.sort(function (a, b) {
-        if (a.priority !== b.priority) { return b.priority - a.priority; }
-        return b.weight - a.weight;
-    });
-    var chain = [];
-    for (var j = 0; j < list.length && j < CONFIG.MAX_PROXY_CHAIN; j++) {
-        chain.push(list[j].type + " " + list[j].host + ":" + list[j].port);
-    }
-    return chain;
-}
-
-function blockRoute() {
-    /* بروكسي غير صالح عمدًا => منع التسريب بدل السقوط الصامت لـ DIRECT */
-    return "SOCKS5 0.0.0.0:1";
-}
 
 /* ================================================================
- * MAIN
+ *  ██  MAIN — الدالة الرئيسية
+ * ================================================================
+ *
+ * ترتيب الأولويات:
+ *
+ *   1. اسم مجرد (intranet / LAN)            → DIRECT
+ *   2. IP خاص / loopback / CGNAT             → DIRECT
+ *   3. نطاقات الألعاب / matchmaking          → DIRECT
+ *   4. IP أردني (ضمن الـ CIDR ranges)        → DIRECT
+ *   5. نطاق أردني (.jo / تجاري)              → DIRECT
+ *   6. نطاقات عالمية مُستثناة                → DIRECT
+ *   7. أي شي ثاني                           → DIRECT
+ *                                        (كل شي DIRECT!)
+ *
  * ================================================================ */
 function FindProxyForURL(url, host) {
+
     url  = String(url || "");
     host = safeLower(host);
 
-    /* 1) شبكة محلية / intranet */
-    if (isPlainHostName(host)) { return "DIRECT"; }
-    if ((isIPv4(host) || isIPv6(host)) && isPrivateIP(host)) { return "DIRECT"; }
-
-    /* 2) الألعاب و الـ matchmaking => مسار أردني بيور، بدون بروكسي */
-    if (isGameHost(host)) { return "DIRECT"; }
-
-    /* 3) وجهات داخل الأردن */
-    if ((isIPv4(host) || isIPv6(host)) && isJordanIP(host)) { return "DIRECT"; }
-
-    /* 4) استثناءات الدومين / الـ URL */
-    if (isAlwaysDirect(host)) { return "DIRECT"; }
-    if (isDirectURL(url))     { return "DIRECT"; }
-
-    /* 5) باقي الإنترنت */
-    if (CONFIG.PROXY_ENABLED) {
-        var chain = getProxyChain();
-        if (chain.length > 0) {
-            /* DIRECT ما بينحط بالسلسلة حتى ما يتسرب الخروج لغير أردني */
-            return chain.join("; ");
-        }
+    /* ---- 1) اسم مجرد بدون نقطة (شبكة داخلية) ---- */
+    if (isPlainHostName(host)) {
+        return "DIRECT";
     }
 
-    /* 6) ما في مخرج أردني صالح */
-    if (CONFIG.NON_JO_FALLBACK === "BLOCK") { return blockRoute(); }
+    /* ---- 2) IP خاص / loopback / CGNAT ---- */
+    if ((isIPv4(host) || isIPv6(host)) && isPrivateIP(host)) {
+        return "DIRECT";
+    }
+
+    /* ---- 3) ألعاب و matchmaking => DIRECT ---- */
+    if (isGameHost(host)) {
+        return "DIRECT";
+    }
+
+    /* ---- 4) IP أردني (ضمن الـ 31 نطاق IPv4 + 22 نطاق IPv6) ---- */
+    if ((isIPv4(host) || isIPv6(host)) && isJordanIP(host)) {
+        return "DIRECT";
+    }
+
+    /* ---- 5) نطاق أردني (.jo + تجاري + بنوك + خدمات) ---- */
+    if (isJordanDomain(host)) {
+        return "DIRECT";
+    }
+
+    /* ---- 6) نطاقات عالمية مستثناة (CDN, DNS, خدمات) ---- */
+    if (isAlwaysDirect(host)) {
+        return "DIRECT";
+    }
+
+    /* ---- 7) أنماط URL مستثناة ---- */
+    if (isDirectURL(url)) {
+        return "DIRECT";
+    }
+
+    /* ---- 8) كل شي ثاني => DIRECT ---- */
     return "DIRECT";
 }
