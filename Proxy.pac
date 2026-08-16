@@ -1,92 +1,102 @@
 /*
- * ================================================================
- * ALYAZOURI PAC 7.1 — JORDAN PURE DIRECT
- * ================================================================
+ * ======================================================================
+ * ALYAZOURI PAC 8.0 — PUBG MOBILE JORDAN FULL / STRICT
+ * iOS + Android — Complete PAC File
+ * ======================================================================
  *
- * سكربت بدون بروكسي — كل شي يمر مباشرة من شبكتك الأردنية
+ * الوضع الافتراضي: PUBG_MAX_CAPTURE
  *
- * الاعتماد الرئيسي على:
- *   - نطاقات CIDR الأردنية السكانية والتجارية (31 نطاق IPv4)
- *   - النطاقات الأردنية (.jo + تجارية + بنوك + خدمات)
- *   - نطاقات الألعاب
- *   - بدون أي نطاقات حكومية (.gov.jo)
+ * 1) نطاقات PUBG Mobile المعروفة          -> PROXY بلا DIRECT
+ * 2) أي URL يستعمل IP عاماً مباشرة         -> PROXY بلا DIRECT
+ * 3) كل HTTP/HTTPS/WSS العام                -> PROXY بلا DIRECT
+ * 4) LAN / Loopback / Private / CGNAT فقط  -> DIRECT
  *
- * بدون بروكسي — بدون VPN — كل شي DIRECT
+ * البروكسيات:
+ *   HTTP        : 212.118.2.91:8080
+ *   HTTPS / WSS : 212.35.67.142:80 (CONNECT)
  *
- * ================================================================
+ * مهم جداً:
+ *   ملف PAC لا يعترض UDP أو QUIC أو TCP الخام. لذلك لا يستطيع بروكسي
+ *   HTTP-GET/CONNECT تمرير حركة مباراة PUBG Mobile كاملة أو ضمان Region
+ *   أردني في جميع المودات. يغطي الملف فقط الاتصالات التي يحيلها iOS أو
+ *   Android إلى محرك HTTP proxy.
+ *
+ * لا يوجد DIRECT كخيار احتياطي للإنترنت العام في الوضع الافتراضي.
+ * تعطل البروكسي يعني فشل الاتصال بدلاً من التسريب عبر اتصال مباشر.
+ * ======================================================================
  */
 
 var CONFIG = {
+    VERSION: "8.0.0",
+    MODE: "PUBG_MAX_CAPTURE",
 
-    VERSION: "7.1.0",
-    MODE: "JORDAN_PURE_DIRECT",
+    /* PAC تستعمل كلمة PROXY لبروكسي HTTP ولـ HTTPS CONNECT أيضاً. */
+    HTTP_PROXY:  "PROXY 212.118.2.91:8080",
+    HTTPS_PROXY: "PROXY 212.35.67.142:80",
 
-    /* كل شي DIRECT — لا بروكسي */
-    PROXY_ENABLED: false,
+    /* سلاسل صارمة: لا تضف DIRECT هنا. */
+    HTTP_CHAIN:  "PROXY 212.118.2.91:8080; PROXY 212.35.67.142:80",
+    HTTPS_CHAIN: "PROXY 212.35.67.142:80; PROXY 212.118.2.91:8080",
 
-    /* ============================================================
-     * JORDAN IPv4 — نطاقات سكانية و تجارية
-     * ============================================================
-     * مصدّر: RIPE NCC — MaxMind — IP2Location
-     *         github.com/ebrasha/cidr-ip-ranges-by-country
-     *
-     * مصنّفة حسب مزود الخدمة:
-     *   Orange JO — Zain JO — Umniah — TE Data
-     *   Batelco JO — Damamax — Link — أخرى
-     * ============================================================ */
+    /* true = أقصى تغطية داخل حدود PAC: كل الإنترنت العام HTTP(S) بالبروكسي. */
+    PROXY_ALL_PUBLIC_WEB: true,
+
+    /* توجيه URL الذي يحتوي عنوان IP عاماً حرفياً إلى البروكسي. */
+    PROXY_PUBLIC_IP_LITERALS: true,
+
+    /* ==================================================================
+     * JORDAN IPv4 — القائمة التي كانت موجودة في السكربت الأصلي
+     * ================================================================== */
     JORDAN_IPV4: [
-        /* ---- Orange Jordan (أكبر مزود) ---- */
-        "46.185.128.0/17",          /* Orange — نطاق واسع */
-        "79.134.128.0/19",          /* Orange */
-        "88.201.0.0/16",            /* Orange — /16 كامل */
-        "94.249.0.0/16",            /* Orange — /16 كامل */
-        "178.77.128.0/18",          /* Orange */
-        "37.123.64.0/19",           /* Orange */
-        "212.35.64.0/19",           /* Orange / Jordan Telecom */
+        /* Orange / Jordan Telecom */
+        "46.185.128.0/17",
+        "79.134.128.0/19",
+        "88.201.0.0/16",
+        "94.249.0.0/16",
+        "178.77.128.0/18",
+        "37.123.64.0/19",
+        "212.35.64.0/19",
 
-        /* ---- Zain Jordan ---- */
-        "188.247.64.0/18",          /* Zain — نطاق واسع */
-        "109.107.128.0/18",         /* Zain */
+        /* Zain */
+        "188.247.64.0/18",
+        "109.107.128.0/18",
 
-        /* ---- Umniah ---- */
-        "37.35.0.0/17",             /* Umniah — نطاق واسع */
+        /* Umniah */
+        "37.35.0.0/17",
 
-        /* ---- TE Data Jordan ---- */
-        "62.72.96.0/19",            /* TE Data */
-        "84.18.32.0/19",            /* TE Data */
-        "84.18.64.0/19",            /* TE Data */
+        /* TE Data */
+        "62.72.96.0/19",
+        "84.18.32.0/19",
+        "84.18.64.0/19",
 
-        /* ---- Batelco Jordan ---- */
-        "212.34.0.0/19",            /* Batelco */
+        /* Batelco */
+        "212.34.0.0/19",
 
-        /* ---- Damamax ---- */
-        "185.117.80.0/22",          /* Damamax */
+        /* Damamax */
+        "185.117.80.0/22",
 
-        /* ---- مزودون آخرون / Link / مشتركة ---- */
-        "5.45.128.0/20",            /* Link / مشاركة */
-        "31.14.80.0/20",            /* مشاركة */
-        "46.248.192.0/19",          /* مشاركة */
-        "77.245.16.0/20",           /* مشاركة */
-        "80.90.160.0/19",           /* مشاركة */
-        "82.212.64.0/18",           /* مشاركة */
-        "86.108.64.0/18",           /* JO/محدود — مشاركة */
-        "91.186.224.0/19",          /* مشاركة */
-        "95.172.192.0/19",          /* مشاركة */
-        "176.57.0.0/19",            /* مشاركة */
-        "185.16.160.0/22",          /* مشاركة */
-        "193.188.64.0/19",          /* مشاركة */
-        "212.118.0.0/19",           /* مشاركة */
-        "213.139.32.0/19",          /* مشاركة */
-        "213.186.160.0/19",         /* مشاركة */
-        "217.144.0.0/20"            /* مشاركة */
+        /* Other / shared */
+        "5.45.128.0/20",
+        "31.14.80.0/20",
+        "46.248.192.0/19",
+        "77.245.16.0/20",
+        "80.90.160.0/19",
+        "82.212.64.0/18",
+        "86.108.64.0/18",
+        "91.186.224.0/19",
+        "95.172.192.0/19",
+        "176.57.0.0/19",
+        "185.16.160.0/22",
+        "193.188.64.0/19",
+        "212.118.0.0/19",
+        "213.139.32.0/19",
+        "213.186.160.0/19",
+        "217.144.0.0/20"
     ],
 
-    /* ============================================================
-     * JORDAN IPv6
-     * ============================================================
-     * مصدّر: RIPE NCC
-     *         github.com/ebrasha/cidr-ip-ranges-by-country
-     * ============================================================ */
+    /* ==================================================================
+     * JORDAN IPv6 — القائمة التي كانت موجودة في السكربت الأصلي
+     * ================================================================== */
     JORDAN_IPV6: [
         "2a01:1d0::/29",
         "2a01:9700::/29",
@@ -112,106 +122,126 @@ var CONFIG = {
         "2a07:d887:7000::/40"
     ],
 
-    /* ============================================================
-     * PRIVATE / LOOPBACK / CGNAT
-     * ============================================================ */
+    /* ==================================================================
+     * PRIVATE / LOOPBACK / LINK-LOCAL / CGNAT
+     * هذه فقط تبقى DIRECT في وضع MAX_CAPTURE.
+     * ================================================================== */
     PRIVATE_IPV4: [
+        "0.0.0.0/8",
         "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
+        "100.64.0.0/10",
         "127.0.0.0/8",
         "169.254.0.0/16",
-        "100.64.0.0/10"             /* CGNAT — شائع عند Orange/Zain */
+        "172.16.0.0/12",
+        "192.168.0.0/16"
     ],
 
     PRIVATE_IPV6: [
+        "::1/128",
         "fc00::/7",
-        "fe80::/10",
-        "::1/128"
+        "fe80::/10"
     ],
 
-    /* ============================================================
-     * GAME / MATCHMAKING DOMAINS — DIRECT دائمًا
-     * ============================================================
-     * تمريرها عبر أي بروكسي = لوبي أجنبي
-     * هون كل شي DIRECT => الألعاب تبقى على IP الأردني
-     * ============================================================ */
-    GAME_DIRECT_DOMAINS: [
-        /* PUBG / Krafton */
+    /* ==================================================================
+     * PUBG MOBILE — Official / Global / KR / VN / BGMI
+     * مطابقة النطاق الجذر تشمل جميع النطاقات الفرعية تلقائياً.
+     * ================================================================== */
+    PUBG_PROXY_DOMAINS: [
+        /* Official PUBG / Krafton */
         "pubg.com",
+        "pubg.net",
         "pubgmobile.com",
         "pubgmobile.live",
-        "igamecj.com",
-        "proximabeta.com",
+        "pubgesports.com",
+        "pubgstore.com",
+        "pubgupdate.com",
+        "pubglite.com",
+        "pubgforums.com",
+        "pubgtournament.com",
+        "pubgcommunity.com",
         "krafton.com",
         "battlegroundsmobileindia.com",
 
-        /* Tencent */
-        "tencentgames.com",
+        /* Global game, lobby, matchmaking, configuration and downloads */
+        "igamecj.com",
+        "proximabeta.com",
+        "gpubgm.com",
+        "pubgameshowtime.com",
+        "amsoveasea.com",
+        "vasdgame.com",
+        "gcloudcs.com",
+        "gcloudsdk.com",
+        "tdatamaster.com",
+        "anticheatexpert.com",
+        "infiniplay-game.com",
+        "gjacky.com",
+        "gamelet.games",
+
+        /* Tencent platform families used by PUBG Mobile */
         "tencent.com",
+        "tencentgames.com",
         "qcloud.com",
+        "myqcloud.com",
+        "qcloudcdn.com",
+        "gcloud.qq.com",
+        "wetest.qq.com",
+        "gamesafe.qq.com",
+        "tdm.qq.com",
+        "tplay.qq.com",
+        "bugly.qq.com",
+        "mdt.qq.com",
+        "unipay.qq.com",
+        "myapp.com",
+        "tcdn.qq.com",
 
-        /* Garena */
-        "garena.com",
+        /* Tencent exact/common hosts */
+        "dlied1.qq.com",
+        "dlied2.qq.com",
+        "dlied3.qq.com",
+        "dlied4.qq.com",
+        "down.qq.com",
+        "vmp.qq.com",
+        "pingma.qq.com",
+        "pingjs.qq.com",
+        "tpns.qq.com",
+        "mta.qq.com",
 
-        /* Call of Duty / Activision / Blizzard */
-        "callofduty.com",
-        "activision.com",
-        "blizzard.com",
-        "battle.net",
+        /* Support and regional services */
+        "pubgmobile.helpshift.com",
+        "pubgmvn.helpshift.com",
+        "tencentgames.helpshift.com",
+        "pubgm.zing.vn",
+        "wechatos.net",
+        "onezapp.com",
 
-        /* Riot Games */
-        "riotgames.com",
-        "leagueoflegends.com",
-        "valorant.com",
+        /* Authentication / measurement endpoints used during startup */
+        "graph.facebook.com",
+        "platform-lookaside.fbsbx.com",
+        "app-measurement.com",
+        "app.adjust.com",
+        "gameswhitelisted.googleapis.com",
 
-        /* Epic / Fortnite */
-        "epicgames.com",
-        "fortnite.com",
+        /* Known PUBG file host */
+        "file-igamecj.akamaized.net",
 
-        /* EA */
-        "ea.com",
-        "easports.com",
-
-        /* PlayStation / Xbox */
-        "playstation.net",
-        "playstation.com",
-        "xboxlive.com",
-
-        /* Steam */
-        "steampowered.com",
-        "steamcommunity.com",
-        "steamcontent.com",
-        "steamstatic.com",
-
-        /* Roblox */
-        "roblox.com",
-        "rbxcdn.com",
-
-        /* أخرى */
-        "supercell.com",
-        "miniclip.com",
-        "unity3d.com",
-        "unityads.unity3d.com",
-        "agora.io",
-        "photonengine.com",
-        "mojang.com",
-        "minecraft.net",
-        "neteasegames.com",
-        "supercell.net"
+        /* Shared CDN families; these are not exclusive to PUBG. */
+        "akamaized.net",
+        "akamaihd.net",
+        "akamaiedge.net",
+        "edgekey.net",
+        "edgesuite.net",
+        "cloudfront.net",
+        "dnsv1.com"
     ],
 
-    /* ============================================================
-     * JORDAN DOMAINS — سكانية و تجارية فقط (بدون حكومية)
-     * ============================================================
-     * ملاحظة: .jo TLD يغطي كل النطاقات الأردنية تلقائيًا
-     * هون بنضيف النطاقات التجارية والخدمية صراحةً للوضوح
-     * ============================================================ */
+    /* ==================================================================
+     * JORDAN DOMAINS — من السكربت الأصلي
+     * تستعمل فقط إذا غيّرت PROXY_ALL_PUBLIC_WEB إلى false.
+     * ================================================================== */
     JORDAN_DOMAINS: [
-        /* ---- نطاق الأردن العام ---- */
         "jo",
 
-        /* ---- مزودو الخدمة (ISPs) ---- */
+        /* ISPs */
         "orange.jo",
         "zain.jo",
         "umniah.com",
@@ -222,7 +252,7 @@ var CONFIG = {
         "pendasil.com",
         "myinternet.jo",
 
-        /* ---- البنوك والخدمات المالية ---- */
+        /* Banks and finance */
         "arabbank.com",
         "arabbank.jo",
         "housingbank.jo",
@@ -238,12 +268,12 @@ var CONFIG = {
         "investbank.jo",
         "jopost.jo",
 
-        /* ---- الدفع الإلكتروني ---- */
+        /* Payments */
         "madfooatcom.com",
         "cashu.com",
         "klip.jo",
 
-        /* ---- التجارة الإلكترونية والخدمات ---- */
+        /* Commerce and services */
         "opensooq.com",
         "jeeran.com",
         "markavip.com",
@@ -253,7 +283,7 @@ var CONFIG = {
         "souq.jo",
         "noon.jo",
 
-        /* ---- الأخبار والإعلام ---- */
+        /* News and media */
         "alghad.com",
         "ammonnews.net",
         "khaberni.com",
@@ -267,7 +297,7 @@ var CONFIG = {
         "khabarjo.com",
         "alrai.com",
 
-        /* ---- التعليمي ---- */
+        /* Education */
         "edu.jo",
         "just.edu.jo",
         "ju.edu.jo",
@@ -280,154 +310,77 @@ var CONFIG = {
         "uj.edu.jo"
     ],
 
-    /* ============================================================
-     * ALWAYS DIRECT — نطاقات عالمية
-     * ============================================================ */
+    /* ==================================================================
+     * ORIGINAL ALWAYS-DIRECT LIST
+     * تعمل فقط في وضع PUBG-only عندما يكون PROXY_ALL_PUBLIC_WEB=false.
+     * PUBG_PROXY_DOMAINS لها أولوية أعلى ولا تصبح DIRECT.
+     * ================================================================== */
     ALWAYS_DIRECT_DOMAINS: [
         /* Google */
-        "google.com",
-        "gstatic.com",
-        "googleapis.com",
-        "googleusercontent.com",
-        "googlevideo.com",
-        "ggpht.com",
-        "youtube.com",
-        "ytimg.com",
-        "googleadservices.com",
-        "googlesyndication.com",
-        "google.jo",
-        "google-analytics.com",
-        "googletagmanager.com",
+        "google.com", "gstatic.com", "googleapis.com", "googleusercontent.com",
+        "googlevideo.com", "ggpht.com", "youtube.com", "ytimg.com",
+        "googleadservices.com", "googlesyndication.com", "google.jo",
+        "google-analytics.com", "googletagmanager.com",
 
         /* Apple */
-        "apple.com",
-        "icloud.com",
-        "apple-dns.net",
-        "mzstatic.com",
+        "apple.com", "icloud.com", "apple-dns.net", "mzstatic.com",
         "cdn-apple.com",
 
         /* Microsoft */
-        "microsoft.com",
-        "windowsupdate.com",
-        "office.com",
-        "office365.com",
-        "live.com",
-        "outlook.com",
-        "skype.com",
-        "msn.com",
-        "bing.com",
-        "azure.com",
-        "windows.com",
-        "msftconnecttest.com",
+        "microsoft.com", "windowsupdate.com", "office.com", "office365.com",
+        "live.com", "outlook.com", "skype.com", "msn.com", "bing.com",
+        "azure.com", "windows.com", "msftconnecttest.com",
 
         /* Meta */
-        "facebook.com",
-        "fbcdn.net",
-        "fbsbx.com",
-        "instagram.com",
-        "whatsapp.com",
-        "whatsapp.net",
-        "threads.net",
-        "cdninstagram.com",
+        "facebook.com", "fbcdn.net", "fbsbx.com", "instagram.com",
+        "whatsapp.com", "whatsapp.net", "threads.net", "cdninstagram.com",
 
         /* TikTok */
-        "tiktok.com",
-        "tiktokcdn.com",
-        "tiktokv.com",
-        "musical.ly",
-        "bytedance.com",
-        "byteoversea.com",
-        "snssdk.com",
+        "tiktok.com", "tiktokcdn.com", "tiktokv.com", "musical.ly",
+        "bytedance.com", "byteoversea.com", "snssdk.com",
 
         /* Telegram */
-        "telegram.org",
-        "t.me",
-        "telegram.me",
+        "telegram.org", "t.me", "telegram.me",
 
         /* Amazon / AWS */
-        "amazon.com",
-        "amazonaws.com",
-        "cloudfront.net",
-        "aws.amazon.com",
+        "amazon.com", "amazonaws.com", "cloudfront.net", "aws.amazon.com",
         "amazonservices.com",
 
         /* Netflix */
-        "netflix.com",
-        "nflxvideo.net",
-        "nflximg.net",
-        "nflxext.com",
+        "netflix.com", "nflxvideo.net", "nflximg.net", "nflxext.com",
         "nflxso.net",
 
         /* Spotify */
-        "spotify.com",
-        "spotifycdn.com",
-        "scdn.co",
-        "spoti.fi",
+        "spotify.com", "spotifycdn.com", "scdn.co", "spoti.fi",
 
-        /* Cloudflare / CDNs */
-        "cloudflare.com",
-        "cloudflare-dns.com",
-        "cdnjs.cloudflare.com",
-        "akamaihd.net",
-        "akamaized.net",
-        "fastly.net",
-        "fastlylb.net",
-        "edgecastcdn.net",
-        "hwcdn.net",
-        "stackpathdns.com",
-        "stackpath.com",
+        /* Cloudflare and CDNs */
+        "cloudflare.com", "cloudflare-dns.com", "cdnjs.cloudflare.com",
+        "akamaihd.net", "akamaized.net", "fastly.net", "fastlylb.net",
+        "edgecastcdn.net", "hwcdn.net", "stackpathdns.com", "stackpath.com",
 
         /* GitHub */
-        "github.com",
-        "github.io",
-        "githubusercontent.com",
-        "githubassets.com",
+        "github.com", "github.io", "githubusercontent.com", "githubassets.com",
         "raw.githubusercontent.com",
 
-        /* Wikipedia */
-        "wikipedia.org",
-        "wikimedia.org",
-        "wikidata.org",
+        /* Wikimedia */
+        "wikipedia.org", "wikimedia.org", "wikidata.org",
         "wikimediafoundation.org",
 
         /* DNS */
-        "dns.google",
-        "cloudflare-dns.com",
-        "opendns.com",
-        "quad9.net",
+        "dns.google", "opendns.com", "quad9.net",
 
-        /* أخرى */
-        "twitter.com",
-        "x.com",
-        "twimg.com",
-        "linkedin.com",
-        "licdn.com",
-        "reddit.com",
-        "redd.it",
-        "redditstatic.com",
-        "discord.com",
-        "discord.gg",
-        "discordapp.com",
-        "discordapp.net",
-        "zoom.us",
-        "dropbox.com",
-        "dropboxstatic.com",
-        "wetransfer.com",
-        "speedtest.net",
-        "ooklaserver.net"
+        /* Other */
+        "twitter.com", "x.com", "twimg.com", "linkedin.com", "licdn.com",
+        "reddit.com", "redd.it", "redditstatic.com", "discord.com",
+        "discord.gg", "discordapp.com", "discordapp.net", "zoom.us",
+        "dropbox.com", "dropboxstatic.com", "wetransfer.com",
+        "speedtest.net", "ooklaserver.net"
     ],
 
-    /* ============================================================
-     * DIRECT URL PATTERNS
-     * ============================================================ */
     DIRECT_URL_PATTERNS: [
         "*://*.windowsupdate.com/*",
         "*://*.apple.com/*",
         "*://*.icloud.com/*",
-        "*://*.akamaized.net/*",
-        "*://*.akamaihd.net/*",
-        "*://*.steamcontent.com/*",
-        "*://*.steamstatic.com/*",
         "*://*.fastly.net/*",
         "*://*.apple-dns.net/*",
         "*://*.github.io/*",
@@ -443,33 +396,37 @@ var CONFIG = {
     ]
 };
 
-
-/* ================================================================
- *  ██  دوال مساعدة — UTILITY FUNCTIONS
- * ================================================================ */
+/* ======================================================================
+ * Utility
+ * ====================================================================== */
 
 function safeLower(value) {
     if (!value) { return ""; }
     return String(value).toLowerCase();
 }
 
-/* ================================================================
+/* ======================================================================
  * IPv4
- * ================================================================ */
+ * ====================================================================== */
+
 function isIPv4(ip) {
     if (!ip || ip.indexOf(":") !== -1) { return false; }
+
     var p = ip.split(".");
     if (p.length !== 4) { return false; }
+
     for (var i = 0; i < 4; i++) {
         if (!/^\d+$/.test(p[i])) { return false; }
         var n = parseInt(p[i], 10);
         if (n < 0 || n > 255) { return false; }
     }
+
     return true;
 }
 
 function ipv4ToUnsigned(ip) {
     var p = ip.split(".");
+
     return (((parseInt(p[0], 10) * 256 +
               parseInt(p[1], 10)) * 256 +
               parseInt(p[2], 10)) * 256 +
@@ -479,25 +436,33 @@ function ipv4ToUnsigned(ip) {
 function ipv4Mask(prefix) {
     if (prefix <= 0)  { return 0; }
     if (prefix >= 32) { return 0xFFFFFFFF; }
+
     return (0xFFFFFFFF << (32 - prefix)) >>> 0;
 }
 
 function ipv4InCIDR(ip, cidr) {
     if (!isIPv4(ip)) { return false; }
+
     var parts = cidr.split("/");
     if (parts.length !== 2) { return false; }
+
     var network = parts[0];
-    var prefix  = parseInt(parts[1], 10);
+    var prefix = parseInt(parts[1], 10);
+
     if (!isIPv4(network) || isNaN(prefix) || prefix < 0 || prefix > 32) {
         return false;
     }
+
     var mask = ipv4Mask(prefix);
-    return ((ipv4ToUnsigned(ip) & mask) === (ipv4ToUnsigned(network) & mask));
+
+    return ((ipv4ToUnsigned(ip) & mask) ===
+            (ipv4ToUnsigned(network) & mask));
 }
 
-/* ================================================================
+/* ======================================================================
  * IPv6
- * ================================================================ */
+ * ====================================================================== */
+
 function isIPv6(ip) {
     if (!ip || ip.indexOf(":") === -1) { return false; }
     return /^[0-9a-fA-F:]+$/.test(ip);
@@ -505,58 +470,98 @@ function isIPv6(ip) {
 
 function normalizeIPv6(ip) {
     ip = safeLower(ip);
+
     var zone = ip.indexOf("%");
-    if (zone !== -1) { ip = ip.substring(0, zone); }
+    if (zone !== -1) {
+        ip = ip.substring(0, zone);
+    }
+
     var parts = ip.split("::");
-    var left  = parts[0] ? parts[0].split(":") : [];
-    var right = (parts.length > 1 && parts[1]) ? parts[1].split(":") : [];
-    var missing = 8 - left.length - right.length;
-    if (missing < 0) { return null; }
+    if (parts.length > 2) { return null; }
+
+    var left = parts[0] ? parts[0].split(":") : [];
+    var right = (parts.length === 2 && parts[1]) ? parts[1].split(":") : [];
+    var missing;
+
+    if (parts.length === 1) {
+        if (left.length !== 8) { return null; }
+        missing = 0;
+    } else {
+        missing = 8 - left.length - right.length;
+        if (missing < 1) { return null; }
+    }
+
     var full = [];
     var i;
-    for (i = 0; i < left.length; i++)  { full.push(left[i] || "0"); }
-    for (i = 0; i < missing; i++)      { full.push("0"); }
-    for (i = 0; i < right.length; i++) { full.push(right[i] || "0"); }
-    while (full.length < 8) { full.push("0"); }
+
+    for (i = 0; i < left.length; i++) {
+        full.push(left[i] || "0");
+    }
+
+    for (i = 0; i < missing; i++) {
+        full.push("0");
+    }
+
+    for (i = 0; i < right.length; i++) {
+        full.push(right[i] || "0");
+    }
+
     if (full.length !== 8) { return null; }
+
     for (i = 0; i < 8; i++) {
         if (!/^[0-9a-f]{1,4}$/.test(full[i])) { return null; }
     }
+
     return full;
 }
 
 function ipv6ToBinary(ip) {
     var groups = normalizeIPv6(ip);
     if (!groups) { return null; }
+
     var result = "";
+
     for (var i = 0; i < 8; i++) {
         var bits = parseInt(groups[i], 16).toString(2);
-        while (bits.length < 16) { bits = "0" + bits; }
+
+        while (bits.length < 16) {
+            bits = "0" + bits;
+        }
+
         result += bits;
     }
+
     return result;
 }
 
 function ipv6InCIDR(ip, cidr) {
     if (!isIPv6(ip)) { return false; }
+
     var parts = cidr.split("/");
     if (parts.length !== 2) { return false; }
+
     var prefix = parseInt(parts[1], 10);
     if (isNaN(prefix) || prefix < 0 || prefix > 128) { return false; }
-    var ipBinary      = ipv6ToBinary(ip);
+
+    var ipBinary = ipv6ToBinary(ip);
     var networkBinary = ipv6ToBinary(parts[0]);
+
     if (!ipBinary || !networkBinary) { return false; }
-    return (ipBinary.substring(0, prefix) === networkBinary.substring(0, prefix));
+
+    return (ipBinary.substring(0, prefix) ===
+            networkBinary.substring(0, prefix));
 }
 
-/* ================================================================
- * CIDR LIST LOOKUP
- * ================================================================ */
+/* ======================================================================
+ * IP lists
+ * ====================================================================== */
+
 function ipInList(ip, list) {
     for (var i = 0; i < list.length; i++) {
         if (isIPv4(ip) && ipv4InCIDR(ip, list[i])) { return true; }
         if (isIPv6(ip) && ipv6InCIDR(ip, list[i])) { return true; }
     }
+
     return false;
 }
 
@@ -570,12 +575,14 @@ function isJordanIP(ip) {
            ipInList(ip, CONFIG.JORDAN_IPV6);
 }
 
-/* ================================================================
- * DOMAIN MATCHING
- * ================================================================ */
+/* ======================================================================
+ * Domains
+ * ====================================================================== */
+
 function domainMatch(host, domain) {
-    host   = safeLower(host);
+    host = safeLower(host);
     domain = safeLower(domain);
+
     return (host === domain || dnsDomainIs(host, "." + domain));
 }
 
@@ -583,11 +590,12 @@ function inDomainList(host, list) {
     for (var i = 0; i < list.length; i++) {
         if (domainMatch(host, list[i])) { return true; }
     }
+
     return false;
 }
 
-function isGameHost(host) {
-    return inDomainList(host, CONFIG.GAME_DIRECT_DOMAINS);
+function isPUBGHost(host) {
+    return inDomainList(host, CONFIG.PUBG_PROXY_DOMAINS);
 }
 
 function isJordanDomain(host) {
@@ -600,76 +608,96 @@ function isAlwaysDirect(host) {
 
 function isDirectURL(url) {
     for (var i = 0; i < CONFIG.DIRECT_URL_PATTERNS.length; i++) {
-        if (shExpMatch(url, CONFIG.DIRECT_URL_PATTERNS[i])) { return true; }
+        if (shExpMatch(url, CONFIG.DIRECT_URL_PATTERNS[i])) {
+            return true;
+        }
     }
+
     return false;
 }
 
-/* ================================================================
- * تشخيص سريع (للdebug — بيشتغل في بعض المتصفحات)
- * ================================================================ */
-function diag(host, ip, result) {
-    /* ممكن تضيف alert() أو console.log() للاختبار */
-    return result;
+/* ======================================================================
+ * Strict proxy selection — never returns DIRECT
+ * ====================================================================== */
+
+function strictProxyForURL(url) {
+    var u = safeLower(url);
+
+    if (shExpMatch(u, "https:*") || shExpMatch(u, "wss:*")) {
+        return CONFIG.HTTPS_CHAIN;
+    }
+
+    if (shExpMatch(u, "http:*") || shExpMatch(u, "ws:*")) {
+        return CONFIG.HTTP_CHAIN;
+    }
+
+    /* Unknown PAC-visible protocol: try CONNECT chain, without DIRECT. */
+    return CONFIG.HTTPS_CHAIN;
 }
 
-
-/* ================================================================
- *  ██  MAIN — الدالة الرئيسية
- * ================================================================
+/* ======================================================================
+ * MAIN
+ * ======================================================================
  *
  * ترتيب الأولويات:
  *
- *   1. اسم مجرد (intranet / LAN)            → DIRECT
- *   2. IP خاص / loopback / CGNAT             → DIRECT
- *   3. نطاقات الألعاب / matchmaking          → DIRECT
- *   4. IP أردني (ضمن الـ CIDR ranges)        → DIRECT
- *   5. نطاق أردني (.jo / تجاري)              → DIRECT
- *   6. نطاقات عالمية مُستثناة                → DIRECT
- *   7. أي شي ثاني                           → DIRECT
- *                                        (كل شي DIRECT!)
+ * 1. LAN hostname / .local                 -> DIRECT
+ * 2. Private / loopback / CGNAT IP          -> DIRECT
+ * 3. PUBG domains and subdomains            -> PROXY, no DIRECT
+ * 4. Public literal IP URL                   -> PROXY, no DIRECT
+ * 5. MAX_CAPTURE enabled                    -> all public HTTP(S) PROXY
+ * 6. If MAX_CAPTURE disabled:
+ *      Jordan IP/domain + original excludes -> DIRECT
+ *      everything else                      -> DIRECT
  *
- * ================================================================ */
-function FindProxyForURL(url, host) {
+ * ====================================================================== */
 
-    url  = String(url || "");
+function FindProxyForURL(url, host) {
+    url = String(url || "");
     host = safeLower(host);
 
-    /* ---- 1) اسم مجرد بدون نقطة (شبكة داخلية) ---- */
-    if (isPlainHostName(host)) {
+    /* Local names and mDNS. */
+    if (isPlainHostName(host) || dnsDomainIs(host, ".local")) {
         return "DIRECT";
     }
 
-    /* ---- 2) IP خاص / loopback / CGNAT ---- */
+    /* Private, loopback, link-local and CGNAT remain local. */
     if ((isIPv4(host) || isIPv6(host)) && isPrivateIP(host)) {
         return "DIRECT";
     }
 
-    /* ---- 3) ألعاب و matchmaking => DIRECT ---- */
-    if (isGameHost(host)) {
-        return "DIRECT";
+    /* PUBG has highest public-network priority. */
+    if (isPUBGHost(host)) {
+        return strictProxyForURL(url);
     }
 
-    /* ---- 4) IP أردني (ضمن الـ 31 نطاق IPv4 + 22 نطاق IPv6) ---- */
+    /* Catch public IP literals used by PAC-visible game APIs. */
+    if (CONFIG.PROXY_PUBLIC_IP_LITERALS &&
+        (isIPv4(host) || isIPv6(host))) {
+        return strictProxyForURL(url);
+    }
+
+    /* Maximum HTTP(S) capture: catches changing auth/CDN/API hostnames. */
+    if (CONFIG.PROXY_ALL_PUBLIC_WEB) {
+        return strictProxyForURL(url);
+    }
+
+    /* Original direct behavior below is active only when MAX is disabled. */
     if ((isIPv4(host) || isIPv6(host)) && isJordanIP(host)) {
         return "DIRECT";
     }
 
-    /* ---- 5) نطاق أردني (.jo + تجاري + بنوك + خدمات) ---- */
     if (isJordanDomain(host)) {
         return "DIRECT";
     }
 
-    /* ---- 6) نطاقات عالمية مستثناة (CDN, DNS, خدمات) ---- */
     if (isAlwaysDirect(host)) {
         return "DIRECT";
     }
 
-    /* ---- 7) أنماط URL مستثناة ---- */
     if (isDirectURL(url)) {
         return "DIRECT";
     }
 
-    /* ---- 8) كل شي ثاني => DIRECT ---- */
     return "DIRECT";
 }
